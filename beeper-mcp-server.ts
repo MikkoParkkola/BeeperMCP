@@ -187,37 +187,6 @@ class FileSessionStore implements Storage {
   const lastToken = sessionStore.getItem(syncKey);
   if (lastToken && client.store?.setSyncToken) client.store.setSyncToken(lastToken);
 
-// Fetch the recovery key from env
-const recoveryKey = process.env.KEY_BACKUP_RECOVERY_KEY;
-
-// Only if both methods exist…
-if (
-  typeof client.getKeyBackupVersion === 'function' &&
-  typeof client.restoreKeyBackupWithCache === 'function'
-) {
-  try {
-    // 1️⃣ Get the backup metadata
-    const backupInfo = await client.getKeyBackupVersion();
-    if (!backupInfo) {
-      logger.info('No key backup configured on server.');
-    } else if (recoveryKey) {
-      // 2️⃣ Restore with your recovery key
-      const restored = await client.restoreKeyBackupWithCache(
-        undefined,          // use default key backup version
-        recoveryKey,        // YOUR recovery key from Element Web
-        backupInfo as any
-      );
-      logger.info(`Restored ${restored.length} room keys via secure backup`);
-    } else {
-      logger.warn(
-        'Key backup exists on server, but no KEY_BACKUP_RECOVERY_KEY provided.'
-      );
-    }
-  } catch (e: any) {
-    logger.error('Failed to restore from secure backup:', e.message);
-  }
-}
-
   // init crypto
   await client.initCrypto();
   logger.info('matrix-js-sdk crypto initialized');
@@ -232,17 +201,28 @@ if (
     }
   }
   if (initRust) { await initRust(client); logger.debug('rust-crypto adapter initialized'); }
-  // Attempt to restore room keys from server-side backup, if available
-  // Attempt to restore room keys from server-side backup using cache
+  
+  // Fetch the recovery key from env
+  const recoveryKey = process.env.KEY_BACKUP_RECOVERY_KEY;
+
+  // Restore room keys from server-side backup using the recovery key
   if (typeof client.restoreKeyBackupWithCache === 'function' && typeof client.getKeyBackupVersion === 'function') {
     try {
       const backupInfo = await client.getKeyBackupVersion();
-      if (backupInfo) {
-        const restored = await client.restoreKeyBackupWithCache(undefined, undefined, backupInfo as any);
-        logger.info(`Restored ${restored.length} room keys from server backup`);
+      if (!backupInfo) {
+        logger.info('No key backup configured on server.');
+      } else if (recoveryKey) {
+        const restored = await client.restoreKeyBackupWithCache(
+          undefined,
+          recoveryKey,
+          backupInfo as any,
+        );
+        logger.info(`Restored ${restored.length} room keys via secure backup`);
+      } else {
+        logger.warn('Key backup exists on server, but no KEY_BACKUP_RECOVERY_KEY provided.');
       }
     } catch (e: any) {
-      logger.warn('Failed to restore room keys from server backup:', e.message);
+      logger.error('Failed to restore from secure backup:', e.message);
     }
   }
   // import previously exported room keys, if any
