@@ -209,6 +209,7 @@ class FileSessionStore implements Storage {
   if (typeof client.restoreKeyBackupWithCache === 'function' && typeof client.getKeyBackupVersion === 'function') {
     try {
       const backupInfo = await client.getKeyBackupVersion();
+      logger.info({ backupVersion: backupInfo?.version, backupAlgorithm: backupInfo?.algorithm, recoveryKeyType: backupInfo?.recovery_key?.type }, 'Received key backup info from server.');
       if (!backupInfo) {
         logger.info('No key backup configured on server.');
       } else if (recoveryKey) {
@@ -233,7 +234,12 @@ class FileSessionStore implements Storage {
       const cryptoApi = client.getCrypto();
       if (cryptoApi) {
         await cryptoApi.importRoomKeys(exported as any, {});
-        logger.debug('Imported room keys from cache');
+        // logger.debug('Imported room keys from cache'); // Removed as per instruction
+        if (exported && typeof exported.length === 'number') {
+            logger.info(`Attempted import from room-keys.json: Found ${exported.length} sessions in the file.`);
+        } else if (fs.existsSync(keyFile)) { // If file existed but parsing/structure was off
+            logger.warn('Attempted import from room-keys.json: File existed but content was not as expected (e.g., not an array or empty).');
+        }
       }
     }
   } catch (e: any) {
@@ -251,11 +257,19 @@ class FileSessionStore implements Storage {
         logger.debug(`decryptEvent succeeded for ${ev.getId()}`);
       }
     } catch (e: any) {
-      logger.debug(`decryptEvent failed (${e.message}) for ${ev.getId()}`);
+      const wire = ev.getWireContent?.() as any || (ev.event as any).content || {};
+      const roomId = ev.getRoomId();
+      if (e.name === 'DecryptionError' && e.code === 'MEGOLM_UNKNOWN_INBOUND_SESSION_ID') {
+          logger.warn(`Decrypt: Failed for event ${ev.getId()} in room ${roomId} due to unknown session ID. Requesting key. Session: ${wire.session_id}, Algorithm: ${wire.algorithm}`);
+      } else if (e.name === 'DecryptionError') {
+          logger.error(`Decrypt: Serious decryption error for event ${ev.getId()} in room ${roomId} (Code: ${e.code || 'unknown'}): ${e.message}. Queuing for retry.`);
+      } else {
+          logger.error({err: e}, `Decrypt: Unexpected error for event ${ev.getId()} in room ${roomId}: ${e.message}. Queuing for retry.`);
+      }
       // queue event for retry and request a room key
       try {
-        const wire = ev.getWireContent?.() as any || (ev.event as any).content || {};
-        const roomId = ev.getRoomId();
+        // const wire = ev.getWireContent?.() as any || (ev.event as any).content || {}; // already defined above
+        // const roomId = ev.getRoomId(); // already defined above
         const sessionId = wire.session_id;
         const algorithm = wire.algorithm;
         if (roomId && sessionId && algorithm) {
@@ -357,21 +371,27 @@ class FileSessionStore implements Storage {
   try {
     const users = new Set<string>();
     client.getRooms().forEach(r => r.getJoinedMembers().forEach(m => users.add(m.userId)));
-    if (users.size) {
-      logger.info(`Downloading device keys for ${users.size} users...`);
-      await client.downloadKeys([...users], true);
-      for (const u of users) {
+    let verifiedCount = 0;
+    let failedCount = 0;
+    const usersToProcess = [...users]; // Avoid issues if 'users' set is modified elsewhere, though unlikely here
+    if (usersToProcess.length > 0) {
+      logger.info(`Downloading device keys for ${usersToProcess.length} users...`);
+      await client.downloadKeys(usersToProcess, true);
+      for (const u of usersToProcess) {
         const devs = await client.getStoredDevicesForUser(u);
         for (const d of Object.keys(devs)) {
           try {
-            // Must await to catch async errors on unknown devices
             await client.setDeviceVerified(u, d, true);
+            verifiedCount++;
           } catch (err: any) {
-            logger.warn(`Could not verify device ${d} for ${u}: ${err.message}`);
+            logger.warn(`Could not verify device ${d} for user ${u}: ${err.message}`);
+            failedCount++;
           }
         }
       }
-      logger.info('All devices verified');
+      logger.info(`Device verification attempt complete. Verified: ${verifiedCount}, Failed: ${failedCount} devices.`);
+    } else {
+        logger.info('No users found in joined rooms to perform device verification on.');
     }
   } catch (e: any) {
     logger.warn('Key trust failed:', e.message);
