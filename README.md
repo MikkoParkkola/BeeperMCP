@@ -69,3 +69,23 @@ node --test test/utils.test.js
 ```
 
 No external dependencies are required for the tests.
+
+## Synapse configuration for self-key requests
+
+When the client requests missing room keys, Synapse normally ignores requests
+from the same device. This can lead to an endless key request loop. Starting
+with Synapse support for [MSC3202](https://github.com/matrix-org/matrix-doc/pull/3202)
+and [MSC4190](https://github.com/matrix-org/matrix-doc/pull/4190), the server
+can "masquerade" to-device messages as coming from a separate device so those
+requests are honoured.
+
+Enable the following options in your `homeserver.yaml` and restart Synapse:
+
+```yaml
+experimental_features:
+  msc3202_device_masquerading: true
+  msc4190_send_to_device: true
+```
+
+After enabling these experimental features the bridge will receive keys for its
+own requests and encrypted rooms will decrypt normally.
