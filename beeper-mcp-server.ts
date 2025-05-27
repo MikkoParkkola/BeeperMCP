@@ -45,6 +45,8 @@ const INITIAL_REQUEST_INTERVAL_MS = Number(process.env.KEY_REQUEST_INTERVAL_MS ?
 const MAX_REQUEST_INTERVAL_MS = Number(process.env.KEY_REQUEST_MAX_INTERVAL_MS ?? '300000');
 // enable MSC4190 key-forwarding by default; set MSC4190=false to disable
 const MSC4190 = process.env.MSC4190 !== 'false';
+// enable MSC3202 device masquerading by default; set MSC3202=false to disable
+const MSC3202 = process.env.MSC3202 !== 'false';
 if (!UID || !TOKEN) {
   console.error('Error: MATRIX_USERID and MATRIX_TOKEN must be set');
   process.exit(1);
@@ -251,7 +253,7 @@ class FileSessionStore implements Storage {
     sessionStore,
     cryptoStore,
     timelineSupport: true,
-    encryption: { msc4190: MSC4190 },
+    encryption: { msc4190: MSC4190, msc3202: MSC3202 },
   } as any);
 
   await verifyAccessToken(logger);
@@ -260,16 +262,15 @@ class FileSessionStore implements Storage {
   const pendingDecrypt = new Map<string, MatrixEvent[]>();
   // track when a key request was last sent for a given session
   // and the current backoff interval for retries
-  const requestedKeys = new Map<string, { last: number; interval: number }>();
+  const requestedKeys = new Map<string, { last: number; interval: number; logged: boolean }>();
   // capture to-device events for room-keys and replay pending decrypts
   client.on('toDeviceEvent' as any, async (ev: MatrixEvent) => {
     try {
       const evtType = ev.getType();
-      logger.debug(`toDeviceEvent received: ${evtType} from ${ev.getSender()}`);
+      logger.trace(`toDeviceEvent ${evtType} from ${ev.getSender()}`);
       const cryptoApi = client.getCrypto();
       if (cryptoApi) {
         await (cryptoApi as any).decryptEvent(ev as any);
-        logger.debug(`toDeviceEvent decrypted: ${evtType}`);
       }
       // replay queued timeline events if a room key arrived
       if (evtType === 'm.room_key' || evtType === 'm.forwarded_room_key') {
@@ -322,13 +323,12 @@ class FileSessionStore implements Storage {
       const cryptoApi = client.getCrypto();
       if (cryptoApi) {
         await (cryptoApi as any).decryptEvent(ev as any);
-        logger.debug(`decryptEvent succeeded for ${ev.getId()}`);
       }
     } catch (e: any) {
       const wire = ev.getWireContent?.() as any || (ev.event as any).content || {};
       const roomId = ev.getRoomId();
       if (e.name === 'DecryptionError' && e.code === 'MEGOLM_UNKNOWN_INBOUND_SESSION_ID') {
-          logger.warn(`Decrypt: Failed for event ${ev.getId()} in room ${roomId} due to unknown session ID. Requesting key. Session: ${wire.session_id}, Algorithm: ${wire.algorithm}`);
+          logger.debug(`Unknown session for event ${ev.getId()} in room ${roomId}: session ${wire.session_id}`);
       } else if (e.name === 'DecryptionError') {
           logger.error(`Decrypt: Serious decryption error for event ${ev.getId()} in room ${roomId} (Code: ${e.code || 'unknown'}): ${e.message}. Queuing for retry.`);
       } else {
@@ -345,17 +345,22 @@ class FileSessionStore implements Storage {
           pendingDecrypt.set(mapKey, arr);
           const sender = ev.getSender();
           if (sender === UID) {
-            logger.warn(
+            logger.info(
               `Decrypt: Missing keys for our own event ${ev.getId()} in room ${roomId}; not requesting from ourselves.`
             );
           } else {
-            const entry = requestedKeys.get(mapKey) || { last: 0, interval: INITIAL_REQUEST_INTERVAL_MS };
+            const entry = requestedKeys.get(mapKey) || { last: 0, interval: INITIAL_REQUEST_INTERVAL_MS, logged: false };
             const now = Date.now();
             if (now - entry.last >= entry.interval) {
               entry.last = now;
               entry.interval = Math.min(entry.interval * 2, MAX_REQUEST_INTERVAL_MS);
               requestedKeys.set(mapKey, entry);
-              logger.debug(`requesting room key for session ${mapKey}`);
+              if (!entry.logged) {
+                logger.warn(`Requesting missing room key for session ${mapKey}`);
+                entry.logged = true;
+              } else {
+                logger.debug(`Retrying room key request for session ${mapKey}`);
+              }
               const cryptoApi = client.getCrypto();
               if (cryptoApi) {
                 await (cryptoApi as any).requestRoomKey(
@@ -364,7 +369,7 @@ class FileSessionStore implements Storage {
                 );
               }
             } else {
-              logger.debug(`room key for session ${mapKey} already requested recently`);
+              logger.trace(`room key for session ${mapKey} already requested recently`);
             }
           }
         }
@@ -386,7 +391,7 @@ class FileSessionStore implements Storage {
       const session_id = contentAny.session_id;
       if (room_id && session_id) {
         const mapKey = `${room_id}|${session_id}`;
-      logger.debug(`timeline key event ${evtType} for session ${mapKey}`);
+      logger.trace(`timeline key event ${evtType} for session ${mapKey}`);
         const arr = pendingDecrypt.get(mapKey);
         if (arr) {
           for (const pend of arr) {
