@@ -30,7 +30,16 @@ const LOG_DIR   = process.env.MESSAGE_LOG_DIR  ?? './room-logs';
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 const HS        = process.env.MATRIX_HOMESERVER ?? 'https://matrix.beeper.com';
 const UID       = process.env.MATRIX_USERID;
-const TOKEN     = process.env.MATRIX_TOKEN;
+let TOKEN: string | undefined = process.env.MATRIX_TOKEN;
+if (!TOKEN) {
+  try {
+    const sessionPath = path.join(CACHE_DIR, 'session.json');
+    if (fs.existsSync(sessionPath)) {
+      const data = JSON.parse(fs.readFileSync(sessionPath, 'utf8')) as Record<string, string>;
+      TOKEN = data.token;
+    }
+  } catch {}
+}
 const CONC      = Number(process.env.BACKFILL_CONCURRENCY ?? '5');
 if (!UID || !TOKEN) {
   console.error('Error: MATRIX_USERID and MATRIX_TOKEN must be set');
