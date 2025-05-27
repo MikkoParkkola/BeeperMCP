@@ -10,7 +10,8 @@
  * • Graceful shutdown
  */
 
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.beeper-mcp-server.env' });
 import sdk, { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
 import Pino from 'pino';
 import fs from 'fs';
