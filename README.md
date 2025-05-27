@@ -29,10 +29,10 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
 
 ## Usage
 
-Create a `.beeper-mcp-server.env` file containing at least `MATRIX_USERID` and `MATRIX_TOKEN` (or `MATRIX_PASSWORD`). The `setup.js` script creates this automatically. Then run the server with Node:
+Create a `.beeper-mcp-server.env` file containing at least `MATRIX_USERID` and `MATRIX_TOKEN` (or `MATRIX_PASSWORD`). The `setup.js` script creates this automatically. The server is written in TypeScript so you'll need `ts-node` (installed by `setup.js`) to run it:
 
 ```bash
-node beeper-mcp-server.ts
+npx ts-node beeper-mcp-server.ts
 ```
 
 Optional variables include `MATRIX_HOMESERVER`, `MESSAGE_LOG_DIR`, `MATRIX_CACHE_DIR`, `LOG_LEVEL` and more (see the source file for details). These can also be placed in `.beeper-mcp-server.env`.
