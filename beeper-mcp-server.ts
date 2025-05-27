@@ -127,18 +127,24 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
 // --- Session Store for sync tokens ---
 class FileSessionStore implements Storage {
   constructor(private file: string) { ensureDir(path.dirname(file)); }
-  private read() {
+  private read(): Record<string, string> {
     try { return JSON.parse(fs.readFileSync(this.file, 'utf8')); }
     catch { return {}; }
   }
+  private write(d: Record<string, string>) {
+    fs.writeFileSync(this.file, JSON.stringify(d));
+  }
+  get length() { return Object.keys(this.read()).length; }
+  clear() { this.write({}); }
+  key(index: number) { return Object.keys(this.read())[index] ?? null; }
   getItem(key: string) { return this.read()[key] ?? null; }
   setItem(key: string, val: string) {
     const d = this.read(); d[key] = val;
-    fs.writeFileSync(this.file, JSON.stringify(d));
+    this.write(d);
   }
   removeItem(key: string) {
     const d = this.read(); delete d[key];
-    fs.writeFileSync(this.file, JSON.stringify(d));
+    this.write(d);
   }
 }
 
@@ -226,20 +232,20 @@ class FileSessionStore implements Storage {
     sessionStore,
     cryptoStore,
     timelineSupport: true,
-  });
+  } as any);
 
   await verifyAccessToken(logger);
 
   // pending events waiting for room keys: map of "roomId|session_id" to encrypted events
   const pendingDecrypt = new Map<string, MatrixEvent[]>();
   // capture to-device events for room-keys and replay pending decrypts
-  client.on('toDeviceEvent', async (ev: MatrixEvent) => {
+  client.on('toDeviceEvent' as any, async (ev: MatrixEvent) => {
     try {
       const evtType = ev.getType();
       logger.debug(`toDeviceEvent received: ${evtType} from ${ev.getSender()}`);
       const cryptoApi = client.getCrypto();
       if (cryptoApi) {
-        await cryptoApi.decryptEvent(ev as any);
+        await (cryptoApi as any).decryptEvent(ev as any);
         logger.debug(`toDeviceEvent decrypted: ${evtType}`);
       }
       // replay queued timeline events if a room key arrived
@@ -254,7 +260,7 @@ class FileSessionStore implements Storage {
             for (const pending of arr) {
               await decryptEvent(pending);
               // emit decrypted event for logging
-              client.emit('event', pending);
+              client.emit('event' as any, pending);
             }
             pendingDecrypt.delete(key);
           }
@@ -273,11 +279,11 @@ class FileSessionStore implements Storage {
   // allow decryption from unverified devices and unknown devices without error
   const cryptoApiGlobal = client.getCrypto();
   if (cryptoApiGlobal) {
-    if (typeof cryptoApiGlobal.setGlobalErrorOnUnknownDevices === 'function') {
-      cryptoApiGlobal.setGlobalErrorOnUnknownDevices(false);
+    if (typeof (cryptoApiGlobal as any).setGlobalErrorOnUnknownDevices === 'function') {
+      (cryptoApiGlobal as any).setGlobalErrorOnUnknownDevices(false);
     }
-    if (typeof cryptoApiGlobal.setGlobalBlacklistUnverifiedDevices === 'function') {
-      cryptoApiGlobal.setGlobalBlacklistUnverifiedDevices(false);
+    if (typeof (cryptoApiGlobal as any).setGlobalBlacklistUnverifiedDevices === 'function') {
+      (cryptoApiGlobal as any).setGlobalBlacklistUnverifiedDevices(false);
     }
   }
   if (initRust) { await initRust(client); logger.debug('rust-crypto adapter initialized'); }
@@ -291,7 +297,7 @@ class FileSessionStore implements Storage {
     try {
       const cryptoApi = client.getCrypto();
       if (cryptoApi) {
-        await cryptoApi.decryptEvent(ev as any);
+        await (cryptoApi as any).decryptEvent(ev as any);
         logger.debug(`decryptEvent succeeded for ${ev.getId()}`);
       }
     } catch (e: any) {
@@ -324,7 +330,7 @@ class FileSessionStore implements Storage {
             logger.debug(`requesting room key for session ${mapKey}`);
             const cryptoApi = client.getCrypto();
             if (cryptoApi) {
-              await cryptoApi.requestRoomKey(
+              await (cryptoApi as any).requestRoomKey(
                 { room_id: roomId, session_id: sessionId, algorithm },
                 [{ userId: sender!, deviceId: '*' }]
               );
@@ -339,7 +345,7 @@ class FileSessionStore implements Storage {
 
   // event logging
   const seen = new Set<string>();
-  client.on('event', async ev => {
+  client.on('event' as any, async (ev: any) => {
     const evtType = ev.getType();
     // timeline key events: use these to retry pending decrypts
     if (evtType === 'm.room_key' || evtType === 'm.forwarded_room_key') {
@@ -354,7 +360,7 @@ class FileSessionStore implements Storage {
         if (arr) {
           for (const pend of arr) {
             await decryptEvent(pend);
-            client.emit('event', pend);
+            client.emit('event' as any, pend);
           }
           pendingDecrypt.delete(mapKey);
         }
@@ -380,7 +386,7 @@ class FileSessionStore implements Storage {
       if (content.url) {
         try {
           const url = client.mxcUrlToHttp(content.url);
-          const res = await fetch(url);
+          const res = await fetch(url as string);
           if (res.ok) {
             const ext = path.extname(content.filename||content.body||'');
             const fname = `${ts.replace(/[:.]/g,'')}_${safeFilename(id)}${ext}`;
@@ -409,8 +415,8 @@ class FileSessionStore implements Storage {
   // sync
   logger.info('Starting Matrix sync');
   await client.startClient({ initialSyncLimit: 10 });
-  await new Promise(r => client.once('sync', s => s==='PREPARED' && r()));
-  client.on('sync', (_s,_p,data) => data.nextBatch && sessionStore.setItem(syncKey,data.nextBatch));
+  await new Promise<void>(r => client.once('sync' as any, (s: any) => s === 'PREPARED' && r()));
+  client.on('sync' as any, (_s: any, _p: any, data: any) => data.nextBatch && sessionStore.setItem(syncKey, data.nextBatch));
   logger.info('Matrix sync ready');
   // trust all devices: download and mark all devices verified now that we have sync'd rooms
   try {
@@ -443,7 +449,7 @@ class FileSessionStore implements Storage {
   }
 
   // backfill (optional per-room test filter)
-  const limiter = ((n:number)=>{let a=0,q:Function[]=[];const nxt=()=>{if(a<n&&q.length){a++;q.shift()!();}};return async(fn:()=>Promise<void>)=>new Promise(r=>{q.push(async()=>{try{await fn();}finally{a--;nxt();r();}});nxt();});})(CONC);
+  const limiter = ((n:number)=>{let a=0,q:Function[]=[];const nxt=()=>{if(a<n&&q.length){a++;q.shift()!();}};return async(fn:()=>Promise<void>)=>new Promise<void>(r=>{q.push(async()=>{try{await fn();}finally{a--;nxt();r();}});nxt();});})(CONC);
   const roomsToBackfill = TEST_ROOM_ID
     ? client.getRooms().filter(r => r.roomId === TEST_ROOM_ID)
     : client.getRooms();
@@ -452,7 +458,7 @@ class FileSessionStore implements Storage {
       const tl = r.getLiveTimeline();
       while (await client.paginateEventTimeline(tl, { backwards: true, limit: 1000 }));
       for (const ev of tl.getEvents().sort((a,b) => a.getTs() - b.getTs())) {
-        await client.emit('event', ev);
+        await client.emit('event' as any, ev);
       }
     }))
   );
@@ -473,7 +479,7 @@ class FileSessionStore implements Storage {
   // MCP tools
   const srv = new McpServer({ name:'Beeper', version:'2.2.0', description:'Matrix↔MCP logger' });
 
-  srv.tool('list_rooms', z.object({ limit:z.number().int().positive().default(50) }), async({limit})=>{
+  (srv as any).tool('list_rooms', z.object({ limit:z.number().int().positive().default(50) }), async({limit}: any)=>{
     const out=client.getRooms()
       .sort((a,b)=>(b.getLastActiveTimestamp()||0)-(a.getLastActiveTimestamp()||0))
       .slice(0,limit)
@@ -481,14 +487,14 @@ class FileSessionStore implements Storage {
     return { content:[{ type:'json', json:out } ] };
   });
 
-  srv.tool('create_room', z.object({ name:z.string().min(1), encrypted:z.boolean().default(false) }), async({name,encrypted})=>{
+  (srv as any).tool('create_room', z.object({ name:z.string().min(1), encrypted:z.boolean().default(false) }), async({name,encrypted}: any)=>{
     const opts:any={ name,visibility:'private' };
     if(encrypted) opts.initial_state=[{ type:'m.room.encryption', state_key:'', content:{ algorithm:'m.megolm.v1.aes-sha2' } }];
     const{room_id}=await client.createRoom(opts);
     return{ content:[{ type:'json', json:{ room_id } }] };
   });
 
-  srv.tool('list_messages', z.object({ room_id:z.string(), limit:z.number().int().positive().optional(), since:z.string().datetime().optional(), until:z.string().datetime().optional() }), async({room_id,limit,since,until})=>{
+  (srv as any).tool('list_messages', z.object({ room_id:z.string(), limit:z.number().int().positive().optional(), since:z.string().datetime().optional(), until:z.string().datetime().optional() }), async({room_id,limit,since,until}: any)=>{
     const file=path.join(getRoomDir(room_id),`${safeFilename(room_id)}.log`);
     let lines=fs.existsSync(file)?fs.readFileSync(file,'utf8').split('\n'):[];
     if(since) lines=lines.filter(l=>l.slice(1,20)>=since);
@@ -497,7 +503,7 @@ class FileSessionStore implements Storage {
     return{ content:[{ type:'json', json:lines.filter(Boolean) }] };
   });
 
-  srv.tool('send_message', z.object({ room_id:z.string(), message:z.string().min(1) }), async({room_id,message})=>{
+  (srv as any).tool('send_message', z.object({ room_id:z.string(), message:z.string().min(1) }), async({room_id,message}: any)=>{
     await client.sendTextMessage(room_id,message);
     return{ content:[{ type:'text', text:'sent' }] };
   });
