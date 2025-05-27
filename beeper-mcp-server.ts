@@ -41,6 +41,8 @@ if (!TOKEN) {
   } catch {}
 }
 const CONC      = Number(process.env.BACKFILL_CONCURRENCY ?? '5');
+const REQUEST_INTERVAL_MS = Number(process.env.KEY_REQUEST_INTERVAL_MS ?? '300000');
+const MAX_REQUEST_INTERVAL_MS = Number(process.env.KEY_REQUEST_MAX_INTERVAL_MS ?? '3600000');
 if (!UID || !TOKEN) {
   console.error('Error: MATRIX_USERID and MATRIX_TOKEN must be set');
   process.exit(1);
@@ -253,6 +255,8 @@ class FileSessionStore implements Storage {
 
   // pending events waiting for room keys: map of "roomId|session_id" to encrypted events
   const pendingDecrypt = new Map<string, MatrixEvent[]>();
+  // track when a key request was last sent for a given session
+  const requestedKeys = new Map<string, { next: number; wait: number }>();
   // capture to-device events for room-keys and replay pending decrypts
   client.on('toDeviceEvent' as any, async (ev: MatrixEvent) => {
     try {
@@ -279,6 +283,7 @@ class FileSessionStore implements Storage {
             }
             pendingDecrypt.delete(key);
           }
+          requestedKeys.delete(key);
         }
       }
     } catch {}
@@ -327,8 +332,6 @@ class FileSessionStore implements Storage {
       }
       // queue event for retry and request a room key
       try {
-        // const wire = ev.getWireContent?.() as any || (ev.event as any).content || {}; // already defined above
-        // const roomId = ev.getRoomId(); // already defined above
         const sessionId = wire.session_id;
         const algorithm = wire.algorithm;
         if (roomId && sessionId && algorithm) {
@@ -342,12 +345,26 @@ class FileSessionStore implements Storage {
               `Decrypt: Missing keys for our own event ${ev.getId()} in room ${roomId}; not requesting from ourselves.`
             );
           } else {
-            logger.debug(`requesting room key for session ${mapKey}`);
-            const cryptoApi = client.getCrypto();
-            if (cryptoApi) {
-              await (cryptoApi as any).requestRoomKey(
-                { room_id: roomId, session_id: sessionId, algorithm },
-                [{ userId: sender!, deviceId: '*' }]
+            const entry = requestedKeys.get(mapKey);
+            const now = Date.now();
+            if (!entry || now >= entry.next) {
+              const wait = entry
+                ? Math.min(entry.wait * 2, MAX_REQUEST_INTERVAL_MS)
+                : REQUEST_INTERVAL_MS;
+              requestedKeys.set(mapKey, { next: now + wait, wait });
+              logger.debug(
+                `requesting room key for session ${mapKey} (next retry in ${wait}ms)`
+              );
+              const cryptoApi = client.getCrypto();
+              if (cryptoApi) {
+                await (cryptoApi as any).requestRoomKey(
+                  { room_id: roomId, session_id: sessionId, algorithm },
+                  [{ userId: sender!, deviceId: '*' }]
+                );
+              }
+            } else {
+              logger.debug(
+                `room key for session ${mapKey} already requested; next attempt in ${entry.next - now}ms`
               );
             }
           }
