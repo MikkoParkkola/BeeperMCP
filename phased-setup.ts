@@ -28,8 +28,8 @@ async function phaseLogin(logger: Pino.Logger): Promise<{client: MatrixClient, t
   const client = sdk.createClient({ baseUrl: HS, userId: UID, deviceId });
   if (TOKEN) {
     logger.info('Using MATRIX_TOKEN from environment');
-    client.setAccessToken(TOKEN);
-    return { client, token: TOKEN };
+    client.setAccessToken(TOKEN!);
+    return { client, token: TOKEN! };
   }
   if (!PASSWORD) throw new Error('MATRIX_PASSWORD must be set for login');
   try {
@@ -42,8 +42,8 @@ async function phaseLogin(logger: Pino.Logger): Promise<{client: MatrixClient, t
     session.setItem('token', TOKEN);
     session.setItem('deviceId', res.device_id);
     logger.info(`Logged in as ${UID}, device ${res.device_id}`);
-    client.setAccessToken(TOKEN);
-    return { client, token: TOKEN };
+    client.setAccessToken(TOKEN!);
+    return { client, token: TOKEN! };
   } catch (e: any) {
     logger.error(`Login failed: ${e.message}`);
     throw e;
@@ -99,6 +99,16 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
 
 async function phaseGetKeys(client: MatrixClient, logger: Pino.Logger) {
   logger.info('Phase 3: load encryption keys');
+  try {
+    const olmMod = await import('@matrix-org/olm');
+    const Olm = (olmMod as any).default || olmMod;
+    await Olm.init();
+    (globalThis as any).Olm = Olm;
+    logger.info('Olm library initialized');
+  } catch (e: any) {
+    logger.error(`Olm init failed: ${e.message}`);
+    throw e;
+  }
   await client.initCrypto();
   await restoreRoomKeys(client, logger);
 }
@@ -106,7 +116,9 @@ async function phaseGetKeys(client: MatrixClient, logger: Pino.Logger) {
 async function phaseDecrypt(client: MatrixClient, logger: Pino.Logger) {
   logger.info('Phase 4: start sync');
   await client.startClient({ initialSyncLimit: 10 });
-  await new Promise(r => client.once('sync', s => s === 'PREPARED' && r()));
+  await new Promise<void>(resolve => {
+    (client as any).once('sync', (s: any) => s === 'PREPARED' && resolve());
+  });
   logger.info('Client synced, ready for decryption');
 }
 

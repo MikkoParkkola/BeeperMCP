@@ -27,7 +27,7 @@ function ensureDeps() {
   } catch {
     console.log('Installing Node dependencies...');
     execSync(
-      'npm install ts-node matrix-js-sdk pino dotenv zod @modelcontextprotocol/sdk',
+      'npm install ts-node matrix-js-sdk pino dotenv zod @modelcontextprotocol/sdk @matrix-org/olm',
       { stdio: 'inherit' }
     );
   }
@@ -49,11 +49,20 @@ function writeEnvFile(env) {
   console.log(`Saved configuration to ${envFile}`);
 }
 
-function ask(question, def) {
+function ask(question, def, opts = {}) {
   return new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    rl.question(def ? `${question} [${def}]: ` : `${question}: `, (ans) => {
+    const prompt = def ? `${question} [${def}]: ` : `${question}: `;
+    if (opts.hidden) {
+      rl.stdoutMuted = true;
+      rl._writeToOutput = function (stringToWrite) {
+        if (rl.stdoutMuted) rl.output.write('*');
+        else rl.output.write(stringToWrite);
+      };
+    }
+    rl.question(prompt, (ans) => {
       rl.close();
+      if (opts.hidden) console.log();
       resolve(ans || def || '');
     });
   });
@@ -87,7 +96,7 @@ async function configure() {
   env.MATRIX_USERID = await ask('Matrix user ID', env.MATRIX_USERID);
   env.MATRIX_TOKEN = await ask('Access token (leave empty to use password login)', env.MATRIX_TOKEN);
   if (!env.MATRIX_TOKEN) {
-    env.MATRIX_PASSWORD = await ask('Account password', env.MATRIX_PASSWORD);
+    env.MATRIX_PASSWORD = await ask('Account password', env.MATRIX_PASSWORD, { hidden: true });
   } else {
     env.MATRIX_PASSWORD = '';
   }
