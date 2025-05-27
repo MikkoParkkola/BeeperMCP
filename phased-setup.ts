@@ -120,6 +120,9 @@ async function phaseDecrypt(client: MatrixClient, logger: Pino.Logger) {
     (client as any).once('sync', (s: any) => s === 'PREPARED' && resolve());
   });
   logger.info('Client synced, ready for decryption');
+  // stop the Matrix client so the setup script can exit cleanly
+  await client.stopClient();
+  logger.info('Client stopped');
 }
 
 (async () => {
