@@ -10,17 +10,32 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
 - Provides MCP tools: `list_rooms`, `create_room`, `list_messages`, `send_message`
 - Graceful shutdown and local caching of sync tokens and room keys
 
+## Quick setup (macOS)
+
+1. Clone the repository and move into it:
+
+   ```bash
+   git clone <repo-url>
+   cd BeeperMCP
+   ```
+
+2. Run the interactive setup script which installs dependencies, creates `.beeper-mcp-server.env` and performs the phased setup:
+
+   ```bash
+   node setup.js
+   ```
+
+   The script tries to detect your Matrix homeserver, user ID and access token from Beeper/Element configuration. Any missing values are prompted on the command line and written to `.beeper-mcp-server.env` for future runs.
+
 ## Usage
 
-Set the required environment variables and run the server with Node:
+Create a `.beeper-mcp-server.env` file containing at least `MATRIX_USERID` and `MATRIX_TOKEN` (or `MATRIX_PASSWORD`). The `setup.js` script creates this automatically. Then run the server with Node:
 
 ```bash
-MATRIX_USERID="@you:beeper.com" \
-MATRIX_TOKEN="YOUR_ACCESS_TOKEN" \
 node beeper-mcp-server.ts
 ```
 
-Optional variables include `MATRIX_HOMESERVER`, `MESSAGE_LOG_DIR`, `MATRIX_CACHE_DIR`, `LOG_LEVEL` and more (see the source file for details).
+Optional variables include `MATRIX_HOMESERVER`, `MESSAGE_LOG_DIR`, `MATRIX_CACHE_DIR`, `LOG_LEVEL` and more (see the source file for details). These can also be placed in `.beeper-mcp-server.env`.
 
 The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v3/account/whoami` endpoint before any data is downloaded. If the token does not match the provided `MATRIX_USERID`, the process exits with an error.
 
