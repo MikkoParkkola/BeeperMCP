@@ -99,6 +99,16 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
 
 async function phaseGetKeys(client: MatrixClient, logger: Pino.Logger) {
   logger.info('Phase 3: load encryption keys');
+  try {
+    const olmMod = await import('@matrix-org/olm');
+    const Olm = (olmMod as any).default || olmMod;
+    await Olm.init();
+    (globalThis as any).Olm = Olm;
+    logger.info('Olm library initialized');
+  } catch (e: any) {
+    logger.error(`Olm init failed: ${e.message}`);
+    throw e;
+  }
   await client.initCrypto();
   await restoreRoomKeys(client, logger);
 }

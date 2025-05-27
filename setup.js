@@ -27,7 +27,7 @@ function ensureDeps() {
   } catch {
     console.log('Installing Node dependencies...');
     execSync(
-      'npm install ts-node matrix-js-sdk pino dotenv zod @modelcontextprotocol/sdk',
+      'npm install ts-node matrix-js-sdk pino dotenv zod @modelcontextprotocol/sdk @matrix-org/olm',
       { stdio: 'inherit' }
     );
   }
