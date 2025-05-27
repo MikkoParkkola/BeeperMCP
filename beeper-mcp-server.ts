@@ -314,13 +314,20 @@ class FileSessionStore implements Storage {
           const arr = pendingDecrypt.get(mapKey) || [];
           arr.push(ev);
           pendingDecrypt.set(mapKey, arr);
-          logger.debug(`requesting room key for session ${mapKey}`);
-          const cryptoApi = client.getCrypto();
-          if (cryptoApi) {
-            await cryptoApi.requestRoomKey(
-              { room_id: roomId, session_id: sessionId, algorithm },
-              [{ userId: ev.getSender()!, deviceId: '*' }]
+          const sender = ev.getSender();
+          if (sender === UID) {
+            logger.warn(
+              `Decrypt: Missing keys for our own event ${ev.getId()} in room ${roomId}; not requesting from ourselves.`
             );
+          } else {
+            logger.debug(`requesting room key for session ${mapKey}`);
+            const cryptoApi = client.getCrypto();
+            if (cryptoApi) {
+              await cryptoApi.requestRoomKey(
+                { room_id: roomId, session_id: sessionId, algorithm },
+                [{ userId: sender!, deviceId: '*' }]
+              );
+            }
           }
         }
       } catch (ex: any) {
