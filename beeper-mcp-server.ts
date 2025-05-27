@@ -46,6 +46,83 @@ const getRoomDir = (roomId: string) => {
 };
 const pipelineAsync = promisify(pipeline);
 
+// --- Credential helpers ---
+async function verifyAccessToken(logger: Pino.Logger): Promise<void> {
+  try {
+    const res = await fetch(`${HS}/_matrix/client/v3/account/whoami`, {
+      headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = (await res.json()) as { user_id?: string };
+    if (!data.user_id) throw new Error('No user_id in response');
+    if (UID && data.user_id !== UID) {
+      throw new Error(`Token user_id ${data.user_id} does not match ${UID}`);
+    }
+    logger.info(`Access token validated for ${data.user_id}`);
+  } catch (err: any) {
+    logger.error(`Failed to validate access token: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
+  const recoveryKey = process.env.KEY_BACKUP_RECOVERY_KEY;
+  if (
+    typeof (client as any).restoreKeyBackupWithCache === 'function' &&
+    typeof (client as any).getKeyBackupVersion === 'function'
+  ) {
+    try {
+      const backupInfo = await (client as any).getKeyBackupVersion();
+      logger.info(
+        {
+          backupVersion: backupInfo?.version,
+          backupAlgorithm: backupInfo?.algorithm,
+          recoveryKeyType: backupInfo?.recovery_key?.type,
+        },
+        'Received key backup info from server.'
+      );
+      if (!backupInfo) {
+        logger.info('No key backup configured on server.');
+      } else if (recoveryKey) {
+        const restored = await (client as any).restoreKeyBackupWithCache(
+          undefined,
+          recoveryKey,
+          backupInfo as any
+        );
+        logger.info(`Restored ${restored.length} room keys via secure backup`);
+      } else {
+        logger.warn(
+          'Key backup exists on server, but no KEY_BACKUP_RECOVERY_KEY provided.'
+        );
+      }
+    } catch (e: any) {
+      logger.error('Failed to restore from secure backup:', e.message);
+    }
+  }
+  // import previously exported room keys, if any
+  try {
+    const keyFile = path.join(CACHE_DIR, 'room-keys.json');
+    if (fs.existsSync(keyFile)) {
+      const exported = JSON.parse(fs.readFileSync(keyFile, 'utf8'));
+      const cryptoApi = client.getCrypto();
+      if (cryptoApi) {
+        await cryptoApi.importRoomKeys(exported as any, {});
+        if (exported && typeof (exported as any).length === 'number') {
+          logger.info(
+            `Attempted import from room-keys.json: Found ${exported.length} sessions in the file.`
+          );
+        } else {
+          logger.warn(
+            'Attempted import from room-keys.json: File existed but content was not as expected.'
+          );
+        }
+      }
+    }
+  } catch (e: any) {
+    logger.warn('Failed to import room keys:', e.message);
+  }
+}
+
 // --- Session Store for sync tokens ---
 class FileSessionStore implements Storage {
   constructor(private file: string) { ensureDir(path.dirname(file)); }
@@ -150,6 +227,8 @@ class FileSessionStore implements Storage {
     timelineSupport: true,
   });
 
+  await verifyAccessToken(logger);
+
   // pending events waiting for room keys: map of "roomId|session_id" to encrypted events
   const pendingDecrypt = new Map<string, MatrixEvent[]>();
   // capture to-device events for room-keys and replay pending decrypts
@@ -201,50 +280,8 @@ class FileSessionStore implements Storage {
     }
   }
   if (initRust) { await initRust(client); logger.debug('rust-crypto adapter initialized'); }
-  
-  // Fetch the recovery key from env
-  const recoveryKey = process.env.KEY_BACKUP_RECOVERY_KEY;
 
-  // Restore room keys from server-side backup using the recovery key
-  if (typeof client.restoreKeyBackupWithCache === 'function' && typeof client.getKeyBackupVersion === 'function') {
-    try {
-      const backupInfo = await client.getKeyBackupVersion();
-      logger.info({ backupVersion: backupInfo?.version, backupAlgorithm: backupInfo?.algorithm, recoveryKeyType: backupInfo?.recovery_key?.type }, 'Received key backup info from server.');
-      if (!backupInfo) {
-        logger.info('No key backup configured on server.');
-      } else if (recoveryKey) {
-        const restored = await client.restoreKeyBackupWithCache(
-          undefined,
-          recoveryKey,
-          backupInfo as any,
-        );
-        logger.info(`Restored ${restored.length} room keys via secure backup`);
-      } else {
-        logger.warn('Key backup exists on server, but no KEY_BACKUP_RECOVERY_KEY provided.');
-      }
-    } catch (e: any) {
-      logger.error('Failed to restore from secure backup:', e.message);
-    }
-  }
-  // import previously exported room keys, if any
-  try {
-    const keyFile = path.join(CACHE_DIR, 'room-keys.json');
-    if (fs.existsSync(keyFile)) {
-      const exported = JSON.parse(fs.readFileSync(keyFile, 'utf8'));
-      const cryptoApi = client.getCrypto();
-      if (cryptoApi) {
-        await cryptoApi.importRoomKeys(exported as any, {});
-        // logger.debug('Imported room keys from cache'); // Removed as per instruction
-        if (exported && typeof exported.length === 'number') {
-            logger.info(`Attempted import from room-keys.json: Found ${exported.length} sessions in the file.`);
-        } else if (fs.existsSync(keyFile)) { // If file existed but parsing/structure was off
-            logger.warn('Attempted import from room-keys.json: File existed but content was not as expected (e.g., not an array or empty).');
-        }
-      }
-    }
-  } catch (e: any) {
-    logger.warn('Failed to import room keys:', e.message);
-  }
+  await restoreRoomKeys(client, logger);
 
 
   // decrypt helper: decrypt event or request missing room key and queue for retry
