@@ -43,6 +43,8 @@ if (!TOKEN) {
 const CONC      = Number(process.env.BACKFILL_CONCURRENCY ?? '5');
 const INITIAL_REQUEST_INTERVAL_MS = Number(process.env.KEY_REQUEST_INTERVAL_MS ?? '1000');
 const MAX_REQUEST_INTERVAL_MS = Number(process.env.KEY_REQUEST_MAX_INTERVAL_MS ?? '300000');
+// enable MSC4190 key-forwarding by default; set MSC4190=false to disable
+const MSC4190 = process.env.MSC4190 !== 'false';
 if (!UID || !TOKEN) {
   console.error('Error: MATRIX_USERID and MATRIX_TOKEN must be set');
   process.exit(1);
@@ -249,6 +251,7 @@ class FileSessionStore implements Storage {
     sessionStore,
     cryptoStore,
     timelineSupport: true,
+    encryption: { msc4190: MSC4190 },
   } as any);
 
   await verifyAccessToken(logger);
