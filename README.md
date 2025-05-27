@@ -36,9 +36,7 @@ npx ts-node beeper-mcp-server.ts
 ```
 
 Optional variables include `MATRIX_HOMESERVER`, `MESSAGE_LOG_DIR`, `MATRIX_CACHE_DIR`, `LOG_LEVEL` and more (see the source file for details). These can also be placed in `.beeper-mcp-server.env`.
-`KEY_REQUEST_INTERVAL_MS` sets the initial delay before re-sending a
-`m.room_key_request` for the same Megolm session. Subsequent retries double this
-interval up to `KEY_REQUEST_MAX_INTERVAL_MS` (defaults to 3600000 ms).
+`KEY_REQUEST_INTERVAL_MS` sets the initial delay before a missing room key is re-requested (default `1000` ms). `KEY_REQUEST_MAX_INTERVAL_MS` limits the maximum delay between requests (default `300000` ms). The delay doubles after each failed attempt until the maximum is reached.
 
 The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v3/account/whoami` endpoint before any data is downloaded. If the token does not match the provided `MATRIX_USERID`, the process exits with an error.
 
