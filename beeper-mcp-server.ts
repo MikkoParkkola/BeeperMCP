@@ -128,7 +128,11 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
 
 // --- Session Store for sync tokens ---
 class FileSessionStore implements Storage {
-  constructor(private file: string) { ensureDir(path.dirname(file)); }
+  private file: string;
+  constructor(file: string) {
+    this.file = file;
+    ensureDir(path.dirname(file));
+  }
   private read(): Record<string, string> {
     try { return JSON.parse(fs.readFileSync(this.file, 'utf8')); }
     catch { return {}; }
