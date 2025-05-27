@@ -26,6 +26,24 @@ The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v
 
 The server will begin syncing your rooms and expose an MCP server over STDIO. AI clients can connect using the Model Context Protocol and invoke the provided tools to read or send messages on your behalf.
 
+### Phased setup
+
+For troubleshooting new device registration and key import, the repository
+includes a helper script `phased-setup.ts`. It performs the startup sequence in
+distinct steps and aborts if a step fails:
+
+1. **Login/Register** – logs in with `MATRIX_PASSWORD` when no token is
+   available and stores the resulting device ID and token.
+2. **Load cache** – prepares the local cache and optionally removes any existing
+   plain-text logs when `DELETE_PLAINTEXT_LOGS=true` is set.
+3. **Restore keys** – initialises the crypto engine and imports room keys from
+   backup files or the server.
+4. **Sync** – connects to the homeserver and begins decrypting events.
+
+Run it with the same environment variables as the main server. Each phase
+prints progress to the console and exits on error so issues can be diagnosed
+easily.
+
 ## Development
 
 Unit tests for the small utility helpers are provided in `test/utils.test.js` and can be executed with:
