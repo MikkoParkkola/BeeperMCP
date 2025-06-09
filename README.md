@@ -70,6 +70,33 @@ node --test test/utils.test.js
 
 No external dependencies are required for the tests.
 
+## OCR extraction tool
+
+`ocr-cli.js` is a standalone command line utility that sends PDF or image files
+to Mistral's basic OCR API and writes the recognised text back to disk. The
+output defaults to a Markdown file with the same basename as the input.
+
+### Usage
+
+```bash
+node ocr-cli.js [options] <files>
+```
+
+Options:
+
+- `--api-key <key>` – Mistral API key. If omitted you will be prompted and can
+  optionally save the key to `~/.mistral-ocr.json` for future runs.
+- `--format <ext>` – output extension/format (`md` by default).
+- `--config <file>` – path to a configuration JSON file.
+
+At the end of a run the tool prints how many tokens were used and the estimated
+cost reported by the API. Unit tests for the helper functions are located in
+`test/ocr-cli.test.js` and can be executed with:
+
+```bash
+node --test test/ocr-cli.test.js
+```
+
 ## Synapse configuration for self-key requests
 
 When the client requests missing room keys, Synapse normally ignores requests
