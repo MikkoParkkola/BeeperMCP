@@ -14,27 +14,23 @@
 
 import dotenv from 'dotenv';
 dotenv.config({ path: '.beeper-mcp-server.env' });
-import sdk, { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
+import sdk, { MatrixClient } from 'matrix-js-sdk';
 import Pino from 'pino';
 import fs from 'fs';
 import path from 'path';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   ensureDir,
-  safeFilename,
-  getRoomDir,
   FileSessionStore,
-  appendWithRotate,
   openLogDb,
   createLogWriter,
   createMediaWriter,
   createMediaDownloader,
   createFlushHelper,
-  pushWithLimit,
-  BoundedMap,
   envFlag,
 } from './utils.js';
-import { buildMcpServer } from './mcp-tools.js';
+import { setupEventLogging } from './src/event-logger.js';
+import { startSync } from './src/sync.js';
+import { initMcpServer } from './src/mcp.js';
 
 // --- Constants ---
 const CACHE_DIR = process.env.MATRIX_CACHE_DIR ?? './mx-cache';
@@ -62,17 +58,11 @@ if (!TOKEN) {
       >;
       TOKEN = data.token;
     }
-  } catch (err) {
+  } catch (err: any) {
     logger.warn('Failed to read session token from cache', err);
   }
 }
 const CONC = Number(process.env.BACKFILL_CONCURRENCY ?? '5');
-const INITIAL_REQUEST_INTERVAL_MS = Number(
-  process.env.KEY_REQUEST_INTERVAL_MS ?? '1000',
-);
-const MAX_REQUEST_INTERVAL_MS = Number(
-  process.env.KEY_REQUEST_MAX_INTERVAL_MS ?? '300000',
-);
 // enable MSC4190 key-forwarding by default; set MSC4190=false to disable
 const MSC4190 = process.env.MSC4190 !== 'false';
 // enable MSC3202 device masquerading by default; set MSC3202=false to disable
@@ -180,7 +170,6 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     queueMedia,
     queueLog,
     MEDIA_SECRET,
-    logDb,
   );
   // main Pino logger
   const logger = Pino({ level: LOG_LEVEL });
@@ -192,7 +181,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
       try {
         if (typeof msg === 'string' && msg.startsWith('Error decrypting event'))
           return;
-      } catch (err) {
+      } catch (err: any) {
         logger.warn('Failed to inspect SDK warning message', err);
       }
       logger.warn(msg as any, ...args);
@@ -201,7 +190,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
       try {
         if (typeof msg === 'string' && msg.startsWith('Error decrypting event'))
           return;
-      } catch (err) {
+      } catch (err: any) {
         logger.warn('Failed to inspect SDK log message', err);
       }
       // map sdk.log to info
@@ -214,7 +203,6 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   const TEST_LIMIT = process.env.TEST_LIMIT
     ? parseInt(process.env.TEST_LIMIT, 10)
     : 0;
-  let testCount = 0;
 
   // load Olm for decryption
   try {
@@ -237,7 +225,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     const mod = await import('@matrix-org/matrix-sdk-crypto-nodejs');
     initRust = (mod as any).initRustCrypto;
     logger.debug('rust-crypto adapter loaded');
-  } catch (err) {
+  } catch (err: any) {
     logger.warn('rust-crypto adapter not available', err);
   }
 
@@ -262,7 +250,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     );
     FileCryptoStoreClass = mod.FileCryptoStore;
     logger.debug('FileCryptoStore loaded');
-  } catch (err) {
+  } catch (err: any) {
     logger.warn('FileCryptoStore unavailable, using in-memory', err);
   }
 
@@ -284,65 +272,9 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
 
   await verifyAccessToken(logger);
 
-  const PENDING_DECRYPT_MAX_SESSIONS = Number(
-    process.env.PENDING_DECRYPT_MAX_SESSIONS ?? '1000',
-  );
-  const PENDING_DECRYPT_MAX_PER_SESSION = Number(
-    process.env.PENDING_DECRYPT_MAX_PER_SESSION ?? '100',
-  );
-  const REQUESTED_KEYS_MAX = Number(process.env.REQUESTED_KEYS_MAX ?? '1000');
-  // pending events waiting for room keys: map of "roomId|session_id" to encrypted events
-  const pendingDecrypt = new BoundedMap<string, MatrixEvent[]>(
-    PENDING_DECRYPT_MAX_SESSIONS,
-  );
-  // track when a key request was last sent for a given session
-  // and the current backoff interval for retries
-  const requestedKeys = new BoundedMap<
-    string,
-    { last: number; interval: number; logged: boolean }
-  >(REQUESTED_KEYS_MAX);
-  // capture to-device events for room-keys and replay pending decrypts
-  client.on('toDeviceEvent' as any, async (ev: MatrixEvent) => {
-    try {
-      const evtType = ev.getType();
-      logger.trace(`toDeviceEvent ${evtType} from ${ev.getSender()}`);
-      const cryptoApi = client.getCrypto();
-      if (cryptoApi) {
-        await (cryptoApi as any).decryptEvent(ev as any);
-      }
-      // replay queued timeline events if a room key arrived
-      if (evtType === 'm.room_key' || evtType === 'm.forwarded_room_key') {
-        const content = ev.getClearContent?.() || ev.getContent();
-        const room_id = (content as any).room_id;
-        const session_id = (content as any).session_id;
-        if (room_id && session_id) {
-          const key = `${room_id}|${session_id}`;
-          const arr = pendingDecrypt.get(key);
-          if (arr) {
-            for (const pending of arr) {
-              await decryptEvent(pending);
-              // emit decrypted event for logging
-              client.emit('event' as any, pending);
-            }
-            pendingDecrypt.delete(key);
-          }
-          requestedKeys.delete(key);
-        }
-      }
-    } catch (err) {
-      logger.warn('Failed to handle toDeviceEvent', err);
-    }
-  });
-
-  // restore sync token
-  const lastToken = sessionStore.getItem(syncKey);
-  if (lastToken && client.store?.setSyncToken)
-    client.store.setSyncToken(lastToken);
-
   // init crypto
   await client.initCrypto();
   logger.info('matrix-js-sdk crypto initialized');
-  // allow decryption from unverified devices and unknown devices without error
   const cryptoApiGlobal = client.getCrypto();
   if (cryptoApiGlobal) {
     if (
@@ -365,305 +297,39 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
 
   await restoreRoomKeys(client, logger);
 
-  // decrypt helper: decrypt event or request missing room key and queue for retry
-  const decryptEvent = async (ev: MatrixEvent) => {
-    if (!ev.isEncrypted()) return;
-    try {
-      const cryptoApi = client.getCrypto();
-      if (cryptoApi) {
-        await (cryptoApi as any).decryptEvent(ev as any);
-      }
-    } catch (e: any) {
-      const wire =
-        (ev.getWireContent?.() as any) || (ev.event as any).content || {};
-      const roomId = ev.getRoomId();
-      if (
-        e.name === 'DecryptionError' &&
-        e.code === 'MEGOLM_UNKNOWN_INBOUND_SESSION_ID'
-      ) {
-        logger.debug(
-          `Unknown session for event ${ev.getId()} in room ${roomId}: session ${wire.session_id}`,
-        );
-      } else if (e.name === 'DecryptionError') {
-        logger.error(
-          `Decrypt: Serious decryption error for event ${ev.getId()} in room ${roomId} (Code: ${e.code || 'unknown'}): ${e.message}. Queuing for retry.`,
-        );
-      } else {
-        logger.error(
-          { err: e },
-          `Decrypt: Unexpected error for event ${ev.getId()} in room ${roomId}: ${e.message}. Queuing for retry.`,
-        );
-      }
-      // queue event for retry and request a room key
-      try {
-        const sessionId = wire.session_id;
-        const algorithm = wire.algorithm;
-        if (roomId && sessionId && algorithm) {
-          const mapKey = `${roomId}|${sessionId}`;
-          const arr = pendingDecrypt.get(mapKey) || [];
-          pushWithLimit(arr, ev, PENDING_DECRYPT_MAX_PER_SESSION);
-          pendingDecrypt.set(mapKey, arr);
-          const sender = ev.getSender();
-          if (sender === UID) {
-            logger.info(
-              `Decrypt: Missing keys for our own event ${ev.getId()} in room ${roomId}; not requesting from ourselves.`,
-            );
-          } else {
-            const entry = requestedKeys.get(mapKey) || {
-              last: 0,
-              interval: INITIAL_REQUEST_INTERVAL_MS,
-              logged: false,
-            };
-            const now = Date.now();
-            if (now - entry.last >= entry.interval) {
-              entry.last = now;
-              entry.interval = Math.min(
-                entry.interval * 2,
-                MAX_REQUEST_INTERVAL_MS,
-              );
-              requestedKeys.set(mapKey, entry);
-              if (!entry.logged) {
-                logger.warn(
-                  `Requesting missing room key for session ${mapKey}`,
-                );
-                entry.logged = true;
-              } else {
-                logger.debug(`Retrying room key request for session ${mapKey}`);
-              }
-              const cryptoApi = client.getCrypto();
-              if (cryptoApi) {
-                await (cryptoApi as any).requestRoomKey(
-                  { room_id: roomId, session_id: sessionId, algorithm },
-                  [{ userId: sender!, deviceId: '*' }],
-                );
-              }
-            } else {
-              logger.trace(
-                `room key for session ${mapKey} already requested recently`,
-              );
-            }
-          }
-        }
-      } catch (ex: any) {
-        logger.warn(`requestRoomKey failed: ${ex.message}`);
-      }
-    }
-  };
-
-  // event logging
-  const seen = new Set<string>();
-  client.on('event' as any, async (ev: any) => {
-    const evtType = ev.getType();
-    // timeline key events: use these to retry pending decrypts
-    if (evtType === 'm.room_key' || evtType === 'm.forwarded_room_key') {
-      // timeline key event: retry pending decrypts
-      const contentAny = ev.getContent() as any;
-      const room_id = contentAny.room_id;
-      const session_id = contentAny.session_id;
-      if (room_id && session_id) {
-        const mapKey = `${room_id}|${session_id}`;
-        logger.trace(`timeline key event ${evtType} for session ${mapKey}`);
-        const arr = pendingDecrypt.get(mapKey);
-        if (arr) {
-          for (const pend of arr) {
-            await decryptEvent(pend);
-            client.emit('event' as any, pend);
-          }
-          pendingDecrypt.delete(mapKey);
-        }
-      }
-      return;
-    }
-    // try to decrypt encrypted messages
-    await decryptEvent(ev);
-    // skip still-encrypted or key events
-    if (ev.isEncrypted()) return;
-    const id = ev.getId();
-    if (seen.has(id)) return;
-    seen.add(id);
-    // filter test room if specified
-    const rid = ev.getRoomId() || 'meta';
-    if (TEST_ROOM_ID && rid !== TEST_ROOM_ID) return;
-    const type = ev.getClearType?.() || ev.getType();
-    const content = ev.getClearContent?.() || ev.getContent();
-    const ts = new Date(ev.getTs() || Date.now()).toISOString();
-    // reuse 'rid' from above for directory
-    const dir = getRoomDir(LOG_DIR, rid);
-    const logf = path.join(dir, `${safeFilename(rid)}.log`);
-    let line: string;
-    if (type === 'm.room.message') {
-      if (content.url) {
-        try {
-          const url = client.mxcUrlToHttp(content.url);
-          const ext = path.extname(content.filename || content.body || '');
-          const fname = `${ts.replace(/[:.]/g, '')}_${safeFilename(id)}${ext}`;
-          const dest = path.join(dir, fname + (MEDIA_SECRET ? '.enc' : ''));
-          mediaDownloader.queue({
-            url: url as string,
-            dest,
-            roomId: rid,
-            eventId: id,
-            ts,
-            sender: ev.getSender(),
-            type: content.info?.mimetype,
-            size: content.info?.size,
-          });
-          line = `[${ts}] <${ev.getSender()}> [media pending] ${path.basename(dest)}`;
-        } catch (err) {
-          logger.warn('Failed to queue media download', err);
-          line = `[${ts}] <${ev.getSender()}> [media download failed]`;
-        }
-      } else {
-        line = `[${ts}] <${ev.getSender()}> ${content.body || '[non-text]'}`;
-      }
-    } else {
-      line = `[${ts}] <${ev.getSender()}> [${type}]`;
-    }
-    await appendWithRotate(logf, line, LOG_MAX_BYTES, LOG_SECRET);
-    queueLog(rid, ts, line, id);
-    // test mode: stop after limit
-    if (TEST_LIMIT > 0) {
-      testCount++;
-      if (testCount >= TEST_LIMIT) {
-        logger.info(
-          `Test limit of ${TEST_LIMIT} events reached, shutting down.`,
-        );
-        await shutdown();
-      }
-    }
-  });
-
-  // sync
-  logger.info('Starting Matrix sync');
-  await client.startClient({ initialSyncLimit: 10 });
-  await new Promise<void>((r) =>
-    client.once('sync' as any, (s: any) => s === 'PREPARED' && r()),
-  );
-  client.on(
-    'sync' as any,
-    (_s: any, _p: any, data: any) =>
-      data.nextBatch && sessionStore.setItem(syncKey, data.nextBatch),
-  );
-  logger.info('Matrix sync ready');
-  // trust all devices: download and mark all devices verified now that we have sync'd rooms
-  try {
-    const users = new Set<string>();
-    client
-      .getRooms()
-      .forEach((r) => r.getJoinedMembers().forEach((m) => users.add(m.userId)));
-    let verifiedCount = 0;
-    let failedCount = 0;
-    const usersToProcess = [...users]; // Avoid issues if 'users' set is modified elsewhere, though unlikely here
-    if (usersToProcess.length > 0) {
-      logger.info(
-        `Downloading device keys for ${usersToProcess.length} users...`,
-      );
-      await client.downloadKeys(usersToProcess, true);
-      for (const u of usersToProcess) {
-        const devs = await client.getStoredDevicesForUser(u);
-        for (const d of Object.keys(devs)) {
-          try {
-            await client.setDeviceVerified(u, d, true);
-            verifiedCount++;
-          } catch (err: any) {
-            logger.warn(
-              `Could not verify device ${d} for user ${u}: ${err.message}`,
-            );
-            failedCount++;
-          }
-        }
-      }
-      logger.info(
-        `Device verification attempt complete. Verified: ${verifiedCount}, Failed: ${failedCount} devices.`,
-      );
-    } else {
-      logger.info(
-        'No users found in joined rooms to perform device verification on.',
-      );
-    }
-  } catch (e: any) {
-    logger.warn('Key trust failed:', e.message);
-  }
-
-  // backfill (optional per-room test filter)
-  const limiter = ((n: number) => {
-    let a = 0,
-      q: Array<() => Promise<void>> = [];
-    const nxt = () => {
-      if (a < n && q.length) {
-        a++;
-        q.shift()!();
-      }
-    };
-    return async (fn: () => Promise<void>) =>
-      new Promise<void>((r) => {
-        q.push(async () => {
-          try {
-            await fn();
-          } finally {
-            a--;
-            nxt();
-            r();
-          }
-        });
-        nxt();
-      });
-  })(CONC);
-  const roomsToBackfill = TEST_ROOM_ID
-    ? client.getRooms().filter((r) => r.roomId === TEST_ROOM_ID)
-    : client.getRooms();
-  await Promise.all(
-    roomsToBackfill.map((r) =>
-      limiter(async () => {
-        const tl = r.getLiveTimeline();
-        while (
-          await client.paginateEventTimeline(tl, {
-            backwards: true,
-            limit: 1000,
-          })
-        );
-        for (const ev of tl.getEvents().sort((a, b) => a.getTs() - b.getTs())) {
-          await client.emit('event' as any, ev);
-        }
-      }),
-    ),
-  );
-  logger.info('Backfill complete');
-  // export and cache room keys so we don't need to re-import manually
-  try {
-    const cryptoApi = client.getCrypto();
-    if (cryptoApi && cryptoApi.exportRoomKeys) {
-      const exported = await cryptoApi.exportRoomKeys();
-      const keyCacheFile = path.join(CACHE_DIR, 'room-keys.json');
-      fs.writeFileSync(keyCacheFile, JSON.stringify(exported));
-      logger.info(`Exported ${exported.length} room keys to ${keyCacheFile}`);
-    }
-  } catch (e: any) {
-    logger.warn('Failed to export room keys:', e.message);
-  }
-
-  // MCP tools
-  const srv = buildMcpServer(
-    client,
-    logDb,
-    ENABLE_SEND,
-    LOG_SECRET,
-    MCP_API_KEY,
-  );
-  await srv.connect(new StdioServerTransport());
-
-  // graceful shutdown
   const shutdown = async () => {
     logger.info('Shutting down');
     try {
       await flusher.flush();
       await client.stopClient();
       await mediaDownloader.flush();
-    } catch (err) {
+    } catch (err: any) {
       logger.warn('Error during shutdown', err);
     }
     process.exit(0);
   };
+
+  setupEventLogging(client, logger, {
+    logDir: LOG_DIR,
+    logMaxBytes: LOG_MAX_BYTES,
+    logSecret: LOG_SECRET,
+    mediaSecret: MEDIA_SECRET,
+    mediaDownloader,
+    queueLog,
+    testRoomId: TEST_ROOM_ID,
+    testLimit: TEST_LIMIT,
+    uid: UID,
+    shutdown,
+  });
+
+  await startSync(client, sessionStore, syncKey, logger, {
+    concurrency: CONC,
+    testRoomId: TEST_ROOM_ID,
+    cacheDir: CACHE_DIR,
+  });
+
+  await initMcpServer(client, logDb, ENABLE_SEND, LOG_SECRET, MCP_API_KEY);
+
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 })();

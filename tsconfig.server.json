@@ -5,6 +5,6 @@
     "outDir": "dist"
   },
   "references": [{ "path": "./tsconfig.utils.json" }],
-  "include": ["beeper-mcp-server.ts", "phased-setup.ts"],
+  "include": ["beeper-mcp-server.ts", "phased-setup.ts", "src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
