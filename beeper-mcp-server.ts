@@ -172,6 +172,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   const { queue: queueMedia, flush: flushMedia } = createMediaWriter(logDb);
   flusher.register(flushMedia);
   const mediaDownloader = createMediaDownloader(
+    logDb,
     queueMedia,
     queueLog,
     MEDIA_SECRET,
