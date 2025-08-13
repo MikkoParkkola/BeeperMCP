@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -b",
     "lint": "eslint .",
     "format": "prettier --check .",
-    "start": "node beeper-mcp-server.ts",
+    "start": "node dist/beeper-mcp-server.js",
     "test": "node --test",
     "test:coverage": "c8 --check-coverage --lines 80 --branches 80 --functions 80 --exclude setup.js npm test",
     "prepare": "husky"
@@ -19,11 +19,18 @@
     "eslint": "^9.33.0",
     "globals": "^16.3.0",
     "husky": "^9.0.0",
+    "@types/node": "^22.5.2",
     "prettier": "^3.2.5",
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "@matrix-org/matrix-sdk-crypto-nodejs": "0.4.0-beta.1",
+    "@matrix-org/olm": "^3.2.15",
+    "@modelcontextprotocol/sdk": "^1.17.2",
     "better-sqlite3": "^12.2.0",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "matrix-js-sdk": "^31.0.1",
+    "pino": "^9.4.0",
+    "zod": "^3.23.8"
   }
 }

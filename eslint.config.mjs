@@ -5,7 +5,7 @@ import globals from 'globals';
 
 export default [
   {
-    ignores: ['node_modules', 'dist'],
+    ignores: ['node_modules', 'dist', '**/*.d.ts'],
   },
   {
     files: ['**/*.js'],
@@ -22,7 +22,7 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        project: './tsconfig.json',
+        project: ['./tsconfig.server.json', './tsconfig.utils.json'],
         sourceType: 'module',
       },
       globals: globals.node,

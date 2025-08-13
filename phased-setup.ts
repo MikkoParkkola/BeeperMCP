@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/// <reference path="./matrix-js-sdk-shim.d.ts" />
 import dotenv from 'dotenv';
 dotenv.config({ path: '.beeper-mcp-server.env' });
 import sdk, { MatrixClient } from 'matrix-js-sdk';
