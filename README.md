@@ -6,9 +6,10 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
 
 - Syncs events from your Beeper homeserver
 - Decrypts end-to-end encrypted rooms
-- Stores message history and media per room
-- Provides MCP tools: `list_rooms`, `create_room`, `list_messages`, `send_message`
+- Stores message history and media per room with optional SQLite indexing
+- Provides MCP tools: `list_rooms`, `create_room`, `list_messages`, and optionally `send_message`
 - Graceful shutdown and local caching of sync tokens and room keys
+- Writes caches and logs with owner-only file permissions
 
 ## Quick setup (macOS)
 
@@ -19,24 +20,47 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
    cd BeeperMCP
    ```
 
-2. Run the interactive setup script which installs dependencies, creates `.beeper-mcp-server.env` and performs the phased setup:
+2. Copy the sample environment file and edit it with your homeserver and credentials:
+
+   ```bash
+   cp .beeper-mcp-server.env.example .beeper-mcp-server.env
+   $EDITOR .beeper-mcp-server.env
+   ```
+
+3. Run the interactive setup script which installs dependencies, validates the env file and performs the phased setup:
 
    ```bash
    node setup.js
    ```
 
-   The script tries to detect your Matrix homeserver, user ID and access token from Beeper/Element configuration. Any missing values are prompted on the command line and written to `.beeper-mcp-server.env` for future runs.
+   The script attempts to detect your Matrix homeserver, user ID and access token from Beeper/Element configuration. Prompts are validated to ensure a proper homeserver URL, user ID, and either an access token or password before saving to `.beeper-mcp-server.env`. It also offers to encrypt the session cache and room logs, configure log rotation size, and optionally enable the `send_message` tool.
 
 ## Usage
 
-Create a `.beeper-mcp-server.env` file containing at least `MATRIX_USERID` and `MATRIX_TOKEN` (or `MATRIX_PASSWORD`). The `setup.js` script creates this automatically. If you provide only a password, the generated access token is saved to `mx-cache/session.json` and used automatically on future runs. The server is written in TypeScript so you'll need `ts-node` (installed by `setup.js`) to run it:
+Create a `.beeper-mcp-server.env` file containing at least `MATRIX_USERID` and `MATRIX_TOKEN` (or `MATRIX_PASSWORD`). You can copy `.beeper-mcp-server.env.example` and edit it, or let the `setup.js` script generate one. If you provide only a password, the generated access token is saved to `mx-cache/session.json` and used automatically on future runs. The server is written in TypeScript so you'll need `ts-node` (installed by `setup.js`) to run it:
 
 ```bash
 npx ts-node beeper-mcp-server.ts
 ```
 
-Optional variables include `MATRIX_HOMESERVER`, `MESSAGE_LOG_DIR`, `MATRIX_CACHE_DIR`, `LOG_LEVEL`, `MSC3202`, `MSC4190` and more (see the source file for details). Support for the MSC3202 device-masquerading and MSC4190 key-forwarding extensions is enabled by default. Set `MSC3202=false` or `MSC4190=false` to opt out. These can also be placed in `.beeper-mcp-server.env`.
-`KEY_REQUEST_INTERVAL_MS` sets the initial delay before a missing room key is re-requested (default `1000` ms). `KEY_REQUEST_MAX_INTERVAL_MS` limits the maximum delay between requests (default `300000` ms). The delay doubles after each failed attempt until the maximum is reached.
+Common optional variables are shown below (defaults in parentheses):
+
+- `MATRIX_HOMESERVER` – homeserver URL (`https://matrix.beeper.com`)
+- `MESSAGE_LOG_DIR` – directory for room logs (`./room-logs`)
+- `LOG_DB_PATH` – SQLite database for indexed logs (`room-logs/messages.db`)
+- `LOG_LEVEL` – log verbosity: `trace`, `debug`, `info`, `warn`, or `error` (`info`)
+- `BACKFILL_CONCURRENCY` – simultaneous backfill requests (`5`)
+- `LOG_MAX_BYTES` – rotate log files when they exceed this size (`5000000`)
+- `KEY_BACKUP_RECOVERY_KEY` – restore room keys from server backup
+- `KEY_REQUEST_INTERVAL_MS` – initial retry delay for missing keys (`1000`)
+- `KEY_REQUEST_MAX_INTERVAL_MS` – max retry delay for missing keys (`300000`)
+- `MSC4190` / `MSC3202` – enable experimental key-forwarding/device-masquerading (`true`)
+- `SESSION_SECRET` – encrypt session cache on disk
+- `LOG_SECRET` – encrypt per-room log files
+- `MEDIA_SECRET` – encrypt downloaded media files
+- `ENABLE_SEND_MESSAGE` – set to `1` to expose the `send_message` tool
+- `TEST_ROOM_ID` – sync only a specific room (empty)
+- `TEST_LIMIT` – stop after decrypting N events (`0`)
 
 The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v3/account/whoami` endpoint before any data is downloaded. If the token does not match the provided `MATRIX_USERID`, the process exits with an error.
 
@@ -62,13 +86,16 @@ easily.
 
 ## Development
 
-Unit tests for the small utility helpers are provided in `test/utils.test.js` and can be executed with:
+Install dependencies with `npm install` and use the provided scripts to check formatting, run tests, or lint the code:
 
 ```bash
-node --test test/utils.test.js
+npm run format
+npm test
+npm run test:coverage
+npm run lint
 ```
 
-No external dependencies are required for the tests.
+Pre-commit hooks run these checks automatically. The test suite currently exercises the utility helpers and runs with Node's built-in test runner. Coverage reports exclude the interactive `setup.js` script and enforce an 80% threshold on the remaining code.
 
 ## Synapse configuration for self-key requests
 
