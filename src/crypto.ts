@@ -53,8 +53,8 @@ export async function restoreRoomKeys(
   client: MatrixClient,
   cacheDir: string,
   logger: Pino.Logger,
+  recoveryKey?: string,
 ) {
-  const recoveryKey = process.env.KEY_BACKUP_RECOVERY_KEY;
   if (
     typeof (client as any).restoreKeyBackupWithCache === 'function' &&
     typeof (client as any).getKeyBackupVersion === 'function'

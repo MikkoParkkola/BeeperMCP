@@ -29,6 +29,11 @@ export function setupEventLogging(
     testLimit: number;
     uid: string;
     shutdown: () => Promise<void>;
+    pendingDecryptMaxSessions: number;
+    pendingDecryptMaxPerSession: number;
+    requestedKeysMax: number;
+    keyRequestIntervalMs: number;
+    keyRequestMaxIntervalMs: number;
   },
 ) {
   const {
@@ -42,29 +47,22 @@ export function setupEventLogging(
     testLimit,
     uid,
     shutdown,
+    pendingDecryptMaxSessions,
+    pendingDecryptMaxPerSession,
+    requestedKeysMax,
+    keyRequestIntervalMs,
+    keyRequestMaxIntervalMs,
   } = opts;
-
-  const PENDING_DECRYPT_MAX_SESSIONS = Number(
-    process.env.PENDING_DECRYPT_MAX_SESSIONS ?? '1000',
-  );
-  const PENDING_DECRYPT_MAX_PER_SESSION = Number(
-    process.env.PENDING_DECRYPT_MAX_PER_SESSION ?? '100',
-  );
-  const REQUESTED_KEYS_MAX = Number(process.env.REQUESTED_KEYS_MAX ?? '1000');
-  const INITIAL_REQUEST_INTERVAL_MS = Number(
-    process.env.KEY_REQUEST_INTERVAL_MS ?? '1000',
-  );
-  const MAX_REQUEST_INTERVAL_MS = Number(
-    process.env.KEY_REQUEST_MAX_INTERVAL_MS ?? '300000',
-  );
+  const INITIAL_REQUEST_INTERVAL_MS = keyRequestIntervalMs;
+  const MAX_REQUEST_INTERVAL_MS = keyRequestMaxIntervalMs;
 
   const pendingDecrypt = new BoundedMap<string, MatrixEvent[]>(
-    PENDING_DECRYPT_MAX_SESSIONS,
+    pendingDecryptMaxSessions,
   );
   const requestedKeys = new BoundedMap<
     string,
     { last: number; interval: number; logged: boolean }
-  >(REQUESTED_KEYS_MAX);
+  >(requestedKeysMax);
 
   const fileWriters = new Map<string, ReturnType<typeof createFileAppender>>();
 
@@ -132,7 +130,7 @@ export function setupEventLogging(
         if (roomId && sessionId && algorithm) {
           const mapKey = `${roomId}|${sessionId}`;
           const arr = pendingDecrypt.get(mapKey) || [];
-          pushWithLimit(arr, ev, PENDING_DECRYPT_MAX_PER_SESSION);
+          pushWithLimit(arr, ev, pendingDecryptMaxPerSession);
           pendingDecrypt.set(mapKey, arr);
           const sender = ev.getSender();
           if (sender === uid) {
