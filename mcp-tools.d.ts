@@ -4,7 +4,6 @@ export function buildMcpServer(
   logDb: any,
   enableSend: boolean,
   logSecret?: string,
-  apiKey: string,
   queryFn?: (
     db: any,
     roomId: string,

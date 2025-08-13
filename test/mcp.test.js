@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { buildMcpServer } from '../mcp-tools.js';
 
 const API_KEY = 'sekret';
+process.env.MCP_API_KEY = API_KEY;
 
 test('list_rooms returns sorted limited rooms', async () => {
   const rooms = [
@@ -11,7 +12,7 @@ test('list_rooms returns sorted limited rooms', async () => {
     { roomId: '3', name: 'three', getLastActiveTimestamp: () => 3 },
   ];
   const client = { getRooms: () => rooms };
-  const srv = buildMcpServer(client, null, false, undefined, API_KEY);
+  const srv = buildMcpServer(client, null, false, undefined);
   const res = await srv._registeredTools.list_rooms.callback(
     { limit: 2 },
     { _meta: { apiKey: API_KEY } },
@@ -31,7 +32,7 @@ test('create_room forwards encryption flag', async () => {
     },
     getRooms: () => [],
   };
-  const srv = buildMcpServer(client, null, false, undefined, API_KEY);
+  const srv = buildMcpServer(client, null, false, undefined);
   const res = await srv._registeredTools.create_room.callback(
     {
       name: 'Test',
@@ -52,7 +53,6 @@ test('list_messages passes parameters to queryLogs', async () => {
     logDb,
     false,
     undefined,
-    API_KEY,
     (db, roomId, limit, since, until, secret) => {
       called = { db, roomId, limit, since, until, secret };
       return ['a', '', 'b'];
@@ -83,14 +83,14 @@ test('send_message only registered when enabled', async () => {
     getRooms: () => [],
     sendTextMessage: async () => {},
   };
-  const srvDisabled = buildMcpServer(client, null, false, undefined, API_KEY);
+  const srvDisabled = buildMcpServer(client, null, false, undefined);
   assert.ok(!srvDisabled._registeredTools.send_message);
 
   let args;
   client.sendTextMessage = async (room, msg) => {
     args = { room, msg };
   };
-  const srvEnabled = buildMcpServer(client, null, true, undefined, API_KEY);
+  const srvEnabled = buildMcpServer(client, null, true, undefined);
   await srvEnabled._registeredTools.send_message.callback(
     {
       room_id: 'r1',
@@ -103,7 +103,7 @@ test('send_message only registered when enabled', async () => {
 
 test('requires matching MCP_API_KEY', async () => {
   const client = { getRooms: () => [] };
-  const srv = buildMcpServer(client, null, false, undefined, API_KEY);
+  const srv = buildMcpServer(client, null, false, undefined);
   assert.throws(
     () => srv._registeredTools.list_rooms.callback({ limit: 1 }),
     /Invalid API key/,

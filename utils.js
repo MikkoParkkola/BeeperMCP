@@ -316,7 +316,7 @@ export function createMediaDownloader(
   };
   return {
     queue(item) {
-      const { eventId, roomId, ts, sender, type, size, hash } = item;
+      const { eventId, roomId, ts, type, size, hash, dest } = item;
       let existing = db
         .prepare('SELECT file FROM media WHERE event_id = ?')
         .get(eventId);
@@ -337,12 +337,11 @@ export function createMediaDownloader(
         }
       }
       if (existing) {
-        const line = `[${ts}] <${sender}> [media cached] ${existing.file}`;
-        queueLog(roomId, ts, line, eventId);
-        return;
+        return { queued: false, file: existing.file };
       }
       pending.push(item);
       next();
+      return { queued: true, file: path.basename(dest) };
     },
     flush() {
       return new Promise((resolve) => {

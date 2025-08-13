@@ -403,7 +403,7 @@ test('createMediaDownloader reuses cached media for identical events', async () 
   await dl.flush();
   await flushMedia();
   const dest2 = path.join(tmpBase, 'b');
-  dl.queue({
+  const res2 = dl.queue({
     url: 'http://x',
     dest: dest2,
     roomId: 'room',
@@ -417,6 +417,16 @@ test('createMediaDownloader reuses cached media for identical events', async () 
   await flushMedia();
   global.fetch = origFetch;
   assert.strictEqual(fetchCalls, 1);
+  assert.deepStrictEqual(res2, {
+    queued: false,
+    file: path.basename(dest1),
+  });
+  if (!res2.queued)
+    queueLog(
+      'room',
+      '2025-01-01T00:00:00.000Z',
+      `[2025-01-01T00:00:00.000Z] <u> [media cached] ${res2.file}`,
+    );
   assert.deepStrictEqual(logs, [
     `[2025-01-01T00:00:00.000Z] <u> [media] ${path.basename(dest1)}`,
     `[2025-01-01T00:00:00.000Z] <u> [media cached] ${path.basename(dest1)}`,
@@ -463,7 +473,7 @@ test('createMediaDownloader reuses cached media for matching hashes', async () =
   });
   await dl.flush();
   const dest2 = path.join(tmpBase, 'b');
-  dl.queue({
+  const res2 = dl.queue({
     url: 'http://x',
     dest: dest2,
     roomId: 'room',
@@ -477,6 +487,16 @@ test('createMediaDownloader reuses cached media for matching hashes', async () =
   await dl.flush();
   global.fetch = origFetch;
   assert.strictEqual(fetchCalls, 1);
+  assert.deepStrictEqual(res2, {
+    queued: false,
+    file: path.basename(dest1),
+  });
+  if (!res2.queued)
+    queueLog(
+      'room',
+      '2025-01-01T00:00:00.000Z',
+      `[2025-01-01T00:00:00.000Z] <u> [media cached] ${res2.file}`,
+    );
   assert.deepStrictEqual(logs, [
     `[2025-01-01T00:00:00.000Z] <u> [media] ${path.basename(dest1)}`,
     `[2025-01-01T00:00:00.000Z] <u> [media cached] ${path.basename(dest1)}`,

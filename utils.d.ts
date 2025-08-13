@@ -133,7 +133,7 @@ export function createMediaDownloader(
     type?: string;
     size?: number;
     hash?: string;
-  }) => void;
+  }) => { queued: boolean; file: string };
   flush: () => Promise<void>;
 };
 export function pushWithLimit<T>(arr: T[], val: T, limit: number): T[];

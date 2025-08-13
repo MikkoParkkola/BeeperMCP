@@ -331,7 +331,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     cacheDir: CACHE_DIR,
   });
 
-  await initMcpServer(client, logDb, ENABLE_SEND, LOG_SECRET, MCP_API_KEY);
+  await initMcpServer(client, logDb, ENABLE_SEND, LOG_SECRET);
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);

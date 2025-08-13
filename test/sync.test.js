@@ -97,14 +97,18 @@ async function decryptEvent(client, pending, ev) {
     if (sender !== UID) {
       const cryptoApi = client.getCrypto();
       if (cryptoApi) {
-        await cryptoApi.requestRoomKey(
-          {
-            room_id: ev.getRoomId(),
-            session_id: wire.session_id,
-            algorithm: wire.algorithm,
-          },
-          [{ userId: sender, deviceId: '*' }],
-        );
+        try {
+          await cryptoApi.requestRoomKey(
+            {
+              room_id: ev.getRoomId(),
+              session_id: wire.session_id,
+              algorithm: wire.algorithm,
+            },
+            [{ userId: sender, deviceId: '*' }],
+          );
+        } catch (reqErr) {
+          logger.warn('requestRoomKey failed', reqErr);
+        }
       }
     }
   }

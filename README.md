@@ -63,7 +63,7 @@ Common optional variables are shown below (defaults in parentheses):
 - `TEST_ROOM_ID` – sync only a specific room (empty)
 - `TEST_LIMIT` – stop after decrypting N events (`0`)
 
-Tool invocations must include the `MCP_API_KEY` value in `_meta.apiKey`. Requests without the correct key are rejected.
+The server checks `_meta.apiKey` against `MCP_API_KEY` on every MCP request. Calls without the correct key are rejected.
 
 The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v3/account/whoami` endpoint before any data is downloaded. If the token does not match the provided `MATRIX_USERID`, the process exits with an error.
 
