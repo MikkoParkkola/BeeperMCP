@@ -146,6 +146,17 @@ test('encrypted logs round-trip', async () => {
   assert.deepStrictEqual(lines, ['hello']);
 });
 
+test('tailFile skips lines that fail to decrypt', async () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const file = path.join(tmpBase, 'mix.log');
+  const secret = 'secret';
+  await appendWithRotate(file, 'secret line', 1000, secret);
+  fs.appendFileSync(file, 'plain\n');
+  const lines = await tailFile(file, 10, secret);
+  assert.deepStrictEqual(lines, ['secret line']);
+});
+
 test('log database stores and retrieves lines', () => {
   cleanup();
   ensureDir(tmpBase);
