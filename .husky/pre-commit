@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+npm test
+npm run lint
+npm run format
