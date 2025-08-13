@@ -6,6 +6,8 @@ const logger = console;
 
 /**
  * Build an MCP server instance with standard tools.
+ * Requires `MCP_API_KEY` to be set in the environment; requests must include
+ * this key in `_meta.apiKey`.
  * @param {any} client Matrix client
  * @param {any} logDb SQLite database handle
  * @param {boolean} enableSend whether to register send_message tool
@@ -18,9 +20,9 @@ export function buildMcpServer(
   logDb,
   enableSend,
   logSecret,
-  apiKey,
   queryFn = queryLogs,
 ) {
+  const apiKey = process.env.MCP_API_KEY;
   if (!apiKey) throw new Error('MCP_API_KEY is required');
   const srv = new McpServer({
     name: 'Beeper',
