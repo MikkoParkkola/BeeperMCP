@@ -6,6 +6,8 @@ import readline from 'readline';
 import crypto from 'crypto';
 import Database from 'better-sqlite3';
 
+const logger = console;
+
 export function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 }
@@ -91,16 +93,16 @@ export async function tailFile(file, limit, secret) {
       if (secret) {
         try {
           out = decrypt(line, secret).replace(/\n$/, '');
-        } catch {
-          /* ignore: skip lines that fail to decrypt */
+        } catch (err) {
+          logger.warn('Failed to decrypt log line', err);
           continue;
         }
       }
       lines.push(out);
       if (lines.length > limit) lines.shift();
     }
-  } catch {
-    /* ignore: return collected lines on read errors */
+  } catch (err) {
+    logger.warn(`Failed to read file ${file}`, err);
   }
   return lines;
 }
@@ -116,14 +118,14 @@ export async function appendWithRotate(file, line, maxBytes, secret) {
     if (size + Buffer.byteLength(payload) > maxBytes) {
       try {
         await fs.promises.rename(file, `${file}.1`);
-      } catch {
-        /* ignore: rotation best-effort */
+      } catch (err) {
+        logger.warn(`Failed to rotate log file ${file}`, err);
       }
     }
     await fs.promises.appendFile(file, payload, { mode: 0o600 });
     await fs.promises.chmod(file, 0o600).catch(() => {});
-  } catch {
-    /* ignore: log append failure */
+  } catch (err) {
+    logger.warn(`Failed to append to log file ${file}`, err);
   }
 }
 
@@ -132,7 +134,9 @@ export function openLogDb(file) {
   const db = new Database(file);
   try {
     fs.chmodSync(file, 0o600);
-  } catch {}
+  } catch (err) {
+    logger.warn(`Failed to set permissions on ${file}`, err);
+  }
   // enable WAL for concurrent readers and set less strict sync for speed
   db.pragma('journal_mode = WAL');
   db.pragma('synchronous = NORMAL');
@@ -202,7 +206,8 @@ export function queryLogs(db, roomId, limit, since, until, secret) {
       if (secret) {
         try {
           line = decrypt(line, secret);
-        } catch {
+        } catch (err) {
+          logger.warn('Failed to decrypt log entry', err);
           return null;
         }
       }
@@ -212,11 +217,20 @@ export function queryLogs(db, roomId, limit, since, until, secret) {
     .reverse();
 }
 
-export function insertMedia(db, { eventId, roomId, ts, file, type, size }) {
+export function insertMedias(db, entries) {
   const stmt = db.prepare(
     'INSERT OR REPLACE INTO media (event_id, room_id, ts, file, type, size) VALUES (?, ?, ?, ?, ?, ?)',
   );
-  stmt.run(eventId, roomId, ts, file, type ?? null, size ?? null);
+  const run = db.transaction((items) => {
+    for (const { eventId, roomId, ts, file, type, size } of items) {
+      stmt.run(eventId, roomId, ts, file, type ?? null, size ?? null);
+    }
+  });
+  run(entries);
+}
+
+export function insertMedia(db, meta) {
+  insertMedias(db, [meta]);
 }
 
 export function queryMedia(db, roomId, limit) {
@@ -232,7 +246,27 @@ export function queryMedia(db, roomId, limit) {
   return rows.reverse();
 }
 
-export function createMediaDownloader(db, queueLog, secret, concurrency = 2) {
+export function createMediaWriter(db, flushMs = 1000, maxEntries = 100) {
+  const buffer = [];
+  const flush = () => {
+    if (buffer.length) insertMedias(db, buffer.splice(0, buffer.length));
+  };
+  setInterval(flush, flushMs).unref();
+  return {
+    queue(meta) {
+      buffer.push(meta);
+      if (buffer.length >= maxEntries) flush();
+    },
+    flush,
+  };
+}
+
+export function createMediaDownloader(
+  queueMedia,
+  queueLog,
+  secret,
+  concurrency = 2,
+) {
   const pending = [];
   let active = 0;
   const next = () => {
@@ -249,7 +283,7 @@ export function createMediaDownloader(db, queueLog, secret, concurrency = 2) {
           const clen = size || Number(res.headers.get('content-length') || 0);
           if (secret) await encryptFileStream(res.body, dest, secret);
           else await pipelineAsync(res.body, fs.createWriteStream(dest));
-          insertMedia(db, {
+          queueMedia({
             eventId,
             roomId,
             ts,
@@ -258,7 +292,8 @@ export function createMediaDownloader(db, queueLog, secret, concurrency = 2) {
             size: clen,
           });
           line = `[${ts}] <${sender}> [media] ${path.basename(dest)}`;
-        } catch {
+        } catch (err) {
+          logger.warn(`Failed to download media from ${url}`, err);
           line = `[${ts}] <${sender}> [media download failed]`;
         }
         queueLog(roomId, ts, line, eventId);
@@ -339,7 +374,8 @@ export class FileSessionStore {
       let raw = fs.readFileSync(this.file, 'utf8');
       if (this.secret) raw = decrypt(raw, this.secret);
       this.#data = JSON.parse(raw);
-    } catch {
+    } catch (err) {
+      logger.warn(`Failed to load session store ${this.file}`, err);
       this.#data = {};
     }
   }
@@ -393,4 +429,27 @@ export class FileSessionStore {
     }
     return this.#writePromise ?? Promise.resolve();
   }
+}
+
+export function createFlushHelper() {
+  const fns = new Set();
+  const flush = async () => {
+    for (const fn of fns) {
+      try {
+        await fn();
+      } catch {}
+    }
+  };
+  const handler = () => {
+    flush();
+  };
+  process.once('SIGINT', handler);
+  process.once('SIGTERM', handler);
+  process.once('beforeExit', handler);
+  return {
+    register(fn) {
+      fns.add(fn);
+    },
+    flush,
+  };
 }

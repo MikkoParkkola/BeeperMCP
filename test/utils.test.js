@@ -113,8 +113,13 @@ test('FileSessionStore encrypts data with secret', async () => {
   assert.doesNotThrow(() => Buffer.from(raw, 'base64'));
   const store2 = new FileSessionStore(storePath, secret);
   assert.strictEqual(store2.getItem('foo'), 'bar');
+  const warnings = [];
+  const origWarn = console.warn;
+  console.warn = (...args) => warnings.push(args);
   const storeWrong = new FileSessionStore(storePath, 'nope');
+  console.warn = origWarn;
   assert.strictEqual(storeWrong.getItem('foo'), null);
+  assert.strictEqual(warnings.length, 1);
 });
 
 test('tailFile returns last N lines', async () => {
@@ -189,8 +194,13 @@ test('tailFile skips lines that fail to decrypt', async () => {
   const secret = 'secret';
   await appendWithRotate(file, 'secret line', 1000, secret);
   fs.appendFileSync(file, 'plain\n');
+  const warnings = [];
+  const origWarn = console.warn;
+  console.warn = (...args) => warnings.push(args);
   const lines = await tailFile(file, 10, secret);
+  console.warn = origWarn;
   assert.deepStrictEqual(lines, ['secret line']);
+  assert.strictEqual(warnings.length, 1);
 });
 
 test('log database stores and retrieves lines', () => {
@@ -449,8 +459,13 @@ test('FileSessionStore encrypts data with secret', async () => {
   assert.doesNotThrow(() => Buffer.from(raw, 'base64'));
   const store2 = new FileSessionStore(storePath, secret);
   assert.strictEqual(store2.getItem('foo'), 'bar');
+  const warnings = [];
+  const origWarn = console.warn;
+  console.warn = (...args) => warnings.push(args);
   const storeWrong = new FileSessionStore(storePath, 'nope');
+  console.warn = origWarn;
   assert.strictEqual(storeWrong.getItem('foo'), null);
+  assert.strictEqual(warnings.length, 1);
 });
 
 test('tailFile returns last N lines', async () => {
@@ -525,8 +540,13 @@ test('tailFile skips lines that fail to decrypt', async () => {
   const secret = 'secret';
   await appendWithRotate(file, 'secret line', 1000, secret);
   fs.appendFileSync(file, 'plain\n');
+  const warnings = [];
+  const origWarn = console.warn;
+  console.warn = (...args) => warnings.push(args);
   const lines = await tailFile(file, 10, secret);
+  console.warn = origWarn;
   assert.deepStrictEqual(lines, ['secret line']);
+  assert.strictEqual(warnings.length, 1);
 });
 
 test('log database stores and retrieves lines', () => {
@@ -732,8 +752,13 @@ test('tailFile skips lines that fail to decrypt', async () => {
   const secret = 'secret';
   await appendWithRotate(file, 'secret line', 1000, secret);
   fs.appendFileSync(file, 'plain\n');
+  const warnings = [];
+  const origWarn = console.warn;
+  console.warn = (...args) => warnings.push(args);
   const lines = await tailFile(file, 10, secret);
+  console.warn = origWarn;
   assert.deepStrictEqual(lines, ['secret line']);
+  assert.strictEqual(warnings.length, 1);
 });
 
 test('log database stores and retrieves lines', () => {
@@ -917,8 +942,13 @@ test('tailFile skips lines that fail to decrypt', async () => {
   const secret = 'secret';
   await appendWithRotate(file, 'secret line', 1000, secret);
   fs.appendFileSync(file, 'plain\n');
+  const warnings = [];
+  const origWarn = console.warn;
+  console.warn = (...args) => warnings.push(args);
   const lines = await tailFile(file, 10, secret);
+  console.warn = origWarn;
   assert.deepStrictEqual(lines, ['secret line']);
+  assert.strictEqual(warnings.length, 1);
 });
 
 test('log database stores and retrieves lines', () => {

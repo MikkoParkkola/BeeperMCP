@@ -62,6 +62,17 @@ export function insertMedia(
     size?: number;
   },
 ): void;
+export function insertMedias(
+  db: any,
+  entries: {
+    eventId: string;
+    roomId: string;
+    ts: string;
+    file: string;
+    type?: string;
+    size?: number;
+  }[],
+): void;
 export function queryMedia(
   db: any,
   roomId: string,
@@ -73,8 +84,30 @@ export function queryMedia(
   type: string | null;
   size: number | null;
 }[];
-export function createMediaDownloader(
+export function createMediaWriter(
   db: any,
+  flushMs?: number,
+  maxEntries?: number,
+): {
+  queue: (meta: {
+    eventId: string;
+    roomId: string;
+    ts: string;
+    file: string;
+    type?: string;
+    size?: number;
+  }) => void;
+  flush: () => void;
+};
+export function createMediaDownloader(
+  queueMedia: (meta: {
+    eventId: string;
+    roomId: string;
+    ts: string;
+    file: string;
+    type?: string;
+    size?: number;
+  }) => void,
   queueLog: (
     roomId: string,
     ts: string,
@@ -111,3 +144,7 @@ export class FileSessionStore {
   removeItem(key: string): void;
   flush(): Promise<void>;
 }
+export function createFlushHelper(): {
+  register: (fn: () => any) => void;
+  flush: () => Promise<void>;
+};

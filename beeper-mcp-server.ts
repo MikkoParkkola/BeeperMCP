@@ -27,7 +27,9 @@ import {
   appendWithRotate,
   openLogDb,
   createLogWriter,
+  createMediaWriter,
   createMediaDownloader,
+  createFlushHelper,
   pushWithLimit,
   BoundedMap,
   envFlag,
@@ -41,9 +43,11 @@ const LOG_MAX_BYTES = Number(process.env.LOG_MAX_BYTES ?? '5000000');
 const LOG_SECRET = process.env.LOG_SECRET;
 const MEDIA_SECRET = process.env.MEDIA_SECRET;
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
+const logger = Pino({ level: LOG_LEVEL });
 const HS = process.env.MATRIX_HOMESERVER ?? 'https://matrix.beeper.com';
 const UID = process.env.MATRIX_USERID;
 let TOKEN: string | undefined = process.env.MATRIX_TOKEN;
+const MCP_API_KEY = process.env.MCP_API_KEY;
 if (!TOKEN) {
   try {
     const sessionPath = path.join(CACHE_DIR, 'session.json');
@@ -54,7 +58,9 @@ if (!TOKEN) {
       >;
       TOKEN = data.token;
     }
-  } catch {}
+  } catch (err) {
+    logger.warn('Failed to read session token from cache', err);
+  }
 }
 const CONC = Number(process.env.BACKFILL_CONCURRENCY ?? '5');
 const INITIAL_REQUEST_INTERVAL_MS = Number(
@@ -157,11 +163,19 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   const LOG_DB_PATH =
     process.env.LOG_DB_PATH ?? path.join(LOG_DIR, 'messages.db');
   const logDb = openLogDb(LOG_DB_PATH);
+  const flusher = createFlushHelper();
   const { queue: queueLog, flush: flushLogs } = createLogWriter(
     logDb,
     LOG_SECRET,
   );
-  const mediaDownloader = createMediaDownloader(logDb, queueLog, MEDIA_SECRET);
+  flusher.register(flushLogs);
+  const { queue: queueMedia, flush: flushMedia } = createMediaWriter(logDb);
+  flusher.register(flushMedia);
+  const mediaDownloader = createMediaDownloader(
+    queueMedia,
+    queueLog,
+    MEDIA_SECRET,
+  );
   // main Pino logger
   const logger = Pino({ level: LOG_LEVEL });
   // wrap for matrix-js-sdk: suppress expected decryption errors
@@ -172,8 +186,8 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
       try {
         if (typeof msg === 'string' && msg.startsWith('Error decrypting event'))
           return;
-      } catch {
-        /* ignore */
+      } catch (err) {
+        logger.warn('Failed to inspect SDK warning message', err);
       }
       logger.warn(msg as any, ...args);
     },
@@ -181,8 +195,8 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
       try {
         if (typeof msg === 'string' && msg.startsWith('Error decrypting event'))
           return;
-      } catch {
-        /* ignore */
+      } catch (err) {
+        logger.warn('Failed to inspect SDK log message', err);
       }
       // map sdk.log to info
       logger.info(msg as any, ...args);
@@ -217,8 +231,8 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     const mod = await import('@matrix-org/matrix-sdk-crypto-nodejs');
     initRust = (mod as any).initRustCrypto;
     logger.debug('rust-crypto adapter loaded');
-  } catch {
-    logger.debug('rust-crypto adapter not available');
+  } catch (err) {
+    logger.warn('rust-crypto adapter not available', err);
   }
 
   // session storage & device
@@ -242,8 +256,8 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     );
     FileCryptoStoreClass = mod.FileCryptoStore;
     logger.debug('FileCryptoStore loaded');
-  } catch {
-    logger.debug('FileCryptoStore unavailable, using in-memory');
+  } catch (err) {
+    logger.warn('FileCryptoStore unavailable, using in-memory', err);
   }
 
   // Matrix client setup
@@ -309,7 +323,9 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
           requestedKeys.delete(key);
         }
       }
-    } catch {}
+    } catch (err) {
+      logger.warn('Failed to handle toDeviceEvent', err);
+    }
   });
 
   // restore sync token
@@ -487,7 +503,8 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
             size: content.info?.size,
           });
           line = `[${ts}] <${ev.getSender()}> [media pending] ${path.basename(dest)}`;
-        } catch {
+        } catch (err) {
+          logger.warn('Failed to queue media download', err);
           line = `[${ts}] <${ev.getSender()}> [media download failed]`;
         }
       } else {
@@ -620,17 +637,25 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   }
 
   // MCP tools
-  const srv = buildMcpServer(client, logDb, ENABLE_SEND, LOG_SECRET);
+  const srv = buildMcpServer(
+    client,
+    logDb,
+    ENABLE_SEND,
+    LOG_SECRET,
+    MCP_API_KEY,
+  );
   await srv.connect(new StdioServerTransport());
 
   // graceful shutdown
   const shutdown = async () => {
     logger.info('Shutting down');
     try {
-      flushLogs();
+      await flusher.flush();
       await client.stopClient();
       await mediaDownloader.flush();
-    } catch {}
+    } catch (err) {
+      logger.warn('Error during shutdown', err);
+    }
     process.exit(0);
   };
   process.on('SIGINT', shutdown);
