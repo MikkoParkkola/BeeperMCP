@@ -27,7 +27,9 @@ import {
   appendWithRotate,
   openLogDb,
   createLogWriter,
+  createMediaWriter,
   createMediaDownloader,
+  createFlushHelper,
   pushWithLimit,
   BoundedMap,
   envFlag,
@@ -157,11 +159,19 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   const LOG_DB_PATH =
     process.env.LOG_DB_PATH ?? path.join(LOG_DIR, 'messages.db');
   const logDb = openLogDb(LOG_DB_PATH);
+  const flusher = createFlushHelper();
   const { queue: queueLog, flush: flushLogs } = createLogWriter(
     logDb,
     LOG_SECRET,
   );
-  const mediaDownloader = createMediaDownloader(logDb, queueLog, MEDIA_SECRET);
+  flusher.register(flushLogs);
+  const { queue: queueMedia, flush: flushMedia } = createMediaWriter(logDb);
+  flusher.register(flushMedia);
+  const mediaDownloader = createMediaDownloader(
+    queueMedia,
+    queueLog,
+    MEDIA_SECRET,
+  );
   // main Pino logger
   const logger = Pino({ level: LOG_LEVEL });
   // wrap for matrix-js-sdk: suppress expected decryption errors
@@ -627,7 +637,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   const shutdown = async () => {
     logger.info('Shutting down');
     try {
-      flushLogs();
+      await flusher.flush();
       await client.stopClient();
       await mediaDownloader.flush();
     } catch {}
