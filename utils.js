@@ -108,9 +108,13 @@ export async function tailFile(file, limit, secret) {
 }
 
 export async function appendWithRotate(file, line, maxBytes, secret) {
+  const payload = secret ? encrypt(line, secret) + '\n' : line + '\n';
+  await appendPayloadWithRotate(file, payload, maxBytes);
+}
+
+async function appendPayloadWithRotate(file, payload, maxBytes) {
   try {
     ensureDir(path.dirname(file));
-    const payload = secret ? encrypt(line, secret) + '\n' : line + '\n';
     const size = await fs.promises
       .stat(file)
       .then((s) => s.size)
@@ -127,6 +131,43 @@ export async function appendWithRotate(file, line, maxBytes, secret) {
   } catch (err) {
     logger.warn(`Failed to append to log file ${file}`, err);
   }
+}
+
+export function createFileAppender(
+  file,
+  maxBytes,
+  secret,
+  flushMs = 1000,
+  maxEntries = 100,
+) {
+  const buffer = [];
+  let flushing = false;
+  const flush = async () => {
+    if (flushing || buffer.length === 0) return;
+    flushing = true;
+    try {
+      const lines = buffer.splice(0, buffer.length);
+      const payload =
+        lines.map((l) => (secret ? encrypt(l, secret) : l)).join('\n') + '\n';
+      await appendPayloadWithRotate(file, payload, maxBytes);
+    } finally {
+      flushing = false;
+    }
+  };
+  setInterval(flush, flushMs).unref();
+  const handler = () => {
+    flush();
+  };
+  process.once('SIGINT', handler);
+  process.once('SIGTERM', handler);
+  process.once('beforeExit', handler);
+  return {
+    queue(line) {
+      buffer.push(line);
+      if (buffer.length >= maxEntries) flush();
+    },
+    flush,
+  };
 }
 
 export function openLogDb(file) {
