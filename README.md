@@ -6,7 +6,7 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
 
 - Syncs events from your Beeper homeserver
 - Decrypts end-to-end encrypted rooms
-- Stores message history and media per room with optional SQLite indexing
+- Stores message history and media per room with optional SQLite indexing and metadata tracking
 - Provides MCP tools: `list_rooms`, `create_room`, `list_messages`, and optionally `send_message`
 - Graceful shutdown and local caching of sync tokens and room keys
 - Writes caches and logs with owner-only file permissions
@@ -47,7 +47,7 @@ Common optional variables are shown below (defaults in parentheses):
 
 - `MATRIX_HOMESERVER` – homeserver URL (`https://matrix.beeper.com`)
 - `MESSAGE_LOG_DIR` – directory for room logs (`./room-logs`)
-- `LOG_DB_PATH` – SQLite database for indexed logs with WAL and batched writes (`room-logs/messages.db`)
+- `LOG_DB_PATH` – SQLite database for indexed logs and media metadata with WAL and batched writes (`room-logs/messages.db`)
 - `LOG_LEVEL` – log verbosity: `trace`, `debug`, `info`, `warn`, or `error` (`info`)
 - `BACKFILL_CONCURRENCY` – simultaneous backfill requests (`5`)
 - `LOG_MAX_BYTES` – rotate log files when they exceed this size (`5000000`)

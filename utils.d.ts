@@ -27,12 +27,12 @@ export function createLogWriter(
   flushMs?: number,
   maxEntries?: number,
 ): {
-  queue: (roomId: string, ts: string, line: string) => void;
+  queue: (roomId: string, ts: string, line: string, eventId?: string) => void;
   flush: () => void;
 };
 export function insertLogs(
   db: any,
-  entries: { roomId: string; ts: string; line: string }[],
+  entries: { roomId: string; ts: string; line: string; eventId?: string }[],
   secret?: string,
 ): void;
 export function insertLog(
@@ -41,6 +41,7 @@ export function insertLog(
   ts: string,
   line: string,
   secret?: string,
+  eventId?: string,
 ): void;
 export function queryLogs(
   db: any,
@@ -50,13 +51,58 @@ export function queryLogs(
   until?: string,
   secret?: string,
 ): string[];
+export function insertMedia(
+  db: any,
+  meta: {
+    eventId: string;
+    roomId: string;
+    ts: string;
+    file: string;
+    type?: string;
+    size?: number;
+  },
+): void;
+export function queryMedia(
+  db: any,
+  roomId: string,
+  limit?: number,
+): {
+  eventId: string;
+  ts: string;
+  file: string;
+  type: string | null;
+  size: number | null;
+}[];
+export function createMediaDownloader(
+  db: any,
+  queueLog: (
+    roomId: string,
+    ts: string,
+    line: string,
+    eventId?: string,
+  ) => void,
+  secret?: string,
+  concurrency?: number,
+): {
+  queue: (task: {
+    url: string;
+    dest: string;
+    roomId: string;
+    eventId: string;
+    ts: string;
+    sender: string;
+    type?: string;
+    size?: number;
+  }) => void;
+  flush: () => Promise<void>;
+};
 export function pushWithLimit<T>(arr: T[], val: T, limit: number): T[];
 export class BoundedMap<K, V> extends Map<K, V> {
   constructor(limit: number);
   set(key: K, val: V): this;
 }
 export class FileSessionStore {
-  constructor(file: string, secret?: string);
+  constructor(file: string, secret?: string, flushMs?: number);
   readonly length: number;
   clear(): void;
   key(index: number): string | null;

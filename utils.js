@@ -137,9 +137,11 @@ export function openLogDb(file) {
   db.pragma('journal_mode = WAL');
   db.pragma('synchronous = NORMAL');
   db.exec(
-    'CREATE TABLE IF NOT EXISTS logs (room_id TEXT, ts TEXT, line TEXT);\n' +
+    'CREATE TABLE IF NOT EXISTS logs (room_id TEXT, ts TEXT, line TEXT, event_id TEXT);\n' +
       'CREATE INDEX IF NOT EXISTS idx_logs_room_ts ON logs(room_id, ts);\n' +
-      'CREATE INDEX IF NOT EXISTS idx_logs_ts ON logs(ts)',
+      'CREATE INDEX IF NOT EXISTS idx_logs_event ON logs(event_id);\n' +
+      'CREATE TABLE IF NOT EXISTS media (event_id TEXT PRIMARY KEY, room_id TEXT, ts TEXT, file TEXT, type TEXT, size INTEGER);\n' +
+      'CREATE INDEX IF NOT EXISTS idx_media_room_ts ON media(room_id, ts)',
   );
   return db;
 }
@@ -151,8 +153,8 @@ export function createLogWriter(db, secret, flushMs = 1000, maxEntries = 100) {
   };
   setInterval(flush, flushMs).unref();
   return {
-    queue(roomId, ts, line) {
-      buffer.push({ roomId, ts, line });
+    queue(roomId, ts, line, eventId) {
+      buffer.push({ roomId, ts, line, eventId });
       if (buffer.length >= maxEntries) flush();
     },
     flush,
@@ -161,19 +163,19 @@ export function createLogWriter(db, secret, flushMs = 1000, maxEntries = 100) {
 
 export function insertLogs(db, entries, secret) {
   const stmt = db.prepare(
-    'INSERT INTO logs (room_id, ts, line) VALUES (?, ?, ?)',
+    'INSERT INTO logs (room_id, ts, line, event_id) VALUES (?, ?, ?, ?)',
   );
   const run = db.transaction((items) => {
-    for (const { roomId, ts, line } of items) {
+    for (const { roomId, ts, line, eventId } of items) {
       const payload = secret ? encrypt(line, secret) : line;
-      stmt.run(roomId, ts, payload);
+      stmt.run(roomId, ts, payload, eventId);
     }
   });
   run(entries);
 }
 
-export function insertLog(db, roomId, ts, line, secret) {
-  insertLogs(db, [{ roomId, ts, line }], secret);
+export function insertLog(db, roomId, ts, line, secret, eventId) {
+  insertLogs(db, [{ roomId, ts, line, eventId }], secret);
 }
 
 export function queryLogs(db, roomId, limit, since, until, secret) {
@@ -209,6 +211,79 @@ export function queryLogs(db, roomId, limit, since, until, secret) {
     .reverse();
 }
 
+export function insertMedia(db, { eventId, roomId, ts, file, type, size }) {
+  const stmt = db.prepare(
+    'INSERT OR REPLACE INTO media (event_id, room_id, ts, file, type, size) VALUES (?, ?, ?, ?, ?, ?)',
+  );
+  stmt.run(eventId, roomId, ts, file, type ?? null, size ?? null);
+}
+
+export function queryMedia(db, roomId, limit) {
+  let sql =
+    'SELECT event_id as eventId, ts, file, type, size FROM media WHERE room_id = ?';
+  const params = [roomId];
+  sql += ' ORDER BY ts DESC';
+  if (limit) {
+    sql += ' LIMIT ?';
+    params.push(limit);
+  }
+  const rows = db.prepare(sql).all(...params);
+  return rows.reverse();
+}
+
+export function createMediaDownloader(db, queueLog, secret, concurrency = 2) {
+  const pending = [];
+  let active = 0;
+  const next = () => {
+    while (active < concurrency && pending.length) {
+      const item = pending.shift();
+      active++;
+      (async () => {
+        const { url, dest, roomId, eventId, ts, sender, type, size } = item;
+        let line;
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('bad status');
+          const ctype = type || res.headers.get('content-type');
+          const clen = size || Number(res.headers.get('content-length') || 0);
+          if (secret) await encryptFileStream(res.body, dest, secret);
+          else await pipelineAsync(res.body, fs.createWriteStream(dest));
+          insertMedia(db, {
+            eventId,
+            roomId,
+            ts,
+            file: path.basename(dest),
+            type: ctype,
+            size: clen,
+          });
+          line = `[${ts}] <${sender}> [media] ${path.basename(dest)}`;
+        } catch {
+          line = `[${ts}] <${sender}> [media download failed]`;
+        }
+        queueLog(roomId, ts, line, eventId);
+      })().finally(() => {
+        active--;
+        next();
+      });
+    }
+  };
+  return {
+    queue(item) {
+      pending.push(item);
+      next();
+    },
+    flush() {
+      return new Promise((resolve) => {
+        const check = () => {
+          if (pending.length === 0 && active === 0) resolve();
+          else setTimeout(check, 50);
+        };
+        check();
+      });
+    },
+  };
+}
+
 export function pushWithLimit(arr, val, limit) {
   arr.push(val);
   if (arr.length > limit) arr.shift();
@@ -230,9 +305,10 @@ export class BoundedMap extends Map {
 }
 
 export class FileSessionStore {
-  constructor(file, secret) {
+  constructor(file, secret, flushMs = 100) {
     this.file = file;
     this.secret = secret;
+    this.flushMs = flushMs;
     ensureDir(path.dirname(file));
     try {
       let raw = fs.readFileSync(this.file, 'utf8');
@@ -244,7 +320,8 @@ export class FileSessionStore {
   }
   #data;
   #writePromise = null;
-  #persist() {
+  #timer = null;
+  #persistNow() {
     const write = (this.#writePromise ?? Promise.resolve()).then(async () => {
       let out = JSON.stringify(this.#data);
       if (this.secret) out = encrypt(out, this.secret);
@@ -254,6 +331,13 @@ export class FileSessionStore {
     this.#writePromise = write.finally(() => {
       if (this.#writePromise === write) this.#writePromise = null;
     });
+  }
+  #persist() {
+    if (this.#timer) return;
+    this.#timer = setTimeout(() => {
+      this.#timer = null;
+      this.#persistNow();
+    }, this.flushMs).unref();
   }
   get length() {
     return Object.keys(this.#data).length;
@@ -277,6 +361,11 @@ export class FileSessionStore {
     this.#persist();
   }
   flush() {
+    if (this.#timer) {
+      clearTimeout(this.#timer);
+      this.#timer = null;
+      this.#persistNow();
+    }
     return this.#writePromise ?? Promise.resolve();
   }
 }

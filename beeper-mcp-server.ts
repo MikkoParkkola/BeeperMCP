@@ -23,15 +23,14 @@ import {
   ensureDir,
   safeFilename,
   getRoomDir,
-  pipelineAsync,
   FileSessionStore,
   appendWithRotate,
   openLogDb,
   createLogWriter,
+  createMediaDownloader,
   pushWithLimit,
   BoundedMap,
   envFlag,
-  encryptFileStream,
 } from './utils.js';
 import { buildMcpServer } from './mcp-tools.js';
 
@@ -162,6 +161,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     logDb,
     LOG_SECRET,
   );
+  const mediaDownloader = createMediaDownloader(logDb, queueLog, MEDIA_SECRET);
   // main Pino logger
   const logger = Pino({ level: LOG_LEVEL });
   // wrap for matrix-js-sdk: suppress expected decryption errors
@@ -473,19 +473,20 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
       if (content.url) {
         try {
           const url = client.mxcUrlToHttp(content.url);
-          const res = await fetch(url as string);
-          if (res.ok) {
-            const ext = path.extname(content.filename || content.body || '');
-            const fname = `${ts.replace(/[:.]/g, '')}_${safeFilename(id)}${ext}`;
-            const dest = path.join(dir, fname + (MEDIA_SECRET ? '.enc' : ''));
-            if (MEDIA_SECRET)
-              await encryptFileStream(res.body as any, dest, MEDIA_SECRET);
-            else
-              await pipelineAsync(res.body as any, fs.createWriteStream(dest));
-            line = `[${ts}] <${ev.getSender()}> [media] ${path.basename(dest)}`;
-          } else {
-            line = `[${ts}] <${ev.getSender()}> [media download failed]`;
-          }
+          const ext = path.extname(content.filename || content.body || '');
+          const fname = `${ts.replace(/[:.]/g, '')}_${safeFilename(id)}${ext}`;
+          const dest = path.join(dir, fname + (MEDIA_SECRET ? '.enc' : ''));
+          mediaDownloader.queue({
+            url: url as string,
+            dest,
+            roomId: rid,
+            eventId: id,
+            ts,
+            sender: ev.getSender(),
+            type: content.info?.mimetype,
+            size: content.info?.size,
+          });
+          line = `[${ts}] <${ev.getSender()}> [media pending] ${path.basename(dest)}`;
         } catch {
           line = `[${ts}] <${ev.getSender()}> [media download failed]`;
         }
@@ -496,7 +497,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
       line = `[${ts}] <${ev.getSender()}> [${type}]`;
     }
     await appendWithRotate(logf, line, LOG_MAX_BYTES, LOG_SECRET);
-    queueLog(rid, ts, line);
+    queueLog(rid, ts, line, id);
     // test mode: stop after limit
     if (TEST_LIMIT > 0) {
       testCount++;
@@ -628,6 +629,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     try {
       flushLogs();
       await client.stopClient();
+      await mediaDownloader.flush();
     } catch {}
     process.exit(0);
   };
