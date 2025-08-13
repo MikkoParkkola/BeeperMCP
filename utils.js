@@ -262,6 +262,7 @@ export function createMediaWriter(db, flushMs = 1000, maxEntries = 100) {
 }
 
 export function createMediaDownloader(
+  db,
   queueMedia,
   queueLog,
   secret,

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import { Readable } from 'node:stream';
 import { pushWithLimit, BoundedMap } from '../utils.js';
 
 // Helper to simulate starting the Matrix client with one retry on failure
@@ -33,7 +34,10 @@ async function backfillRoom(client, room) {
   let more = true;
   while (more) {
     try {
-      more = await client.paginateEventTimeline(tl, { backwards: true, limit: 1000 });
+      more = await client.paginateEventTimeline(tl, {
+        backwards: true,
+        limit: 1000,
+      });
     } catch {
       // retry immediately
     }
@@ -72,7 +76,7 @@ async function decryptEvent(client, pending, ev) {
   try {
     const cryptoApi = client.getCrypto();
     if (cryptoApi) await cryptoApi.decryptEvent(ev);
-  } catch (e) {
+  } catch {
     const wire = ev.getWireContent();
     const mapKey = `${ev.getRoomId()}|${wire.session_id}`;
     const arr = pending.get(mapKey) || [];
@@ -83,7 +87,11 @@ async function decryptEvent(client, pending, ev) {
       const cryptoApi = client.getCrypto();
       if (cryptoApi) {
         await cryptoApi.requestRoomKey(
-          { room_id: ev.getRoomId(), session_id: wire.session_id, algorithm: wire.algorithm },
+          {
+            room_id: ev.getRoomId(),
+            session_id: wire.session_id,
+            algorithm: wire.algorithm,
+          },
           [{ userId: sender, deviceId: '*' }],
         );
       }
@@ -126,4 +134,124 @@ test('missing keys trigger key request and queued retry', async () => {
     await decryptEvent(client, pending, pend);
   }
   assert.equal(requested, 1); // no additional key request
+});
+
+// Helper to simulate a single /sync request with retry on HTTP failure
+async function syncOnceWithRetry(url, retries = 1) {
+  for (let i = 0; i <= retries; i++) {
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      return data.next_batch;
+    }
+  }
+  throw new Error('sync failed');
+}
+
+test('sync loop retries after HTTP error', async () => {
+  let calls = 0;
+  const origFetch = global.fetch;
+  global.fetch = async () => {
+    calls++;
+    if (calls === 1) return { ok: false, status: 502 };
+    return { ok: true, json: async () => ({ next_batch: 's2' }) };
+  };
+  const token = await syncOnceWithRetry('/sync');
+  assert.equal(calls, 2);
+  assert.equal(token, 's2');
+  global.fetch = origFetch;
+});
+
+// Helper to backfill, decrypt events and queue media downloads
+async function backfillAndDecrypt(client, room, pending, downloader) {
+  const tl = room.getLiveTimeline();
+  let more = true;
+  while (more) {
+    try {
+      more = await client.paginateEventTimeline(tl, {
+        backwards: true,
+        limit: 1000,
+      });
+    } catch {}
+  }
+  for (const ev of tl.getEvents().sort((a, b) => a.getTs() - b.getTs())) {
+    await decryptEvent(client, pending, ev);
+    if (ev.decrypted) {
+      const content = ev.getContent();
+      if (content.url) downloader.queue({ url: content.url });
+    }
+  }
+}
+
+test('backfilled encrypted media event decrypts and downloads after key arrives', async () => {
+  const pending = new BoundedMap(10);
+  let requested = 0;
+  const crypto = {
+    async decryptEvent(ev) {
+      if (!ev.hasKey) {
+        const err = new Error('missing');
+        err.name = 'DecryptionError';
+        err.code = 'MEGOLM_UNKNOWN_INBOUND_SESSION_ID';
+        throw err;
+      }
+      ev.decrypted = true;
+    },
+    async requestRoomKey() {
+      requested++;
+    },
+  };
+  const client = new EventEmitter();
+  client.getCrypto = () => crypto;
+  let paginates = 0;
+  client.paginateEventTimeline = async () => {
+    paginates++;
+    if (paginates === 1) throw new Error('network');
+    return false;
+  };
+  const event = {
+    hasKey: false,
+    decrypted: false,
+    isEncrypted: () => true,
+    getTs: () => 1,
+    getRoomId: () => '!room',
+    getSender: () => '@alice:test',
+    getWireContent: () => ({ session_id: 'sess', algorithm: 'alg' }),
+    getContent: () => ({
+      msgtype: 'm.image',
+      url: 'http://mx/cat',
+      info: { mimetype: 'text/plain', size: 4 },
+    }),
+    getId: () => '$e1',
+  };
+  const tl = { getEvents: () => [event] };
+  const room = { getLiveTimeline: () => tl };
+  const downloads = [];
+  let fetchCalls = 0;
+  const origFetch = global.fetch;
+  global.fetch = async () => {
+    fetchCalls++;
+    return { ok: true, headers: new Headers(), body: Readable.from('data') };
+  };
+  const downloader = {
+    queue(meta) {
+      downloads.push(meta.url);
+      fetch(meta.url);
+    },
+  };
+  await backfillAndDecrypt(client, room, pending, downloader);
+  assert.equal(paginates, 2);
+  assert.equal(requested, 1);
+  assert.equal(downloads.length, 0);
+  event.hasKey = true;
+  for (const pend of pending.get('!room|sess') || []) {
+    await decryptEvent(client, pending, pend);
+    if (pend.decrypted) {
+      const content = pend.getContent();
+      if (content.url) downloader.queue({ url: content.url });
+    }
+  }
+  assert.equal(event.decrypted, true);
+  assert.equal(fetchCalls, 1);
+  assert.deepEqual(downloads, ['http://mx/cat']);
+  global.fetch = origFetch;
 });

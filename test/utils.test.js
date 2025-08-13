@@ -371,6 +371,7 @@ test('createMediaDownloader reuses cached media for identical events', async () 
   const db = openLogDb(dbPath);
   const logs = [];
   const queueLog = (roomId, ts, line) => logs.push(line);
+  const queueMedia = (meta) => insertMedia(db, meta);
   let fetchCalls = 0;
   const origFetch = global.fetch;
   global.fetch = async () => {
@@ -384,7 +385,7 @@ test('createMediaDownloader reuses cached media for identical events', async () 
       body: Readable.from(Buffer.from('data')),
     };
   };
-  const dl = createMediaDownloader(db, queueLog);
+  const dl = createMediaDownloader(db, queueMedia, queueLog);
   const dest1 = path.join(tmpBase, 'a');
   dl.queue({
     url: 'http://x',

@@ -100,6 +100,7 @@ export function createMediaWriter(
   flush: () => void;
 };
 export function createMediaDownloader(
+  db: any,
   queueMedia: (meta: {
     eventId: string;
     roomId: string;
