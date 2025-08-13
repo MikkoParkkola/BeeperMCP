@@ -387,7 +387,7 @@ test('createMediaDownloader reuses cached media for identical events', async () 
       body: Readable.from(Buffer.from('data')),
     };
   };
-  const dl = createMediaDownloader(queueMedia, queueLog, undefined, db);
+  const dl = createMediaDownloader(db, queueMedia, queueLog);
   const dest1 = path.join(tmpBase, 'a');
   dl.queue({
     url: 'http://x',

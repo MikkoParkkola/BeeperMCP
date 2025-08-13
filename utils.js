@@ -274,7 +274,6 @@ export function createMediaDownloader(
   queueMedia,
   queueLog,
   secret,
-  db,
   concurrency = 2,
 ) {
   const pending = [];
