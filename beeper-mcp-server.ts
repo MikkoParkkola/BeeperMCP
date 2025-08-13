@@ -21,7 +21,14 @@ import path from 'path';
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { ensureDir, safeFilename, getRoomDir, pipelineAsync, FileSessionStore } from './utils.js';
+import {
+  ensureDir,
+  safeFilename,
+  getRoomDir,
+  pipelineAsync,
+  FileSessionStore,
+  tailFile,
+} from './utils.js';
 
 // --- Constants ---
 const CACHE_DIR = process.env.MATRIX_CACHE_DIR ?? './mx-cache';
@@ -494,13 +501,17 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     const file = path.join(getRoomDir(LOG_DIR, room_id), `${safeFilename(room_id)}.log`);
     let lines: string[] = [];
     try {
-      const data = await fs.promises.readFile(file, 'utf8');
-      lines = data.split('\n');
+      if (limit && !since && !until) {
+        lines = await tailFile(file, limit);
+      } else {
+        const data = await fs.promises.readFile(file, 'utf8');
+        lines = data.split('\n');
+      }
     } catch {}
-    if(since) lines=lines.filter(l=>l.slice(1,20)>=since);
-    if(until) lines=lines.filter(l=>l.slice(1,20)<=until);
-    if(limit) lines=lines.slice(-limit);
-    return{ content:[{ type:'json', json:lines.filter(Boolean) }] };
+    if (since) lines = lines.filter(l => l.slice(1, 20) >= since);
+    if (until) lines = lines.filter(l => l.slice(1, 20) <= until);
+    if (limit && (since || until)) lines = lines.slice(-limit);
+    return { content: [{ type: 'json', json: lines.filter(Boolean) }] };
   });
 
   (srv as any).tool('send_message', z.object({ room_id:z.string(), message:z.string().min(1) }), async({room_id,message}: any)=>{

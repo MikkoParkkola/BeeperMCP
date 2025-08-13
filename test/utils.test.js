@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
-import {ensureDir,safeFilename,getRoomDir,FileSessionStore} from '../utils.js';
+import {ensureDir,safeFilename,getRoomDir,FileSessionStore,tailFile} from '../utils.js';
 
 const tmpBase = '.test-tmp';
 
@@ -55,6 +55,16 @@ test('FileSessionStore persists asynchronously', async () => {
   await store.flush();
   const store2 = new FileSessionStore(storePath);
   assert.strictEqual(store2.getItem('foo'), 'bar');
+});
+
+test('tailFile returns last N lines', async () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const file = path.join(tmpBase, 'log.txt');
+  const all = Array.from({ length: 100 }, (_, i) => `line${i}`);
+  fs.writeFileSync(file, all.join('\n'));
+  const last = await tailFile(file, 5);
+  assert.deepStrictEqual(last, all.slice(-5));
 });
 
 test.after(() => {

@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import { pipeline } from 'stream';
+import readline from 'readline';
 
 export function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -18,6 +19,18 @@ export function getRoomDir(base, roomId) {
 }
 
 export const pipelineAsync = promisify(pipeline);
+
+export async function tailFile(file, limit) {
+  const lines = [];
+  try {
+    const rl = readline.createInterface({ input: fs.createReadStream(file, 'utf8') });
+    for await (const line of rl) {
+      lines.push(line);
+      if (lines.length > limit) lines.shift();
+    }
+  } catch {}
+  return lines;
+}
 
 export class FileSessionStore {
   constructor(file) {
