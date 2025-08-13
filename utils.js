@@ -59,11 +59,17 @@ function decrypt(data, secret) {
 export async function tailFile(file, limit, secret) {
   const lines = [];
   try {
-    const rl = readline.createInterface({ input: fs.createReadStream(file, 'utf8') });
+    const rl = readline.createInterface({
+      input: fs.createReadStream(file, 'utf8'),
+    });
     for await (const line of rl) {
       let out = line;
       if (secret) {
-        try { out = decrypt(line, secret).replace(/\n$/, ''); } catch { continue; }
+        try {
+          out = decrypt(line, secret).replace(/\n$/, '');
+        } catch {
+          continue;
+        }
       }
       lines.push(out);
       if (lines.length > limit) lines.shift();
@@ -76,9 +82,14 @@ export async function appendWithRotate(file, line, maxBytes, secret) {
   try {
     ensureDir(path.dirname(file));
     const payload = secret ? encrypt(line, secret) + '\n' : line + '\n';
-    const size = await fs.promises.stat(file).then(s => s.size).catch(() => 0);
+    const size = await fs.promises
+      .stat(file)
+      .then((s) => s.size)
+      .catch(() => 0);
     if (size + Buffer.byteLength(payload) > maxBytes) {
-      try { await fs.promises.rename(file, `${file}.1`); } catch {}
+      try {
+        await fs.promises.rename(file, `${file}.1`);
+      } catch {}
     }
     await fs.promises.appendFile(file, payload);
   } catch {}
@@ -89,7 +100,7 @@ export function openLogDb(file) {
   const db = new Database(file);
   db.exec(
     'CREATE TABLE IF NOT EXISTS logs (room_id TEXT, ts TEXT, line TEXT);\n' +
-      'CREATE INDEX IF NOT EXISTS idx_logs_room_ts ON logs(room_id, ts)'
+      'CREATE INDEX IF NOT EXISTS idx_logs_room_ts ON logs(room_id, ts)',
   );
   return db;
 }
@@ -99,23 +110,36 @@ export function insertLog(db, roomId, ts, line, secret) {
   db.prepare('INSERT INTO logs (room_id, ts, line) VALUES (?, ?, ?)').run(
     roomId,
     ts,
-    payload
+    payload,
   );
 }
 
 export function queryLogs(db, roomId, limit, since, until, secret) {
   let sql = 'SELECT line FROM logs WHERE room_id = ?';
   const params = [roomId];
-  if (since) { sql += ' AND ts >= ?'; params.push(since); }
-  if (until) { sql += ' AND ts <= ?'; params.push(until); }
+  if (since) {
+    sql += ' AND ts >= ?';
+    params.push(since);
+  }
+  if (until) {
+    sql += ' AND ts <= ?';
+    params.push(until);
+  }
   sql += ' ORDER BY ts DESC';
-  if (limit) { sql += ' LIMIT ?'; params.push(limit); }
+  if (limit) {
+    sql += ' LIMIT ?';
+    params.push(limit);
+  }
   const rows = db.prepare(sql).all(...params);
   return rows
-    .map(r => {
+    .map((r) => {
       let line = r.line;
       if (secret) {
-        try { line = decrypt(line, secret); } catch { return null; }
+        try {
+          line = decrypt(line, secret);
+        } catch {
+          return null;
+        }
       }
       return line;
     })

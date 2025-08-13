@@ -3,12 +3,16 @@ export function safeFilename(s?: string): string;
 export function getRoomDir(base: string, roomId: string): string;
 export const pipelineAsync: (...streams: any[]) => Promise<void>;
 export function envFlag(name: string, def?: boolean): boolean;
-export function tailFile(file: string, limit: number, secret?: string): Promise<string[]>;
+export function tailFile(
+  file: string,
+  limit: number,
+  secret?: string,
+): Promise<string[]>;
 export function appendWithRotate(
   file: string,
   line: string,
   maxBytes: number,
-  secret?: string
+  secret?: string,
 ): Promise<void>;
 export function openLogDb(file: string): any;
 export function insertLog(
@@ -16,7 +20,7 @@ export function insertLog(
   roomId: string,
   ts: string,
   line: string,
-  secret?: string
+  secret?: string,
 ): void;
 export function queryLogs(
   db: any,
@@ -24,7 +28,7 @@ export function queryLogs(
   limit?: number,
   since?: string,
   until?: string,
-  secret?: string
+  secret?: string,
 ): string[];
 export function pushWithLimit<T>(arr: T[], val: T, limit: number): T[];
 export class BoundedMap<K, V> extends Map<K, V> {

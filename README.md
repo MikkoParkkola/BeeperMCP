@@ -74,15 +74,16 @@ easily.
 
 ## Development
 
-Install dependencies with `npm install` and use the provided scripts to run tests, check coverage, or lint the code:
+Install dependencies with `npm install` and use the provided scripts to check formatting, run tests, or lint the code:
 
 ```bash
+npm run format
 npm test
 npm run test:coverage
 npm run lint
 ```
 
-The test suite currently exercises the utility helpers and runs with Node's built-in test runner.
+Pre-commit hooks run these checks automatically. The test suite currently exercises the utility helpers and runs with Node's built-in test runner.
 
 ## Synapse configuration for self-key requests
 
