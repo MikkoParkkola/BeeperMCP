@@ -470,7 +470,29 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   }
 
   // backfill (optional per-room test filter)
-  const limiter = ((n:number)=>{let a=0,q:Function[]=[];const nxt=()=>{if(a<n&&q.length){a++;q.shift()!();}};return async(fn:()=>Promise<void>)=>new Promise<void>(r=>{q.push(async()=>{try{await fn();}finally{a--;nxt();r();}});nxt();});})(CONC);
+  const limiter = ((n: number) => {
+    let a = 0,
+      q: Array<() => Promise<void>> = [];
+    const nxt = () => {
+      if (a < n && q.length) {
+        a++;
+        q.shift()!();
+      }
+    };
+    return async (fn: () => Promise<void>) =>
+      new Promise<void>(r => {
+        q.push(async () => {
+          try {
+            await fn();
+          } finally {
+            a--;
+            nxt();
+            r();
+          }
+        });
+        nxt();
+      });
+  })(CONC);
   const roomsToBackfill = TEST_ROOM_ID
     ? client.getRooms().filter(r => r.roomId === TEST_ROOM_ID)
     : client.getRooms();
