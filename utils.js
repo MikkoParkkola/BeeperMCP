@@ -68,13 +68,16 @@ export async function tailFile(file, limit, secret) {
         try {
           out = decrypt(line, secret).replace(/\n$/, '');
         } catch {
+          /* ignore: skip lines that fail to decrypt */
           continue;
         }
       }
       lines.push(out);
       if (lines.length > limit) lines.shift();
     }
-  } catch {}
+  } catch {
+    /* ignore: return collected lines on read errors */
+  }
   return lines;
 }
 
@@ -89,10 +92,14 @@ export async function appendWithRotate(file, line, maxBytes, secret) {
     if (size + Buffer.byteLength(payload) > maxBytes) {
       try {
         await fs.promises.rename(file, `${file}.1`);
-      } catch {}
+      } catch {
+        /* ignore: rotation best-effort */
+      }
     }
     await fs.promises.appendFile(file, payload);
-  } catch {}
+  } catch {
+    /* ignore: log append failure */
+  }
 }
 
 export function openLogDb(file) {
