@@ -155,3 +155,8 @@ export function createFlushHelper(): {
   register: (fn: () => any) => void;
   flush: () => Promise<void>;
 };
+export function cleanupLogsAndMedia(
+  logDir: string,
+  db: any,
+  days: number,
+): Promise<void>;

@@ -466,3 +466,35 @@ export function createFlushHelper() {
     flush,
   };
 }
+
+export async function cleanupLogsAndMedia(logDir, db, days) {
+  if (!days || days <= 0) return;
+  const cutoff = new Date(Date.now() - days * 86400000);
+  const cutoffIso = cutoff.toISOString();
+  try {
+    const rooms = await fs.promises.readdir(logDir, { withFileTypes: true });
+    for (const room of rooms) {
+      if (!room.isDirectory()) continue;
+      const roomPath = path.join(logDir, room.name);
+      const files = await fs.promises.readdir(roomPath);
+      for (const f of files) {
+        if (!f.endsWith('.1')) continue;
+        const filePath = path.join(roomPath, f);
+        try {
+          const stat = await fs.promises.stat(filePath);
+          if (stat.mtime < cutoff) await fs.promises.unlink(filePath);
+        } catch (err) {
+          logger.warn(`Failed to remove rotated log ${filePath}`, err);
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn(`Failed to clean rotated logs in ${logDir}`, err);
+  }
+  try {
+    db.prepare('DELETE FROM logs WHERE ts < ?').run(cutoffIso);
+    db.prepare('DELETE FROM media WHERE ts < ?').run(cutoffIso);
+  } catch (err) {
+    logger.warn('Failed to prune log database', err);
+  }
+}
