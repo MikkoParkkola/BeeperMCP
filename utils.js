@@ -5,6 +5,7 @@ import { pipeline } from 'stream';
 import readline from 'readline';
 import crypto from 'crypto';
 import Database from 'better-sqlite3';
+import { DateTime } from 'luxon';
 
 const logger = console;
 
@@ -506,6 +507,45 @@ export function createFlushHelper() {
     },
     flush,
   };
+}
+
+export function computeLocalTzKeys(ts, tz) {
+  const ms = typeof ts === 'number' ? ts : new Date(ts).getTime();
+  const dt = DateTime.fromMillis(ms, { zone: tz });
+  if (!dt.isValid) throw new Error(`Invalid time zone: ${tz}`);
+  return {
+    day_local: dt.toFormat('yyyy-MM-dd'),
+    week_local: `${dt.weekYear}-W${String(dt.weekNumber).padStart(2, '0')}`,
+    month_local: dt.toFormat('yyyy-MM'),
+    year_local: dt.toFormat('yyyy'),
+    hour_local: dt.toFormat('HH'),
+    dow_local: dt.weekday,
+  };
+}
+
+export class TimezoneTimeline {
+  constructor(defaultTz = 'Europe/Amsterdam') {
+    this.timeline = [{ tz: defaultTz, since: new Date(0).toISOString() }];
+  }
+  set(tz, since = new Date().toISOString()) {
+    // Validate timezone
+    if (!DateTime.now().setZone(tz).isValid) throw new Error('Invalid time zone');
+    this.timeline.push({ tz, since });
+    this.timeline.sort((a, b) => new Date(a.since) - new Date(b.since));
+  }
+  get(ts) {
+    const ms = typeof ts === 'number' ? ts : new Date(ts).getTime();
+    let current = this.timeline[0].tz;
+    for (const seg of this.timeline) {
+      if (new Date(seg.since).getTime() <= ms) current = seg.tz;
+      else break;
+    }
+    return current;
+  }
+  localKeys(ts) {
+    const tz = this.get(ts);
+    return computeLocalTzKeys(ts, tz);
+  }
 }
 
 export async function cleanupLogsAndMedia(logDir, db, days) {
