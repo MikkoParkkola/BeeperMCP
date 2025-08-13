@@ -28,6 +28,8 @@ import {
   pipelineAsync,
   FileSessionStore,
   tailFile,
+  pushWithLimit,
+  BoundedMap,
 } from './utils.js';
 
 // --- Constants ---
@@ -225,11 +227,25 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
 
   await verifyAccessToken(logger);
 
+  const PENDING_DECRYPT_MAX_SESSIONS = Number(
+    process.env.PENDING_DECRYPT_MAX_SESSIONS ?? '1000'
+  );
+  const PENDING_DECRYPT_MAX_PER_SESSION = Number(
+    process.env.PENDING_DECRYPT_MAX_PER_SESSION ?? '100'
+  );
+  const REQUESTED_KEYS_MAX = Number(
+    process.env.REQUESTED_KEYS_MAX ?? '1000'
+  );
   // pending events waiting for room keys: map of "roomId|session_id" to encrypted events
-  const pendingDecrypt = new Map<string, MatrixEvent[]>();
+  const pendingDecrypt = new BoundedMap<string, MatrixEvent[]>(
+    PENDING_DECRYPT_MAX_SESSIONS
+  );
   // track when a key request was last sent for a given session
   // and the current backoff interval for retries
-  const requestedKeys = new Map<string, { last: number; interval: number; logged: boolean }>();
+  const requestedKeys = new BoundedMap<
+    string,
+    { last: number; interval: number; logged: boolean }
+  >(REQUESTED_KEYS_MAX);
   // capture to-device events for room-keys and replay pending decrypts
   client.on('toDeviceEvent' as any, async (ev: MatrixEvent) => {
     try {
@@ -308,7 +324,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
         if (roomId && sessionId && algorithm) {
           const mapKey = `${roomId}|${sessionId}`;
           const arr = pendingDecrypt.get(mapKey) || [];
-          arr.push(ev);
+          pushWithLimit(arr, ev, PENDING_DECRYPT_MAX_PER_SESSION);
           pendingDecrypt.set(mapKey, arr);
           const sender = ev.getSender();
           if (sender === UID) {

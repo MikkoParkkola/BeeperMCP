@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
-import {ensureDir,safeFilename,getRoomDir,FileSessionStore,tailFile} from '../utils.js';
+import {ensureDir,safeFilename,getRoomDir,FileSessionStore,tailFile,pushWithLimit,BoundedMap} from '../utils.js';
 
 const tmpBase = '.test-tmp';
 
@@ -65,6 +65,22 @@ test('tailFile returns last N lines', async () => {
   fs.writeFileSync(file, all.join('\n'));
   const last = await tailFile(file, 5);
   assert.deepStrictEqual(last, all.slice(-5));
+});
+
+test('pushWithLimit keeps array within limit', () => {
+  const arr = [];
+  for (let i = 0; i < 5; i++) pushWithLimit(arr, i, 3);
+  assert.deepStrictEqual(arr, [2,3,4]);
+});
+
+test('BoundedMap evicts oldest entries', () => {
+  const map = new BoundedMap(2);
+  map.set('a',1);
+  map.set('b',2);
+  map.set('c',3);
+  assert.ok(!map.has('a'));
+  assert.strictEqual(map.get('b'),2);
+  assert.strictEqual(map.get('c'),3);
 });
 
 test.after(() => {

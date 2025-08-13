@@ -32,6 +32,26 @@ export async function tailFile(file, limit) {
   return lines;
 }
 
+export function pushWithLimit(arr, val, limit) {
+  arr.push(val);
+  if (arr.length > limit) arr.shift();
+  return arr;
+}
+
+export class BoundedMap extends Map {
+  constructor(limit) {
+    super();
+    this.limit = limit;
+  }
+  set(key, val) {
+    if (!this.has(key) && this.size >= this.limit) {
+      const first = this.keys().next().value;
+      if (first !== undefined) this.delete(first);
+    }
+    return super.set(key, val);
+  }
+}
+
 export class FileSessionStore {
   constructor(file) {
     this.file = file;
