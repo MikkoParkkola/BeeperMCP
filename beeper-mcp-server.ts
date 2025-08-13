@@ -18,8 +18,6 @@ import sdk, { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
 import Pino from 'pino';
 import fs from 'fs';
 import path from 'path';
-import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   ensureDir,
@@ -30,12 +28,12 @@ import {
   appendWithRotate,
   openLogDb,
   insertLogs,
-  queryLogs,
   pushWithLimit,
   BoundedMap,
   envFlag,
   encryptFileStream,
 } from './utils.js';
+import { buildMcpServer } from './mcp-tools.js';
 
 // --- Constants ---
 const CACHE_DIR = process.env.MATRIX_CACHE_DIR ?? './mx-cache';
@@ -624,78 +622,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   }
 
   // MCP tools
-  const srv = new McpServer({
-    name: 'Beeper',
-    version: '2.2.0',
-    description: 'Matrix↔MCP logger',
-  });
-
-  (srv as any).tool(
-    'list_rooms',
-    z.object({ limit: z.number().int().positive().default(50) }),
-    async ({ limit }: any) => {
-      const out = client
-        .getRooms()
-        .sort(
-          (a, b) =>
-            (b.getLastActiveTimestamp() || 0) -
-            (a.getLastActiveTimestamp() || 0),
-        )
-        .slice(0, limit)
-        .map((r) => ({ room_id: r.roomId, name: r.name }));
-      return { content: [{ type: 'json', json: out }] };
-    },
-  );
-
-  (srv as any).tool(
-    'create_room',
-    z.object({
-      name: z.string().min(1),
-      encrypted: z.boolean().default(false),
-    }),
-    async ({ name, encrypted }: any) => {
-      const opts: any = { name, visibility: 'private' };
-      if (encrypted)
-        opts.initial_state = [
-          {
-            type: 'm.room.encryption',
-            state_key: '',
-            content: { algorithm: 'm.megolm.v1.aes-sha2' },
-          },
-        ];
-      const { room_id } = await client.createRoom(opts);
-      return { content: [{ type: 'json', json: { room_id } }] };
-    },
-  );
-
-  (srv as any).tool(
-    'list_messages',
-    z.object({
-      room_id: z.string(),
-      limit: z.number().int().positive().optional(),
-      since: z.string().datetime().optional(),
-      until: z.string().datetime().optional(),
-    }),
-    async ({ room_id, limit, since, until }: any) => {
-      let lines: string[] = [];
-      try {
-        lines = queryLogs(logDb, room_id, limit, since, until, LOG_SECRET);
-      } catch {}
-      return { content: [{ type: 'json', json: lines.filter(Boolean) }] };
-    },
-  );
-
-  if (ENABLE_SEND) {
-    (srv as any).tool(
-      'send_message',
-      z.object({ room_id: z.string(), message: z.string().min(1) }),
-      async ({ room_id, message }: any) => {
-        await client.sendTextMessage(room_id, message);
-        return { content: [{ type: 'text', text: 'sent' }] };
-      },
-    );
-  }
-
+  const srv = buildMcpServer(client, logDb, ENABLE_SEND, LOG_SECRET);
   await srv.connect(new StdioServerTransport());
 
   // graceful shutdown
