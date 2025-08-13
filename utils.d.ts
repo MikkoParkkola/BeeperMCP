@@ -9,6 +9,22 @@ export function appendWithRotate(
   maxBytes: number,
   secret?: string
 ): Promise<void>;
+export function openLogDb(file: string): any;
+export function insertLog(
+  db: any,
+  roomId: string,
+  ts: string,
+  line: string,
+  secret?: string
+): void;
+export function queryLogs(
+  db: any,
+  roomId: string,
+  limit?: number,
+  since?: string,
+  until?: string,
+  secret?: string
+): string[];
 export function pushWithLimit<T>(arr: T[], val: T, limit: number): T[];
 export class BoundedMap<K, V> extends Map<K, V> {
   constructor(limit: number);

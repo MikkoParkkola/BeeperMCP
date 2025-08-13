@@ -27,8 +27,10 @@ import {
   getRoomDir,
   pipelineAsync,
   FileSessionStore,
-  tailFile,
   appendWithRotate,
+  openLogDb,
+  insertLog,
+  queryLogs,
   pushWithLimit,
   BoundedMap,
 } from './utils.js';
@@ -144,6 +146,8 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
 (async () => {
   ensureDir(CACHE_DIR);
   ensureDir(LOG_DIR);
+  const LOG_DB_PATH = process.env.LOG_DB_PATH ?? path.join(LOG_DIR, 'messages.db');
+  const logDb = openLogDb(LOG_DB_PATH);
   // main Pino logger
   const logger = Pino({ level: LOG_LEVEL });
   // wrap for matrix-js-sdk: suppress expected decryption errors
@@ -406,7 +410,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     // reuse 'rid' from above for directory
     const dir = getRoomDir(LOG_DIR, rid);
     const logf = path.join(dir, `${safeFilename(rid)}.log`);
-
+    let line: string;
     if (type === 'm.room.message') {
       if (content.url) {
         try {
@@ -416,17 +420,21 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
             const ext = path.extname(content.filename||content.body||'');
             const fname = `${ts.replace(/[:.]/g,'')}_${safeFilename(id)}${ext}`;
             await pipelineAsync(res.body as any, fs.createWriteStream(path.join(dir, fname)));
-            await appendWithRotate(logf, `[${ts}] <${ev.getSender()}> [media] ${fname}`, LOG_MAX_BYTES, LOG_SECRET);
-            return;
+            line = `[${ts}] <${ev.getSender()}> [media] ${fname}`;
+          } else {
+            line = `[${ts}] <${ev.getSender()}> [media download failed]`;
           }
-        } catch {}
-        await appendWithRotate(logf, `[${ts}] <${ev.getSender()}> [media download failed]`, LOG_MAX_BYTES, LOG_SECRET);
+        } catch {
+          line = `[${ts}] <${ev.getSender()}> [media download failed]`;
+        }
       } else {
-        await appendWithRotate(logf, `[${ts}] <${ev.getSender()}> ${content.body||'[non-text]'}`, LOG_MAX_BYTES, LOG_SECRET);
+        line = `[${ts}] <${ev.getSender()}> ${content.body||'[non-text]'}`;
       }
     } else {
-      await appendWithRotate(logf, `[${ts}] <${ev.getSender()}> [${type}]`, LOG_MAX_BYTES, LOG_SECRET);
+      line = `[${ts}] <${ev.getSender()}> [${type}]`;
     }
+    await appendWithRotate(logf, line, LOG_MAX_BYTES, LOG_SECRET);
+    insertLog(logDb, rid, ts, line, LOG_SECRET);
     // test mode: stop after limit
     if (TEST_LIMIT > 0) {
       testCount++;
@@ -541,18 +549,22 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     return{ content:[{ type:'json', json:{ room_id } }] };
   });
 
-  (srv as any).tool('list_messages', z.object({ room_id:z.string(), limit:z.number().int().positive().optional(), since:z.string().datetime().optional(), until:z.string().datetime().optional() }), async({room_id,limit,since,until}: any)=>{
-    const file = path.join(getRoomDir(LOG_DIR, room_id), `${safeFilename(room_id)}.log`);
-    let lines: string[] = [];
-    try {
-      const readLimit = limit && !since && !until ? limit : Number.MAX_SAFE_INTEGER;
-      lines = await tailFile(file, readLimit, LOG_SECRET);
-    } catch {}
-    if (since) lines = lines.filter(l => l.slice(1, 20) >= since);
-    if (until) lines = lines.filter(l => l.slice(1, 20) <= until);
-    if (limit && (since || until)) lines = lines.slice(-limit);
-    return { content: [{ type: 'json', json: lines.filter(Boolean) }] };
-  });
+  (srv as any).tool(
+    'list_messages',
+    z.object({
+      room_id: z.string(),
+      limit: z.number().int().positive().optional(),
+      since: z.string().datetime().optional(),
+      until: z.string().datetime().optional(),
+    }),
+    async ({ room_id, limit, since, until }: any) => {
+      let lines: string[] = [];
+      try {
+        lines = queryLogs(logDb, room_id, limit, since, until, LOG_SECRET);
+      } catch {}
+      return { content: [{ type: 'json', json: lines.filter(Boolean) }] };
+    }
+  );
 
   (srv as any).tool('send_message', z.object({ room_id:z.string(), message:z.string().min(1) }), async({room_id,message}: any)=>{
     await client.sendTextMessage(room_id,message);

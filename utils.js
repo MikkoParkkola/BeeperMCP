@@ -4,6 +4,7 @@ import { promisify } from 'util';
 import { pipeline } from 'stream';
 import readline from 'readline';
 import crypto from 'crypto';
+import Database from 'better-sqlite3';
 
 export function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -72,6 +73,45 @@ export async function appendWithRotate(file, line, maxBytes, secret) {
     }
     await fs.promises.appendFile(file, payload);
   } catch {}
+}
+
+export function openLogDb(file) {
+  ensureDir(path.dirname(file));
+  const db = new Database(file);
+  db.exec(
+    'CREATE TABLE IF NOT EXISTS logs (room_id TEXT, ts TEXT, line TEXT);\n' +
+      'CREATE INDEX IF NOT EXISTS idx_logs_room_ts ON logs(room_id, ts)'
+  );
+  return db;
+}
+
+export function insertLog(db, roomId, ts, line, secret) {
+  const payload = secret ? encrypt(line, secret) : line;
+  db.prepare('INSERT INTO logs (room_id, ts, line) VALUES (?, ?, ?)').run(
+    roomId,
+    ts,
+    payload
+  );
+}
+
+export function queryLogs(db, roomId, limit, since, until, secret) {
+  let sql = 'SELECT line FROM logs WHERE room_id = ?';
+  const params = [roomId];
+  if (since) { sql += ' AND ts >= ?'; params.push(since); }
+  if (until) { sql += ' AND ts <= ?'; params.push(until); }
+  sql += ' ORDER BY ts DESC';
+  if (limit) { sql += ' LIMIT ?'; params.push(limit); }
+  const rows = db.prepare(sql).all(...params);
+  return rows
+    .map(r => {
+      let line = r.line;
+      if (secret) {
+        try { line = decrypt(line, secret); } catch { return null; }
+      }
+      return line;
+    })
+    .filter(Boolean)
+    .reverse();
 }
 
 export function pushWithLimit(arr, val, limit) {
