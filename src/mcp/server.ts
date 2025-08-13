@@ -1,3 +1,21 @@
+/*
+  NOTE: To make further edits here I can also modify other project files —
+  please add any files you want me to edit to the chat. Common files you
+  may want to include when making changes to the MCP HTTP server:
+
+  - package.json
+  - tsconfig.json
+  - src/config.ts
+  - src/mcp/resources.ts
+  - src/mcp/capabilities.ts
+  - src/mcp/tools/*.ts (e.g. search.ts, whoSaid.ts, sendMessage.ts, sentimentTrends.ts)
+  - mcp-tools.js
+  - utils.js
+  - src/mcp/server.ts (this file)
+
+  Add whichever of the above (or others) to the chat and I will produce
+  SEARCH/REPLACE blocks to edit them.
+*/
 import { config } from "../config.js";
 import { capabilities } from "./capabilities.js";
 import { registerResources, handleResource } from "./resources.js";
