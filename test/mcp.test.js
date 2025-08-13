@@ -78,6 +78,19 @@ test('list_messages passes parameters to queryLogs', async () => {
   assert.deepEqual(res.content[0].json, ['a', 'b']);
 });
 
+test('list_messages fails without log database', async () => {
+  const client = { getRooms: () => [] };
+  const srv = buildMcpServer(client, null, false, undefined);
+  await assert.rejects(
+    () =>
+      srv._registeredTools.list_messages.callback(
+        { room_id: '!r' },
+        { _meta: { apiKey: API_KEY } },
+      ),
+    /Log database not available/,
+  );
+});
+
 test('send_message only registered when enabled', async () => {
   const client = {
     getRooms: () => [],

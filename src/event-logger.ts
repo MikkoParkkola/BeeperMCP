@@ -2,7 +2,6 @@ import path from 'path';
 import Pino from 'pino';
 import { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
 import {
-  appendWithRotate,
   getRoomDir,
   safeFilename,
   pushWithLimit,
@@ -15,8 +14,6 @@ export function setupEventLogging(
   logger: Pino.Logger,
   opts: {
     logDir: string;
-    logMaxBytes: number;
-    logSecret?: string;
     mediaSecret?: string;
     mediaDownloader: ReturnType<typeof createMediaDownloader>;
     queueLog: (
@@ -33,8 +30,6 @@ export function setupEventLogging(
 ) {
   const {
     logDir,
-    logMaxBytes,
-    logSecret,
     mediaSecret,
     mediaDownloader,
     queueLog,
@@ -212,7 +207,6 @@ export function setupEventLogging(
     const content = ev.getClearContent?.() || ev.getContent();
     const ts = new Date(ev.getTs() || Date.now()).toISOString();
     const dir = getRoomDir(logDir, rid);
-    const logf = path.join(dir, `${safeFilename(rid)}.log`);
     let line: string;
     if (type === 'm.room.message') {
       if (content.url) {
@@ -244,7 +238,6 @@ export function setupEventLogging(
     } else {
       line = `[${ts}] <${ev.getSender()}> [${type}]`;
     }
-    await appendWithRotate(logf, line, logMaxBytes, logSecret);
     queueLog(rid, ts, line, id);
     if (testLimit > 0) {
       testCount++;

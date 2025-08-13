@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import { pipeline } from 'stream';
-import readline from 'readline';
 import crypto from 'crypto';
 import Database from 'better-sqlite3';
 
@@ -80,53 +79,6 @@ export async function decryptFile(file, secret) {
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(enc), decipher.final()]);
-}
-
-export async function tailFile(file, limit, secret) {
-  const lines = [];
-  try {
-    const rl = readline.createInterface({
-      input: fs.createReadStream(file, 'utf8'),
-    });
-    for await (const line of rl) {
-      let out = line;
-      if (secret) {
-        try {
-          out = decrypt(line, secret).replace(/\n$/, '');
-        } catch (err) {
-          logger.warn('Failed to decrypt log line', err);
-          continue;
-        }
-      }
-      lines.push(out);
-      if (lines.length > limit) lines.shift();
-    }
-  } catch (err) {
-    logger.warn(`Failed to read file ${file}`, err);
-  }
-  return lines;
-}
-
-export async function appendWithRotate(file, line, maxBytes, secret) {
-  try {
-    ensureDir(path.dirname(file));
-    const payload = secret ? encrypt(line, secret) + '\n' : line + '\n';
-    const size = await fs.promises
-      .stat(file)
-      .then((s) => s.size)
-      .catch(() => 0);
-    if (size + Buffer.byteLength(payload) > maxBytes) {
-      try {
-        await fs.promises.rename(file, `${file}.1`);
-      } catch (err) {
-        logger.warn(`Failed to rotate log file ${file}`, err);
-      }
-    }
-    await fs.promises.appendFile(file, payload, { mode: 0o600 });
-    await fs.promises.chmod(file, 0o600).catch(() => {});
-  } catch (err) {
-    logger.warn(`Failed to append to log file ${file}`, err);
-  }
 }
 
 export function openLogDb(file) {

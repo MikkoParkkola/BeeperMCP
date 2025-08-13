@@ -3,23 +3,12 @@ export function safeFilename(s?: string): string;
 export function getRoomDir(base: string, roomId: string): string;
 export const pipelineAsync: (...streams: any[]) => Promise<void>;
 export function envFlag(name: string, def?: boolean): boolean;
-export function tailFile(
-  file: string,
-  limit: number,
-  secret?: string,
-): Promise<string[]>;
 export function encryptFileStream(
   src: NodeJS.ReadableStream,
   dest: string,
   secret: string,
 ): Promise<void>;
 export function decryptFile(file: string, secret: string): Promise<Buffer>;
-export function appendWithRotate(
-  file: string,
-  line: string,
-  maxBytes: number,
-  secret?: string,
-): Promise<void>;
 export function openLogDb(file: string): any;
 export function createLogWriter(
   db: any,

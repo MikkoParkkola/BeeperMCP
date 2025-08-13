@@ -36,7 +36,6 @@ import { initMcpServer } from './src/mcp.js';
 // --- Constants ---
 const CACHE_DIR = process.env.MATRIX_CACHE_DIR ?? './mx-cache';
 const LOG_DIR = process.env.MESSAGE_LOG_DIR ?? './room-logs';
-const LOG_MAX_BYTES = Number(process.env.LOG_MAX_BYTES ?? '5000000');
 const LOG_SECRET = process.env.LOG_SECRET;
 const MEDIA_SECRET = process.env.MEDIA_SECRET;
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
@@ -314,8 +313,6 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
 
   setupEventLogging(client, logger, {
     logDir: LOG_DIR,
-    logMaxBytes: LOG_MAX_BYTES,
-    logSecret: LOG_SECRET,
     mediaSecret: MEDIA_SECRET,
     mediaDownloader,
     queueLog,

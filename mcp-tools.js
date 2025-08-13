@@ -84,6 +84,7 @@ export function buildMcpServer(
       until: z.string().datetime().optional(),
     }),
     authWrapper(async ({ room_id, limit, since, until }) => {
+      if (!logDb) throw new Error('Log database not available');
       let lines = [];
       try {
         lines = queryFn(logDb, room_id, limit, since, until, logSecret);

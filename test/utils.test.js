@@ -8,8 +8,6 @@ import {
   safeFilename,
   getRoomDir,
   FileSessionStore,
-  tailFile,
-  appendWithRotate,
   openLogDb,
   insertLog,
   insertLogs,
@@ -124,16 +122,6 @@ test('FileSessionStore encrypts data with secret', async () => {
   assert.strictEqual(warnings.length, 1);
 });
 
-test('tailFile returns last N lines', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'log.txt');
-  const all = Array.from({ length: 100 }, (_, i) => `line${i}`);
-  fs.writeFileSync(file, all.join('\n'));
-  const last = await tailFile(file, 5);
-  assert.deepStrictEqual(last, all.slice(-5));
-});
-
 test('pushWithLimit keeps array within limit', () => {
   const arr = [];
   for (let i = 0; i < 5; i++) pushWithLimit(arr, i, 3);
@@ -157,52 +145,6 @@ test('envFlag parses truthy and falsy values', () => {
   assert.strictEqual(envFlag('TEST_FLAG', true), false);
   delete process.env.TEST_FLAG;
   assert.strictEqual(envFlag('TEST_FLAG', true), true);
-});
-
-test('appendWithRotate rotates log files', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'rot.log');
-  await appendWithRotate(file, 'a'.repeat(50), 100);
-  await appendWithRotate(file, 'b'.repeat(60), 100);
-  assert.ok(fs.existsSync(`${file}.1`));
-  const main = fs.statSync(file).size;
-  assert.ok(main <= 61);
-});
-
-test('appendWithRotate applies 0600 permissions', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'perm.log');
-  await appendWithRotate(file, 'hello', 100);
-  const mode = fs.statSync(file).mode & 0o777;
-  assert.strictEqual(mode, 0o600);
-});
-
-test('encrypted logs round-trip', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'enc.log');
-  const secret = 's3cret';
-  await appendWithRotate(file, 'hello', 1000, secret);
-  const lines = await tailFile(file, 10, secret);
-  assert.deepStrictEqual(lines, ['hello']);
-});
-
-test('tailFile skips lines that fail to decrypt', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'mix.log');
-  const secret = 'secret';
-  await appendWithRotate(file, 'secret line', 1000, secret);
-  fs.appendFileSync(file, 'plain\n');
-  const warnings = [];
-  const origWarn = console.warn;
-  console.warn = (...args) => warnings.push(args);
-  const lines = await tailFile(file, 10, secret);
-  console.warn = origWarn;
-  assert.deepStrictEqual(lines, ['secret line']);
-  assert.strictEqual(warnings.length, 1);
 });
 
 test('log database stores and retrieves lines', () => {
@@ -554,16 +496,6 @@ test('FileSessionStore encrypts data with secret', async () => {
   assert.strictEqual(warnings.length, 1);
 });
 
-test('tailFile returns last N lines', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'log.txt');
-  const all = Array.from({ length: 100 }, (_, i) => `line${i}`);
-  fs.writeFileSync(file, all.join('\n'));
-  const last = await tailFile(file, 5);
-  assert.deepStrictEqual(last, all.slice(-5));
-});
-
 test('pushWithLimit keeps array within limit', () => {
   const arr = [];
   for (let i = 0; i < 5; i++) pushWithLimit(arr, i, 3);
@@ -587,52 +519,6 @@ test('envFlag parses truthy and falsy values', () => {
   assert.strictEqual(envFlag('TEST_FLAG', true), false);
   delete process.env.TEST_FLAG;
   assert.strictEqual(envFlag('TEST_FLAG', true), true);
-});
-
-test('appendWithRotate rotates log files', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'rot.log');
-  await appendWithRotate(file, 'a'.repeat(50), 100);
-  await appendWithRotate(file, 'b'.repeat(60), 100);
-  assert.ok(fs.existsSync(`${file}.1`));
-  const main = fs.statSync(file).size;
-  assert.ok(main <= 61);
-});
-
-test('appendWithRotate applies 0600 permissions', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'perm.log');
-  await appendWithRotate(file, 'hello', 100);
-  const mode = fs.statSync(file).mode & 0o777;
-  assert.strictEqual(mode, 0o600);
-});
-
-test('encrypted logs round-trip', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'enc.log');
-  const secret = 's3cret';
-  await appendWithRotate(file, 'hello', 1000, secret);
-  const lines = await tailFile(file, 10, secret);
-  assert.deepStrictEqual(lines, ['hello']);
-});
-
-test('tailFile skips lines that fail to decrypt', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'mix.log');
-  const secret = 'secret';
-  await appendWithRotate(file, 'secret line', 1000, secret);
-  fs.appendFileSync(file, 'plain\n');
-  const warnings = [];
-  const origWarn = console.warn;
-  console.warn = (...args) => warnings.push(args);
-  const lines = await tailFile(file, 10, secret);
-  console.warn = origWarn;
-  assert.deepStrictEqual(lines, ['secret line']);
-  assert.strictEqual(warnings.length, 1);
 });
 
 test('log database stores and retrieves lines', () => {
@@ -801,52 +687,6 @@ test('envFlag parses truthy and falsy values', () => {
   assert.strictEqual(envFlag('TEST_FLAG', true), true);
 });
 
-test('appendWithRotate rotates log files', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'rot.log');
-  await appendWithRotate(file, 'a'.repeat(50), 100);
-  await appendWithRotate(file, 'b'.repeat(60), 100);
-  assert.ok(fs.existsSync(`${file}.1`));
-  const main = fs.statSync(file).size;
-  assert.ok(main <= 61);
-});
-
-test('appendWithRotate applies 0600 permissions', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'perm.log');
-  await appendWithRotate(file, 'hello', 100);
-  const mode = fs.statSync(file).mode & 0o777;
-  assert.strictEqual(mode, 0o600);
-});
-
-test('encrypted logs round-trip', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'enc.log');
-  const secret = 's3cret';
-  await appendWithRotate(file, 'hello', 1000, secret);
-  const lines = await tailFile(file, 10, secret);
-  assert.deepStrictEqual(lines, ['hello']);
-});
-
-test('tailFile skips lines that fail to decrypt', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'mix.log');
-  const secret = 'secret';
-  await appendWithRotate(file, 'secret line', 1000, secret);
-  fs.appendFileSync(file, 'plain\n');
-  const warnings = [];
-  const origWarn = console.warn;
-  console.warn = (...args) => warnings.push(args);
-  const lines = await tailFile(file, 10, secret);
-  console.warn = origWarn;
-  assert.deepStrictEqual(lines, ['secret line']);
-  assert.strictEqual(warnings.length, 1);
-});
-
 test('log database stores and retrieves lines', () => {
   cleanup();
   ensureDir(tmpBase);
@@ -989,52 +829,6 @@ test('envFlag parses truthy and falsy values', () => {
   assert.strictEqual(envFlag('TEST_FLAG', true), false);
   delete process.env.TEST_FLAG;
   assert.strictEqual(envFlag('TEST_FLAG', true), true);
-});
-
-test('appendWithRotate rotates log files', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'rot.log');
-  await appendWithRotate(file, 'a'.repeat(50), 100);
-  await appendWithRotate(file, 'b'.repeat(60), 100);
-  assert.ok(fs.existsSync(`${file}.1`));
-  const main = fs.statSync(file).size;
-  assert.ok(main <= 61);
-});
-
-test('appendWithRotate applies 0600 permissions', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'perm.log');
-  await appendWithRotate(file, 'hello', 100);
-  const mode = fs.statSync(file).mode & 0o777;
-  assert.strictEqual(mode, 0o600);
-});
-
-test('encrypted logs round-trip', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'enc.log');
-  const secret = 's3cret';
-  await appendWithRotate(file, 'hello', 1000, secret);
-  const lines = await tailFile(file, 10, secret);
-  assert.deepStrictEqual(lines, ['hello']);
-});
-
-test('tailFile skips lines that fail to decrypt', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'mix.log');
-  const secret = 'secret';
-  await appendWithRotate(file, 'secret line', 1000, secret);
-  fs.appendFileSync(file, 'plain\n');
-  const warnings = [];
-  const origWarn = console.warn;
-  console.warn = (...args) => warnings.push(args);
-  const lines = await tailFile(file, 10, secret);
-  console.warn = origWarn;
-  assert.deepStrictEqual(lines, ['secret line']);
-  assert.strictEqual(warnings.length, 1);
 });
 
 test('log database stores and retrieves lines', () => {
@@ -1220,27 +1014,6 @@ test('BoundedMap evicts oldest entries', () => {
   assert.ok(!map.has('a'));
   assert.strictEqual(map.get('b'), 2);
   assert.strictEqual(map.get('c'), 3);
-});
-
-test('appendWithRotate rotates log files', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'rot.log');
-  await appendWithRotate(file, 'a'.repeat(50), 100);
-  await appendWithRotate(file, 'b'.repeat(60), 100);
-  assert.ok(fs.existsSync(`${file}.1`));
-  const main = fs.statSync(file).size;
-  assert.ok(main <= 61);
-});
-
-test('encrypted logs round-trip', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'enc.log');
-  const secret = 's3cret';
-  await appendWithRotate(file, 'hello', 1000, secret);
-  const lines = await tailFile(file, 10, secret);
-  assert.deepStrictEqual(lines, ['hello']);
 });
 
 test('cleanupLogsAndMedia prunes old data', async () => {

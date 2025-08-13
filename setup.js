@@ -163,12 +163,8 @@ async function configure() {
       'Media encryption secret (leave blank for none)',
       env.MEDIA_SECRET || '',
     );
-    env.LOG_MAX_BYTES = await ask(
-      'Max log size in bytes before rotation',
-      env.LOG_MAX_BYTES || '5000000',
-    );
     env.LOG_RETENTION_DAYS = await ask(
-      'Days to retain rotated logs and metadata',
+      'Days to retain logs and metadata',
       env.LOG_RETENTION_DAYS || '30',
     );
     const enableSend = await ask(

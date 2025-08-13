@@ -50,14 +50,13 @@ Common optional variables are shown below (defaults in parentheses):
 - `LOG_DB_PATH` – SQLite database for indexed logs and media metadata with WAL and batched writes (`room-logs/messages.db`)
 - `LOG_LEVEL` – log verbosity: `trace`, `debug`, `info`, `warn`, or `error` (`info`)
 - `BACKFILL_CONCURRENCY` – simultaneous backfill requests (`5`)
-- `LOG_MAX_BYTES` – rotate log files when they exceed this size (`5000000`)
-- `LOG_RETENTION_DAYS` – delete rotated log files and prune old log/media entries (`30`)
+- `LOG_RETENTION_DAYS` – prune old log and media entries (`30`)
 - `KEY_BACKUP_RECOVERY_KEY` – restore room keys from server backup
 - `KEY_REQUEST_INTERVAL_MS` – initial retry delay for missing keys (`1000`)
 - `KEY_REQUEST_MAX_INTERVAL_MS` – max retry delay for missing keys (`300000`)
 - `MSC4190` / `MSC3202` – enable experimental key-forwarding/device-masquerading (`true`)
 - `SESSION_SECRET` – encrypt session cache on disk
-- `LOG_SECRET` – encrypt per-room log files
+- `LOG_SECRET` – encrypt log entries in the database
 - `MEDIA_SECRET` – encrypt downloaded media files
 - `ENABLE_SEND_MESSAGE` – set to `1` to expose the `send_message` tool
 - `TEST_ROOM_ID` – sync only a specific room (empty)
@@ -119,13 +118,12 @@ encryption.
 
 ### Interpreting log messages
 
-Log files are written per room with lines prefixed by ISO timestamps. Use
-`LOG_LEVEL` to adjust verbosity. Logs rotate when they exceed `LOG_MAX_BYTES`,
-and old rotated files and database entries are pruned after
-`LOG_RETENTION_DAYS` days:
+Log entries are stored per room in the SQLite database with lines prefixed by
+ISO timestamps. Use `LOG_LEVEL` to adjust verbosity. Old database entries and
+media metadata are pruned after `LOG_RETENTION_DAYS` days:
 
 ```bash
-LOG_MAX_BYTES=1000000 npx ts-node beeper-mcp-server.ts
+npx ts-node beeper-mcp-server.ts
 ```
 
 Encryption can be enabled or disabled per storage type by setting or omitting
