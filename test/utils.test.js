@@ -993,9 +993,24 @@ test('queryLogs honors since/until, limit and secret', () => {
   ensureDir(tmpBase);
   const dbPath = path.join(tmpBase, 'logs.db');
   const db = openLogDb(dbPath);
-  insertLog(db, 'room', '2025-01-01T00:00:00.000Z', '[2025-01-01T00:00:00.000Z] <u> a');
-  insertLog(db, 'room', '2025-01-02T00:00:00.000Z', '[2025-01-02T00:00:00.000Z] <u> b');
-  insertLog(db, 'room', '2025-01-03T00:00:00.000Z', '[2025-01-03T00:00:00.000Z] <u> c');
+  insertLog(
+    db,
+    'room',
+    '2025-01-01T00:00:00.000Z',
+    '[2025-01-01T00:00:00.000Z] <u> a',
+  );
+  insertLog(
+    db,
+    'room',
+    '2025-01-02T00:00:00.000Z',
+    '[2025-01-02T00:00:00.000Z] <u> b',
+  );
+  insertLog(
+    db,
+    'room',
+    '2025-01-03T00:00:00.000Z',
+    '[2025-01-03T00:00:00.000Z] <u> c',
+  );
   // limit should return most recent entries first, in ascending order
   let lines = queryLogs(db, 'room', 2);
   assert.deepStrictEqual(lines, [
@@ -1008,7 +1023,7 @@ test('queryLogs honors since/until, limit and secret', () => {
     'room',
     undefined,
     '2025-01-02T00:00:00.000Z',
-    '2025-01-03T00:00:00.000Z'
+    '2025-01-03T00:00:00.000Z',
   );
   assert.deepStrictEqual(lines, [
     '[2025-01-02T00:00:00.000Z] <u> b',
@@ -1017,53 +1032,46 @@ test('queryLogs honors since/until, limit and secret', () => {
   // secret should decrypt stored lines
   const secret = 's3cret';
   insertLog(db, 'room', '2025-01-04T00:00:00.000Z', '[enc]', secret);
-  lines = queryLogs(
-    db,
-    'room',
-    undefined,
-    undefined,
-    undefined,
-    secret
-  );
+  lines = queryLogs(db, 'room', undefined, undefined, undefined, secret);
   assert.ok(lines.includes('[enc]'));
 });
 
 test('pushWithLimit keeps array within limit', () => {
   const arr = [];
   for (let i = 0; i < 5; i++) pushWithLimit(arr, i, 3);
-  assert.deepStrictEqual(arr, [2,3,4]);
+  assert.deepStrictEqual(arr, [2, 3, 4]);
 });
 
 test('BoundedMap evicts oldest entries', () => {
   const map = new BoundedMap(2);
-  map.set('a',1);
-  map.set('b',2);
-  map.set('c',3);
+  map.set('a', 1);
+  map.set('b', 2);
+  map.set('c', 3);
   assert.ok(!map.has('a'));
-  assert.strictEqual(map.get('b'),2);
-  assert.strictEqual(map.get('c'),3);
+  assert.strictEqual(map.get('b'), 2);
+  assert.strictEqual(map.get('c'), 3);
 });
 
-  test('appendWithRotate rotates log files', async () => {
+test('appendWithRotate rotates log files', async () => {
   cleanup();
   ensureDir(tmpBase);
   const file = path.join(tmpBase, 'rot.log');
-    await appendWithRotate(file, 'a'.repeat(50), 100);
-    await appendWithRotate(file, 'b'.repeat(60), 100);
-    assert.ok(fs.existsSync(`${file}.1`));
-    const main = fs.statSync(file).size;
-    assert.ok(main <= 61);
-  });
+  await appendWithRotate(file, 'a'.repeat(50), 100);
+  await appendWithRotate(file, 'b'.repeat(60), 100);
+  assert.ok(fs.existsSync(`${file}.1`));
+  const main = fs.statSync(file).size;
+  assert.ok(main <= 61);
+});
 
-  test('encrypted logs round-trip', async () => {
-    cleanup();
-    ensureDir(tmpBase);
-    const file = path.join(tmpBase, 'enc.log');
-    const secret = 's3cret';
-    await appendWithRotate(file, 'hello', 1000, secret);
-    const lines = await tailFile(file, 10, secret);
-    assert.deepStrictEqual(lines, ['hello']);
-  });
+test('encrypted logs round-trip', async () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const file = path.join(tmpBase, 'enc.log');
+  const secret = 's3cret';
+  await appendWithRotate(file, 'hello', 1000, secret);
+  const lines = await tailFile(file, 10, secret);
+  assert.deepStrictEqual(lines, ['hello']);
+});
 
 test.after(() => {
   cleanup();

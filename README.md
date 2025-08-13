@@ -84,6 +84,65 @@ Run it with the same environment variables as the main server. Each phase
 prints progress to the console and exits on error so issues can be diagnosed
 easily.
 
+## Troubleshooting
+
+### Recovering from failed syncs
+
+Occasional network hiccups or corrupted state can leave the client stuck
+mid-sync. Restarting the process will automatically resume using the last
+stored sync token. If the error persists, remove the `session.json` file in
+`mx-cache` to force a full resync:
+
+```bash
+rm -f mx-cache/session.json
+npx ts-node beeper-mcp-server.ts
+```
+
+For stubborn cases, run `phased-setup.ts` to step through login, cache
+loading, key restoration and initial sync one phase at a time.
+
+### Resetting caches
+
+If logs or cache files become corrupted, stop the server and remove the cache
+directory. This clears stored sync tokens, room keys and downloaded media:
+
+```bash
+rm -rf mx-cache room-logs
+```
+
+To start fresh while keeping secrets, regenerate them with the setup script or
+leave `SESSION_SECRET`, `LOG_SECRET` and `MEDIA_SECRET` unset to disable
+encryption.
+
+### Interpreting log messages
+
+Log files are written per room with lines prefixed by ISO timestamps. Use
+`LOG_LEVEL` to adjust verbosity. Logs rotate when they exceed `LOG_MAX_BYTES`:
+
+```bash
+LOG_MAX_BYTES=1000000 npx ts-node beeper-mcp-server.ts
+```
+
+Encryption can be enabled or disabled per storage type by setting or omitting
+secrets:
+
+```bash
+# enable encryption
+SESSION_SECRET=mysessionsecret LOG_SECRET=mylogsecret MEDIA_SECRET=myfilesec npx ts-node beeper-mcp-server.ts
+
+# disable encryption
+unset SESSION_SECRET LOG_SECRET MEDIA_SECRET
+npx ts-node beeper-mcp-server.ts
+```
+
+When a SQLite log database is used, WAL mode is enabled by default for better
+concurrency. You can verify or change the mode using `sqlite3`:
+
+```bash
+sqlite3 room-logs/messages.db 'PRAGMA journal_mode=WAL;'
+sqlite3 room-logs/messages.db 'PRAGMA journal_mode=DELETE;' # disable WAL
+```
+
 ## Development
 
 Install dependencies with `npm install` and use the provided scripts to check formatting, run tests, or lint the code:
