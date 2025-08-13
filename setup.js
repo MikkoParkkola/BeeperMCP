@@ -152,6 +152,10 @@ async function configure() {
       'Log encryption secret (leave blank for none)',
       env.LOG_SECRET || '',
     );
+    env.MEDIA_SECRET = await ask(
+      'Media encryption secret (leave blank for none)',
+      env.MEDIA_SECRET || '',
+    );
     env.LOG_MAX_BYTES = await ask(
       'Max log size in bytes before rotation',
       env.LOG_MAX_BYTES || '5000000',

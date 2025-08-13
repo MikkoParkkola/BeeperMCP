@@ -35,16 +35,16 @@ function keyFromSecret(secret) {
   return crypto.createHash('sha256').update(secret).digest();
 }
 
-function encrypt(text, secret) {
+function encrypt(data, secret) {
   const iv = crypto.randomBytes(16);
   const key = keyFromSecret(secret);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const enc = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+  const enc = Buffer.concat([cipher.update(data), cipher.final()]);
   const tag = cipher.getAuthTag();
   return Buffer.concat([iv, tag, enc]).toString('base64');
 }
 
-function decrypt(data, secret) {
+function decrypt(data, secret, asBuffer = false) {
   const buf = Buffer.from(data, 'base64');
   const iv = buf.subarray(0, 16);
   const tag = buf.subarray(16, 32);
@@ -53,7 +53,30 @@ function decrypt(data, secret) {
   const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
   decipher.setAuthTag(tag);
   const dec = Buffer.concat([decipher.update(enc), decipher.final()]);
-  return dec.toString('utf8');
+  return asBuffer ? dec : dec.toString('utf8');
+}
+
+export async function encryptFileStream(src, dest, secret) {
+  const iv = crypto.randomBytes(16);
+  const key = keyFromSecret(secret);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  ensureDir(path.dirname(dest));
+  const out = fs.createWriteStream(dest);
+  out.write(iv);
+  await pipelineAsync(src, cipher, out);
+  const tag = cipher.getAuthTag();
+  await fs.promises.appendFile(dest, tag);
+}
+
+export async function decryptFile(file, secret) {
+  const buf = await fs.promises.readFile(file);
+  const iv = buf.subarray(0, 16);
+  const tag = buf.subarray(buf.length - 16);
+  const enc = buf.subarray(16, buf.length - 16);
+  const key = keyFromSecret(secret);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(enc), decipher.final()]);
 }
 
 export async function tailFile(file, limit, secret) {

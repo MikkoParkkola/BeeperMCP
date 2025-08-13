@@ -34,6 +34,7 @@ import {
   pushWithLimit,
   BoundedMap,
   envFlag,
+  encryptFileStream,
 } from './utils.js';
 
 // --- Constants ---
@@ -41,6 +42,7 @@ const CACHE_DIR = process.env.MATRIX_CACHE_DIR ?? './mx-cache';
 const LOG_DIR = process.env.MESSAGE_LOG_DIR ?? './room-logs';
 const LOG_MAX_BYTES = Number(process.env.LOG_MAX_BYTES ?? '5000000');
 const LOG_SECRET = process.env.LOG_SECRET;
+const MEDIA_SECRET = process.env.MEDIA_SECRET;
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 const HS = process.env.MATRIX_HOMESERVER ?? 'https://matrix.beeper.com';
 const UID = process.env.MATRIX_USERID;
@@ -473,11 +475,12 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
           if (res.ok) {
             const ext = path.extname(content.filename || content.body || '');
             const fname = `${ts.replace(/[:.]/g, '')}_${safeFilename(id)}${ext}`;
-            await pipelineAsync(
-              res.body as any,
-              fs.createWriteStream(path.join(dir, fname)),
-            );
-            line = `[${ts}] <${ev.getSender()}> [media] ${fname}`;
+            const dest = path.join(dir, fname + (MEDIA_SECRET ? '.enc' : ''));
+            if (MEDIA_SECRET)
+              await encryptFileStream(res.body as any, dest, MEDIA_SECRET);
+            else
+              await pipelineAsync(res.body as any, fs.createWriteStream(dest));
+            line = `[${ts}] <${ev.getSender()}> [media] ${path.basename(dest)}`;
           } else {
             line = `[${ts}] <${ev.getSender()}> [media download failed]`;
           }

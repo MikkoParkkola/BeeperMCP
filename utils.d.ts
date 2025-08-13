@@ -8,6 +8,12 @@ export function tailFile(
   limit: number,
   secret?: string,
 ): Promise<string[]>;
+export function encryptFileStream(
+  src: NodeJS.ReadableStream,
+  dest: string,
+  secret: string,
+): Promise<void>;
+export function decryptFile(file: string, secret: string): Promise<Buffer>;
 export function appendWithRotate(
   file: string,
   line: string,

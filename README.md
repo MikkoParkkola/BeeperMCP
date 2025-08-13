@@ -56,6 +56,7 @@ Common optional variables are shown below (defaults in parentheses):
 - `MSC4190` / `MSC3202` – enable experimental key-forwarding/device-masquerading (`true`)
 - `SESSION_SECRET` – encrypt session cache on disk
 - `LOG_SECRET` – encrypt per-room log files
+- `MEDIA_SECRET` – encrypt downloaded media files
 - `ENABLE_SEND_MESSAGE` – set to `1` to expose the `send_message` tool
 - `TEST_ROOM_ID` – sync only a specific room (empty)
 - `TEST_LIMIT` – stop after decrypting N events (`0`)
