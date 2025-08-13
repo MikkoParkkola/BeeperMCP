@@ -32,7 +32,7 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
    node setup.js
    ```
 
-   The script tries to detect your Matrix homeserver, user ID and access token from Beeper/Element configuration. Any missing values are prompted on the command line and written to `.beeper-mcp-server.env` for future runs. It also offers to encrypt the session cache and room logs, configure log rotation size, and optionally enable the `send_message` tool.
+   The script attempts to detect your Matrix homeserver, user ID and access token from Beeper/Element configuration. Prompts are validated to ensure a proper homeserver URL, user ID, and either an access token or password before saving to `.beeper-mcp-server.env`. It also offers to encrypt the session cache and room logs, configure log rotation size, and optionally enable the `send_message` tool.
 
 ## Usage
 
