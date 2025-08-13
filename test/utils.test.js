@@ -57,6 +57,21 @@ test('FileSessionStore persists asynchronously', async () => {
   assert.strictEqual(store2.getItem('foo'), 'bar');
 });
 
+test('FileSessionStore encrypts data with secret', async () => {
+  cleanup();
+  const storePath = path.join(tmpBase, 'enc.json');
+  const secret = 'shh';
+  const store = new FileSessionStore(storePath, secret);
+  store.setItem('foo', 'bar');
+  await store.flush();
+  const raw = fs.readFileSync(storePath, 'utf8');
+  assert.doesNotThrow(() => Buffer.from(raw, 'base64'));
+  const store2 = new FileSessionStore(storePath, secret);
+  assert.strictEqual(store2.getItem('foo'), 'bar');
+  const storeWrong = new FileSessionStore(storePath, 'nope');
+  assert.strictEqual(storeWrong.getItem('foo'), null);
+});
+
 test('tailFile returns last N lines', async () => {
   cleanup();
   ensureDir(tmpBase);

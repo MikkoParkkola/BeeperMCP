@@ -192,7 +192,10 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   }
 
   // session storage & device
-  const sessionStore = new FileSessionStore(path.join(CACHE_DIR, 'session.json'));
+  const sessionStore = new FileSessionStore(
+    path.join(CACHE_DIR, 'session.json'),
+    process.env.SESSION_SECRET
+  );
   const syncKey = `syncToken:${UID}`;
   const deviceKey = `deviceId:${UID}`;
   let deviceId = sessionStore.getItem(deviceKey) as string | null;

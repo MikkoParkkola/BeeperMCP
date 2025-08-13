@@ -14,7 +14,7 @@ export class BoundedMap<K, V> extends Map<K, V> {
   set(key: K, val: V): this;
 }
 export class FileSessionStore {
-  constructor(file: string);
+  constructor(file: string, secret?: string);
   readonly length: number;
   clear(): void;
   key(index: number): string | null;

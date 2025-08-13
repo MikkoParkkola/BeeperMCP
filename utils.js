@@ -3,6 +3,7 @@ import path from 'path';
 import { promisify } from 'util';
 import { pipeline } from 'stream';
 import readline from 'readline';
+import crypto from 'crypto';
 
 export function ensureDir(dir) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -19,6 +20,31 @@ export function getRoomDir(base, roomId) {
 }
 
 export const pipelineAsync = promisify(pipeline);
+
+function keyFromSecret(secret) {
+  return crypto.createHash('sha256').update(secret).digest();
+}
+
+function encrypt(text, secret) {
+  const iv = crypto.randomBytes(16);
+  const key = keyFromSecret(secret);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const enc = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, enc]).toString('base64');
+}
+
+function decrypt(data, secret) {
+  const buf = Buffer.from(data, 'base64');
+  const iv = buf.subarray(0, 16);
+  const tag = buf.subarray(16, 32);
+  const enc = buf.subarray(32);
+  const key = keyFromSecret(secret);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  const dec = Buffer.concat([decipher.update(enc), decipher.final()]);
+  return dec.toString('utf8');
+}
 
 export async function tailFile(file, limit) {
   const lines = [];
@@ -66,11 +92,13 @@ export class BoundedMap extends Map {
 }
 
 export class FileSessionStore {
-  constructor(file) {
+  constructor(file, secret) {
     this.file = file;
+    this.secret = secret;
     ensureDir(path.dirname(file));
     try {
-      const raw = fs.readFileSync(this.file, 'utf8');
+      let raw = fs.readFileSync(this.file, 'utf8');
+      if (this.secret) raw = decrypt(raw, this.secret);
       this.#data = JSON.parse(raw);
     } catch {
       this.#data = {};
@@ -79,9 +107,11 @@ export class FileSessionStore {
   #data;
   #writePromise = null;
   #persist() {
-    const write = (this.#writePromise ?? Promise.resolve()).then(() =>
-      fs.promises.writeFile(this.file, JSON.stringify(this.#data))
-    );
+    const write = (this.#writePromise ?? Promise.resolve()).then(async () => {
+      let out = JSON.stringify(this.#data);
+      if (this.secret) out = encrypt(out, this.secret);
+      await fs.promises.writeFile(this.file, out);
+    });
     this.#writePromise = write.finally(() => {
       if (this.#writePromise === write) this.#writePromise = null;
     });
