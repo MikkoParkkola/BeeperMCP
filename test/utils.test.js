@@ -133,6 +133,81 @@ test('log database stores and retrieves lines', () => {
   ]);
 });
 
+test('queryLogs honors since/until, limit and secret', () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const dbPath = path.join(tmpBase, 'logs.db');
+  const db = openLogDb(dbPath);
+  insertLog(db, 'room', '2025-01-01T00:00:00.000Z', '[2025-01-01T00:00:00.000Z] <u> a');
+  insertLog(db, 'room', '2025-01-02T00:00:00.000Z', '[2025-01-02T00:00:00.000Z] <u> b');
+  insertLog(db, 'room', '2025-01-03T00:00:00.000Z', '[2025-01-03T00:00:00.000Z] <u> c');
+  // limit should return most recent entries first, in ascending order
+  let lines = queryLogs(db, 'room', 2);
+  assert.deepStrictEqual(lines, [
+    '[2025-01-02T00:00:00.000Z] <u> b',
+    '[2025-01-03T00:00:00.000Z] <u> c',
+  ]);
+  // since/until filter to a middle slice
+  lines = queryLogs(
+    db,
+    'room',
+    undefined,
+    '2025-01-02T00:00:00.000Z',
+    '2025-01-03T00:00:00.000Z'
+  );
+  assert.deepStrictEqual(lines, [
+    '[2025-01-02T00:00:00.000Z] <u> b',
+    '[2025-01-03T00:00:00.000Z] <u> c',
+  ]);
+  // secret should decrypt stored lines
+  const secret = 's3cret';
+  insertLog(db, 'room', '2025-01-04T00:00:00.000Z', '[enc]', secret);
+  lines = queryLogs(
+    db,
+    'room',
+    undefined,
+    undefined,
+    undefined,
+    secret
+  );
+  assert.ok(lines.includes('[enc]'));
+});
+
+  test('appendWithRotate rotates log files', async () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const file = path.join(tmpBase, 'rot.log');
+    await appendWithRotate(file, 'a'.repeat(50), 100);
+    await appendWithRotate(file, 'b'.repeat(60), 100);
+    assert.ok(fs.existsSync(`${file}.1`));
+    const main = fs.statSync(file).size;
+    assert.ok(main <= 61);
+  });
+
+  test('encrypted logs round-trip', async () => {
+    cleanup();
+    ensureDir(tmpBase);
+    const file = path.join(tmpBase, 'enc.log');
+    const secret = 's3cret';
+    await appendWithRotate(file, 'hello', 1000, secret);
+    const lines = await tailFile(file, 10, secret);
+    assert.deepStrictEqual(lines, ['hello']);
+  });
+
+test('log database stores and retrieves lines', () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const dbPath = path.join(tmpBase, 'logs.db');
+  const db = openLogDb(dbPath);
+  insertLog(db, 'room', '2025-01-01T00:00:00.000Z', '[2025-01-01T00:00:00.000Z] <u> hello');
+  insertLog(db, 'room', '2025-01-02T00:00:00.000Z', '[2025-01-02T00:00:00.000Z] <u> world');
+  const lines = queryLogs(db, 'room', 10);
+  assert.deepStrictEqual(lines, [
+    '[2025-01-01T00:00:00.000Z] <u> hello',
+    '[2025-01-02T00:00:00.000Z] <u> world',
+  ]);
+});
+
   test('tailFile returns last N lines', async () => {
   cleanup();
   ensureDir(tmpBase);
