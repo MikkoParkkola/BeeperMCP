@@ -72,7 +72,7 @@ test('FileSessionStore encrypts data with secret', async () => {
   assert.strictEqual(storeWrong.getItem('foo'), null);
 });
 
-test('tailFile returns last N lines', async () => {
+  test('tailFile returns last N lines', async () => {
   cleanup();
   ensureDir(tmpBase);
   const file = path.join(tmpBase, 'log.txt');
@@ -98,16 +98,26 @@ test('BoundedMap evicts oldest entries', () => {
   assert.strictEqual(map.get('c'),3);
 });
 
-test('appendWithRotate rotates log files', async () => {
+  test('appendWithRotate rotates log files', async () => {
   cleanup();
   ensureDir(tmpBase);
   const file = path.join(tmpBase, 'rot.log');
-  await appendWithRotate(file, 'a'.repeat(50), 100);
-  await appendWithRotate(file, 'b'.repeat(60), 100);
-  assert.ok(fs.existsSync(`${file}.1`));
-  const main = fs.statSync(file).size;
-  assert.ok(main <= 60);
-});
+    await appendWithRotate(file, 'a'.repeat(50), 100);
+    await appendWithRotate(file, 'b'.repeat(60), 100);
+    assert.ok(fs.existsSync(`${file}.1`));
+    const main = fs.statSync(file).size;
+    assert.ok(main <= 61);
+  });
+
+  test('encrypted logs round-trip', async () => {
+    cleanup();
+    ensureDir(tmpBase);
+    const file = path.join(tmpBase, 'enc.log');
+    const secret = 's3cret';
+    await appendWithRotate(file, 'hello', 1000, secret);
+    const lines = await tailFile(file, 10, secret);
+    assert.deepStrictEqual(lines, ['hello']);
+  });
 
 test.after(() => {
   cleanup();

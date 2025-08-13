@@ -46,28 +46,31 @@ function decrypt(data, secret) {
   return dec.toString('utf8');
 }
 
-export async function tailFile(file, limit) {
+export async function tailFile(file, limit, secret) {
   const lines = [];
   try {
     const rl = readline.createInterface({ input: fs.createReadStream(file, 'utf8') });
     for await (const line of rl) {
-      lines.push(line);
+      let out = line;
+      if (secret) {
+        try { out = decrypt(line, secret).replace(/\n$/, ''); } catch { continue; }
+      }
+      lines.push(out);
       if (lines.length > limit) lines.shift();
     }
   } catch {}
   return lines;
 }
 
-export async function appendWithRotate(file, line, maxBytes) {
+export async function appendWithRotate(file, line, maxBytes, secret) {
   try {
     ensureDir(path.dirname(file));
+    const payload = secret ? encrypt(line, secret) + '\n' : line + '\n';
     const size = await fs.promises.stat(file).then(s => s.size).catch(() => 0);
-    if (size + Buffer.byteLength(line) > maxBytes) {
-      try {
-        await fs.promises.rename(file, `${file}.1`);
-      } catch {}
+    if (size + Buffer.byteLength(payload) > maxBytes) {
+      try { await fs.promises.rename(file, `${file}.1`); } catch {}
     }
-    await fs.promises.appendFile(file, line);
+    await fs.promises.appendFile(file, payload);
   } catch {}
 }
 

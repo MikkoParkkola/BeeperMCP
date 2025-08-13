@@ -2,11 +2,12 @@ export function ensureDir(dir: string): void;
 export function safeFilename(s?: string): string;
 export function getRoomDir(base: string, roomId: string): string;
 export const pipelineAsync: (...streams: any[]) => Promise<void>;
-export function tailFile(file: string, limit: number): Promise<string[]>;
+export function tailFile(file: string, limit: number, secret?: string): Promise<string[]>;
 export function appendWithRotate(
   file: string,
   line: string,
-  maxBytes: number
+  maxBytes: number,
+  secret?: string
 ): Promise<void>;
 export function pushWithLimit<T>(arr: T[], val: T, limit: number): T[];
 export class BoundedMap<K, V> extends Map<K, V> {
