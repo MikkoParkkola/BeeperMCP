@@ -66,10 +66,11 @@ easily.
 
 ## Development
 
-Install dependencies with `npm install` and use the provided scripts to run tests or lint the code:
+Install dependencies with `npm install` and use the provided scripts to run tests, check coverage, or lint the code:
 
 ```bash
 npm test
+npm run test:coverage
 npm run lint
 ```
 
