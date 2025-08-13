@@ -18,15 +18,25 @@ import sdk, { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
 import Pino from 'pino';
 import fs from 'fs';
 import path from 'path';
-import { promisify } from 'util';
-import { pipeline } from 'stream';
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  ensureDir,
+  safeFilename,
+  getRoomDir,
+  pipelineAsync,
+  FileSessionStore,
+  tailFile,
+  appendWithRotate,
+  pushWithLimit,
+  BoundedMap,
+} from './utils.js';
 
 // --- Constants ---
 const CACHE_DIR = process.env.MATRIX_CACHE_DIR ?? './mx-cache';
 const LOG_DIR   = process.env.MESSAGE_LOG_DIR  ?? './room-logs';
+const LOG_MAX_BYTES = Number(process.env.LOG_MAX_BYTES ?? '5000000');
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 const HS        = process.env.MATRIX_HOMESERVER ?? 'https://matrix.beeper.com';
 const UID       = process.env.MATRIX_USERID;
@@ -51,18 +61,6 @@ if (!UID || !TOKEN) {
   console.error('Error: MATRIX_USERID and MATRIX_TOKEN must be set');
   process.exit(1);
 }
-
-// --- Utilities ---
-function ensureDir(dir: string) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
-const safeFilename = (s = '') => s.replace(/[^A-Za-z0-9._-]/g, '_');
-const getRoomDir = (roomId: string) => {
-  const d = path.join(LOG_DIR, safeFilename(roomId));
-  ensureDir(d);
-  return d;
-};
-const pipelineAsync = promisify(pipeline);
 
 // --- Credential helpers ---
 async function verifyAccessToken(logger: Pino.Logger): Promise<void> {
@@ -142,33 +140,6 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
 }
 
 // --- Session Store for sync tokens ---
-class FileSessionStore implements Storage {
-  private file: string;
-  constructor(file: string) {
-    this.file = file;
-    ensureDir(path.dirname(file));
-  }
-  private read(): Record<string, string> {
-    try { return JSON.parse(fs.readFileSync(this.file, 'utf8')); }
-    catch { return {}; }
-  }
-  private write(d: Record<string, string>) {
-    fs.writeFileSync(this.file, JSON.stringify(d));
-  }
-  get length() { return Object.keys(this.read()).length; }
-  clear() { this.write({}); }
-  key(index: number) { return Object.keys(this.read())[index] ?? null; }
-  getItem(key: string) { return this.read()[key] ?? null; }
-  setItem(key: string, val: string) {
-    const d = this.read(); d[key] = val;
-    this.write(d);
-  }
-  removeItem(key: string) {
-    const d = this.read(); delete d[key];
-    this.write(d);
-  }
-}
-
 (async () => {
   ensureDir(CACHE_DIR);
   ensureDir(LOG_DIR);
@@ -181,13 +152,13 @@ class FileSessionStore implements Storage {
     warn:  (msg: any, ...args: any[]) => {
       try {
         if (typeof msg === 'string' && msg.startsWith('Error decrypting event')) return;
-      } catch {};
+      } catch { /* ignore */ }
       logger.warn(msg as any, ...args);
     },
     log:   (msg: any, ...args: any[]) => {
       try {
         if (typeof msg === 'string' && msg.startsWith('Error decrypting event')) return;
-      } catch {};
+      } catch { /* ignore */ }
       // map sdk.log to info
       logger.info(msg as any, ...args);
     },
@@ -258,11 +229,25 @@ class FileSessionStore implements Storage {
 
   await verifyAccessToken(logger);
 
+  const PENDING_DECRYPT_MAX_SESSIONS = Number(
+    process.env.PENDING_DECRYPT_MAX_SESSIONS ?? '1000'
+  );
+  const PENDING_DECRYPT_MAX_PER_SESSION = Number(
+    process.env.PENDING_DECRYPT_MAX_PER_SESSION ?? '100'
+  );
+  const REQUESTED_KEYS_MAX = Number(
+    process.env.REQUESTED_KEYS_MAX ?? '1000'
+  );
   // pending events waiting for room keys: map of "roomId|session_id" to encrypted events
-  const pendingDecrypt = new Map<string, MatrixEvent[]>();
+  const pendingDecrypt = new BoundedMap<string, MatrixEvent[]>(
+    PENDING_DECRYPT_MAX_SESSIONS
+  );
   // track when a key request was last sent for a given session
   // and the current backoff interval for retries
-  const requestedKeys = new Map<string, { last: number; interval: number; logged: boolean }>();
+  const requestedKeys = new BoundedMap<
+    string,
+    { last: number; interval: number; logged: boolean }
+  >(REQUESTED_KEYS_MAX);
   // capture to-device events for room-keys and replay pending decrypts
   client.on('toDeviceEvent' as any, async (ev: MatrixEvent) => {
     try {
@@ -341,7 +326,7 @@ class FileSessionStore implements Storage {
         if (roomId && sessionId && algorithm) {
           const mapKey = `${roomId}|${sessionId}`;
           const arr = pendingDecrypt.get(mapKey) || [];
-          arr.push(ev);
+          pushWithLimit(arr, ev, PENDING_DECRYPT_MAX_PER_SESSION);
           pendingDecrypt.set(mapKey, arr);
           const sender = ev.getSender();
           if (sender === UID) {
@@ -415,7 +400,7 @@ class FileSessionStore implements Storage {
     const content = ev.getClearContent?.() || ev.getContent();
     const ts = new Date(ev.getTs()||Date.now()).toISOString();
     // reuse 'rid' from above for directory
-    const dir = getRoomDir(rid);
+    const dir = getRoomDir(LOG_DIR, rid);
     const logf = path.join(dir, `${safeFilename(rid)}.log`);
 
     if (type === 'm.room.message') {
@@ -427,16 +412,16 @@ class FileSessionStore implements Storage {
             const ext = path.extname(content.filename||content.body||'');
             const fname = `${ts.replace(/[:.]/g,'')}_${safeFilename(id)}${ext}`;
             await pipelineAsync(res.body as any, fs.createWriteStream(path.join(dir, fname)));
-            fs.appendFileSync(logf, `[${ts}] <${ev.getSender()}> [media] ${fname}\n`);
+            await appendWithRotate(logf, `[${ts}] <${ev.getSender()}> [media] ${fname}\n`, LOG_MAX_BYTES);
             return;
           }
         } catch {}
-        fs.appendFileSync(logf, `[${ts}] <${ev.getSender()}> [media download failed]\n`);
+        await appendWithRotate(logf, `[${ts}] <${ev.getSender()}> [media download failed]\n`, LOG_MAX_BYTES);
       } else {
-        fs.appendFileSync(logf, `[${ts}] <${ev.getSender()}> ${content.body||'[non-text]'}\n`);
+        await appendWithRotate(logf, `[${ts}] <${ev.getSender()}> ${content.body||'[non-text]'}\n`, LOG_MAX_BYTES);
       }
     } else {
-      fs.appendFileSync(logf, `[${ts}] <${ev.getSender()}> [${type}]\n`);
+      await appendWithRotate(logf, `[${ts}] <${ev.getSender()}> [${type}]\n`, LOG_MAX_BYTES);
     }
     // test mode: stop after limit
     if (TEST_LIMIT > 0) {
@@ -485,7 +470,29 @@ class FileSessionStore implements Storage {
   }
 
   // backfill (optional per-room test filter)
-  const limiter = ((n:number)=>{let a=0,q:Function[]=[];const nxt=()=>{if(a<n&&q.length){a++;q.shift()!();}};return async(fn:()=>Promise<void>)=>new Promise<void>(r=>{q.push(async()=>{try{await fn();}finally{a--;nxt();r();}});nxt();});})(CONC);
+  const limiter = ((n: number) => {
+    let a = 0,
+      q: Array<() => Promise<void>> = [];
+    const nxt = () => {
+      if (a < n && q.length) {
+        a++;
+        q.shift()!();
+      }
+    };
+    return async (fn: () => Promise<void>) =>
+      new Promise<void>(r => {
+        q.push(async () => {
+          try {
+            await fn();
+          } finally {
+            a--;
+            nxt();
+            r();
+          }
+        });
+        nxt();
+      });
+  })(CONC);
   const roomsToBackfill = TEST_ROOM_ID
     ? client.getRooms().filter(r => r.roomId === TEST_ROOM_ID)
     : client.getRooms();
@@ -531,12 +538,20 @@ class FileSessionStore implements Storage {
   });
 
   (srv as any).tool('list_messages', z.object({ room_id:z.string(), limit:z.number().int().positive().optional(), since:z.string().datetime().optional(), until:z.string().datetime().optional() }), async({room_id,limit,since,until}: any)=>{
-    const file=path.join(getRoomDir(room_id),`${safeFilename(room_id)}.log`);
-    let lines=fs.existsSync(file)?fs.readFileSync(file,'utf8').split('\n'):[];
-    if(since) lines=lines.filter(l=>l.slice(1,20)>=since);
-    if(until) lines=lines.filter(l=>l.slice(1,20)<=until);
-    if(limit) lines=lines.slice(-limit);
-    return{ content:[{ type:'json', json:lines.filter(Boolean) }] };
+    const file = path.join(getRoomDir(LOG_DIR, room_id), `${safeFilename(room_id)}.log`);
+    let lines: string[] = [];
+    try {
+      if (limit && !since && !until) {
+        lines = await tailFile(file, limit);
+      } else {
+        const data = await fs.promises.readFile(file, 'utf8');
+        lines = data.split('\n');
+      }
+    } catch {}
+    if (since) lines = lines.filter(l => l.slice(1, 20) >= since);
+    if (until) lines = lines.filter(l => l.slice(1, 20) <= until);
+    if (limit && (since || until)) lines = lines.slice(-limit);
+    return { content: [{ type: 'json', json: lines.filter(Boolean) }] };
   });
 
   (srv as any).tool('send_message', z.object({ room_id:z.string(), message:z.string().min(1) }), async({room_id,message}: any)=>{
