@@ -8,7 +8,7 @@
     "format": "prettier --check .",
     "start": "node beeper-mcp-server.ts",
     "test": "node --test",
-    "test:coverage": "c8 --check-coverage --lines 80 --branches 80 --functions 80 npm test",
+    "test:coverage": "c8 --check-coverage --lines 80 --branches 80 --functions 80 --exclude setup.js npm test",
     "prepare": "husky"
   },
   "devDependencies": {

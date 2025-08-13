@@ -83,7 +83,7 @@ npm run test:coverage
 npm run lint
 ```
 
-Pre-commit hooks run these checks automatically. The test suite currently exercises the utility helpers and runs with Node's built-in test runner.
+Pre-commit hooks run these checks automatically. The test suite currently exercises the utility helpers and runs with Node's built-in test runner. Coverage reports exclude the interactive `setup.js` script and enforce an 80% threshold on the remaining code.
 
 ## Synapse configuration for self-key requests
 
