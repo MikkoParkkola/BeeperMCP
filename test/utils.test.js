@@ -29,7 +29,7 @@ test('getRoomDir returns sanitized directory path', () => {
   assert.ok(fs.existsSync(roomDir));
 });
 
-test('FileSessionStore implements basic Storage API', () => {
+test('FileSessionStore implements basic Storage API', async () => {
   cleanup();
   const storePath = path.join(tmpBase, 'session.json');
   const store = new FileSessionStore(storePath);
@@ -44,6 +44,17 @@ test('FileSessionStore implements basic Storage API', () => {
   assert.strictEqual(store.length, 1);
   store.clear();
   assert.strictEqual(store.length, 0);
+  await store.flush();
+});
+
+test('FileSessionStore persists asynchronously', async () => {
+  cleanup();
+  const storePath = path.join(tmpBase, 'session.json');
+  const store = new FileSessionStore(storePath);
+  store.setItem('foo', 'bar');
+  await store.flush();
+  const store2 = new FileSessionStore(storePath);
+  assert.strictEqual(store2.getItem('foo'), 'bar');
 });
 
 test.after(() => {

@@ -23,37 +23,45 @@ export class FileSessionStore {
   constructor(file) {
     this.file = file;
     ensureDir(path.dirname(file));
-  }
-  #read() {
     try {
-      return JSON.parse(fs.readFileSync(this.file, 'utf8'));
+      const raw = fs.readFileSync(this.file, 'utf8');
+      this.#data = JSON.parse(raw);
     } catch {
-      return {};
+      this.#data = {};
     }
   }
-  #write(data) {
-    fs.writeFileSync(this.file, JSON.stringify(data));
+  #data;
+  #writePromise = null;
+  #persist() {
+    const write = (this.#writePromise ?? Promise.resolve()).then(() =>
+      fs.promises.writeFile(this.file, JSON.stringify(this.#data))
+    );
+    this.#writePromise = write.finally(() => {
+      if (this.#writePromise === write) this.#writePromise = null;
+    });
   }
   get length() {
-    return Object.keys(this.#read()).length;
+    return Object.keys(this.#data).length;
   }
   clear() {
-    this.#write({});
+    this.#data = {};
+    this.#persist();
   }
   key(index) {
-    return Object.keys(this.#read())[index] ?? null;
+    return Object.keys(this.#data)[index] ?? null;
   }
   getItem(key) {
-    return this.#read()[key] ?? null;
+    return this.#data[key] ?? null;
   }
   setItem(key, val) {
-    const data = this.#read();
-    data[key] = val;
-    this.#write(data);
+    this.#data[key] = val;
+    this.#persist();
   }
   removeItem(key) {
-    const data = this.#read();
-    delete data[key];
-    this.#write(data);
+    delete this.#data[key];
+    this.#persist();
+  }
+  flush() {
+    return this.#writePromise ?? Promise.resolve();
   }
 }

@@ -387,16 +387,16 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
             const ext = path.extname(content.filename||content.body||'');
             const fname = `${ts.replace(/[:.]/g,'')}_${safeFilename(id)}${ext}`;
             await pipelineAsync(res.body as any, fs.createWriteStream(path.join(dir, fname)));
-            fs.appendFileSync(logf, `[${ts}] <${ev.getSender()}> [media] ${fname}\n`);
+            await fs.promises.appendFile(logf, `[${ts}] <${ev.getSender()}> [media] ${fname}\n`);
             return;
           }
         } catch {}
-        fs.appendFileSync(logf, `[${ts}] <${ev.getSender()}> [media download failed]\n`);
+        await fs.promises.appendFile(logf, `[${ts}] <${ev.getSender()}> [media download failed]\n`);
       } else {
-        fs.appendFileSync(logf, `[${ts}] <${ev.getSender()}> ${content.body||'[non-text]'}\n`);
+        await fs.promises.appendFile(logf, `[${ts}] <${ev.getSender()}> ${content.body||'[non-text]'}\n`);
       }
     } else {
-      fs.appendFileSync(logf, `[${ts}] <${ev.getSender()}> [${type}]\n`);
+      await fs.promises.appendFile(logf, `[${ts}] <${ev.getSender()}> [${type}]\n`);
     }
     // test mode: stop after limit
     if (TEST_LIMIT > 0) {
@@ -492,7 +492,11 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
 
   (srv as any).tool('list_messages', z.object({ room_id:z.string(), limit:z.number().int().positive().optional(), since:z.string().datetime().optional(), until:z.string().datetime().optional() }), async({room_id,limit,since,until}: any)=>{
     const file = path.join(getRoomDir(LOG_DIR, room_id), `${safeFilename(room_id)}.log`);
-    let lines=fs.existsSync(file)?fs.readFileSync(file,'utf8').split('\n'):[];
+    let lines: string[] = [];
+    try {
+      const data = await fs.promises.readFile(file, 'utf8');
+      lines = data.split('\n');
+    } catch {}
     if(since) lines=lines.filter(l=>l.slice(1,20)>=since);
     if(until) lines=lines.filter(l=>l.slice(1,20)<=until);
     if(limit) lines=lines.slice(-limit);
