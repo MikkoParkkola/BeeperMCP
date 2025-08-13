@@ -10,6 +10,8 @@
     "src/event-logger.ts",
     "src/sync.ts",
     "src/mcp.ts",
+    "src/auth.ts",
+    "src/crypto.ts",
     "beeper-mcp-server.ts",
     "phased-setup.ts"
   ],

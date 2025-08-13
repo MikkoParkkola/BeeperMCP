@@ -12,7 +12,7 @@
 
 import dotenv from 'dotenv';
 dotenv.config({ path: '.beeper-mcp-server.env' });
-import sdk, { MatrixClient } from 'matrix-js-sdk';
+import sdk from 'matrix-js-sdk';
 import Pino from 'pino';
 import fs from 'fs';
 import path from 'path';
@@ -30,6 +30,13 @@ import {
 import { setupEventLogging } from './event-logger.js';
 import { startSync } from './sync.js';
 import { initMcpServer } from './mcp.js';
+import { verifyAccessToken } from './auth.js';
+import {
+  loadOlm,
+  loadRustCryptoAdapter,
+  loadFileCryptoStore,
+  restoreRoomKeys,
+} from './crypto.js';
 
 // --- Constants ---
 const CACHE_DIR = process.env.MATRIX_CACHE_DIR ?? './mx-cache';
@@ -71,83 +78,6 @@ const ENABLE_SEND = envFlag('ENABLE_SEND_MESSAGE');
 if (!UID || !TOKEN) {
   console.error('Error: MATRIX_USERID and MATRIX_TOKEN must be set');
   process.exit(1);
-}
-
-// --- Credential helpers ---
-async function verifyAccessToken(logger: Pino.Logger): Promise<void> {
-  try {
-    const res = await fetch(`${HS}/_matrix/client/v3/account/whoami`, {
-      headers: { Authorization: `Bearer ${TOKEN}` },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = (await res.json()) as { user_id?: string };
-    if (!data.user_id) throw new Error('No user_id in response');
-    if (UID && data.user_id !== UID) {
-      throw new Error(`Token user_id ${data.user_id} does not match ${UID}`);
-    }
-    logger.info(`Access token validated for ${data.user_id}`);
-  } catch (err: any) {
-    logger.error(`Failed to validate access token: ${err.message}`);
-    process.exit(1);
-  }
-}
-
-async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
-  const recoveryKey = process.env.KEY_BACKUP_RECOVERY_KEY;
-  if (
-    typeof (client as any).restoreKeyBackupWithCache === 'function' &&
-    typeof (client as any).getKeyBackupVersion === 'function'
-  ) {
-    try {
-      const backupInfo = await (client as any).getKeyBackupVersion();
-      logger.info(
-        {
-          backupVersion: backupInfo?.version,
-          backupAlgorithm: backupInfo?.algorithm,
-          recoveryKeyType: backupInfo?.recovery_key?.type,
-        },
-        'Received key backup info from server.',
-      );
-      if (!backupInfo) {
-        logger.info('No key backup configured on server.');
-      } else if (recoveryKey) {
-        const restored = await (client as any).restoreKeyBackupWithCache(
-          undefined,
-          recoveryKey,
-          backupInfo as any,
-        );
-        logger.info(`Restored ${restored.length} room keys via secure backup`);
-      } else {
-        logger.warn(
-          'Key backup exists on server, but no KEY_BACKUP_RECOVERY_KEY provided.',
-        );
-      }
-    } catch (e: any) {
-      logger.error('Failed to restore from secure backup:', e.message);
-    }
-  }
-  // import previously exported room keys, if any
-  try {
-    const keyFile = path.join(CACHE_DIR, 'room-keys.json');
-    if (fs.existsSync(keyFile)) {
-      const exported = JSON.parse(fs.readFileSync(keyFile, 'utf8'));
-      const cryptoApi = client.getCrypto();
-      if (cryptoApi) {
-        await cryptoApi.importRoomKeys(exported as any, {});
-        if (exported && typeof (exported as any).length === 'number') {
-          logger.info(
-            `Attempted import from room-keys.json: Found ${exported.length} sessions in the file.`,
-          );
-        } else {
-          logger.warn(
-            'Attempted import from room-keys.json: File existed but content was not as expected.',
-          );
-        }
-      }
-    }
-  } catch (e: any) {
-    logger.warn('Failed to import room keys:', e.message);
-  }
 }
 
 // --- Session Store for sync tokens ---
@@ -205,30 +135,8 @@ export async function startServer() {
     ? parseInt(process.env.TEST_LIMIT, 10)
     : 0;
 
-  // load Olm for decryption
-  try {
-    const olmMod = await import('@matrix-org/olm');
-    const Olm = (olmMod as any).default || olmMod;
-    await Olm.init();
-    (globalThis as any).Olm = Olm;
-    logger.info('Olm library initialized');
-  } catch (e: any) {
-    console.error(
-      'Error: @matrix-org/olm not installed or failed to init:',
-      e.message,
-    );
-    process.exit(1);
-  }
-
-  // optional rust-crypto adapter
-  let initRust: ((client: MatrixClient) => Promise<void>) | null = null;
-  try {
-    const mod = await import('@matrix-org/matrix-sdk-crypto-nodejs');
-    initRust = (mod as any).initRustCrypto;
-    logger.debug('rust-crypto adapter loaded');
-  } catch (err: any) {
-    logger.warn('rust-crypto adapter not available', err);
-  }
+  await loadOlm(logger);
+  const initRust = await loadRustCryptoAdapter(logger);
 
   // session storage & device
   const sessionStore = new FileSessionStore(
@@ -243,22 +151,9 @@ export async function startServer() {
     sessionStore.setItem(deviceKey, deviceId);
   }
 
-  // load file-backed crypto store (Node) if available
-  let FileCryptoStoreClass: any = null;
-  try {
-    const mod = await import(
-      'matrix-js-sdk/dist/cjs/crypto/node/crypto-store.js'
-    );
-    FileCryptoStoreClass = mod.FileCryptoStore;
-    logger.debug('FileCryptoStore loaded');
-  } catch (err: any) {
-    logger.warn('FileCryptoStore unavailable, using in-memory', err);
-  }
+  const cryptoStore = await loadFileCryptoStore(CACHE_DIR, logger);
 
   // Matrix client setup
-  const cryptoStore = FileCryptoStoreClass
-    ? new FileCryptoStoreClass(path.join(CACHE_DIR, 'crypto-store'))
-    : undefined;
   const client = sdk.createClient({
     logger: sdkLogger,
     baseUrl: HS,
@@ -271,7 +166,7 @@ export async function startServer() {
     encryption: { msc4190: MSC4190, msc3202: MSC3202 },
   } as any);
 
-  await verifyAccessToken(logger);
+  await verifyAccessToken(HS, TOKEN!, UID, logger);
 
   // init crypto
   await client.initCrypto();
@@ -296,7 +191,7 @@ export async function startServer() {
     logger.debug('rust-crypto adapter initialized');
   }
 
-  await restoreRoomKeys(client, logger);
+  await restoreRoomKeys(client, CACHE_DIR, logger);
 
   const shutdown = async () => {
     logger.info('Shutting down');
