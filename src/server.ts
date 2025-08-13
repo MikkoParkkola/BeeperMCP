@@ -21,7 +21,6 @@ import {
   createMediaDownloader,
   createFlushHelper,
   cleanupLogsAndMedia,
-  FileSessionStore,
 } from '../utils.js';
 import { setupEventLogging } from './event-logger.js';
 import { startSync } from './sync.js';
@@ -89,6 +88,8 @@ export async function startServer() {
   );
 
   const syncKey = `syncToken:${config.userId}`;
+  let mcpServerInstance;
+  let httpServer;
 
   const shutdown = async () => {
     logger.info('Shutting down');
@@ -96,6 +97,8 @@ export async function startServer() {
       await flusher.flush();
       await client.stopClient();
       await mediaDownloader.flush();
+      await mcpServerInstance?.close();
+      await new Promise((resolve) => httpServer?.close(resolve));
     } catch (err: any) {
       logger.warn('Error during shutdown', err);
     }
@@ -121,13 +124,14 @@ export async function startServer() {
     cacheDir: config.cacheDir,
   });
 
-  await initMcpServer(
+  ({ mcpServer: mcpServerInstance, httpServer } = await initMcpServer(
     client,
     logDb,
     config.enableSendMessage,
     config.mcpApiKey,
     config.logSecret,
-  );
+    config.mcpPort,
+  ));
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
