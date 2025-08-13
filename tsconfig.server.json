@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "dist"
+  },
+  "references": [{ "path": "./tsconfig.utils.json" }],
+  "include": ["beeper-mcp-server.ts", "phased-setup.ts"],
+  "exclude": ["node_modules", "dist"]
+}

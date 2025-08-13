@@ -1,12 +1,24 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const readline = require('readline');
-const { execSync } = require('child_process');
-const dotenv = require('dotenv');
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import readline from 'readline';
+import { execSync } from 'child_process';
+import dotenv from 'dotenv';
+import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+
+const require = createRequire(import.meta.url);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const envFile = path.join(__dirname, '.beeper-mcp-server.env');
+
+function ensureDir(dir) {
+  if (!dir) return;
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch {}
+}
 
 function checkCommand(cmd) {
   try {
@@ -28,7 +40,7 @@ function ensureDeps() {
     console.log('Installing Node dependencies...');
     execSync(
       'npm install ts-node matrix-js-sdk pino dotenv zod @modelcontextprotocol/sdk @matrix-org/olm',
-      { stdio: 'inherit' }
+      { stdio: 'inherit' },
     );
   }
 }
@@ -51,7 +63,10 @@ function writeEnvFile(env) {
 
 function ask(question, def, opts = {}) {
   return new Promise((resolve) => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
     const prompt = def ? `${question} [${def}]: ` : `${question}: `;
     if (opts.hidden) {
       rl.stdoutMuted = true;
@@ -88,21 +103,72 @@ function autoDetect(env) {
   }
 }
 
+function validateEnv(env) {
+  const errs = [];
+  if (!/^https?:\/\//.test(env.MATRIX_HOMESERVER || ''))
+    errs.push('MATRIX_HOMESERVER must start with http:// or https://');
+  if (!/^@.+:.+$/.test(env.MATRIX_USERID || ''))
+    errs.push('MATRIX_USERID must look like @user:domain');
+  if (!env.MATRIX_TOKEN && !env.MATRIX_PASSWORD)
+    errs.push('Either MATRIX_TOKEN or MATRIX_PASSWORD is required');
+  return errs;
+}
+
 async function configure() {
-  const env = readEnvFile();
+  let env = readEnvFile();
   autoDetect(env);
   console.log('Configure BeeperMCP environment variables');
-  env.MATRIX_HOMESERVER = await ask('Matrix homeserver URL', env.MATRIX_HOMESERVER || 'https://matrix.beeper.com');
-  env.MATRIX_USERID = await ask('Matrix user ID', env.MATRIX_USERID);
-  env.MATRIX_TOKEN = await ask('Access token (leave empty to use password login)', env.MATRIX_TOKEN);
-  if (!env.MATRIX_TOKEN) {
-    env.MATRIX_PASSWORD = await ask('Account password', env.MATRIX_PASSWORD, { hidden: true });
-  } else {
-    env.MATRIX_PASSWORD = '';
+  while (true) {
+    env.MATRIX_HOMESERVER = await ask(
+      'Matrix homeserver URL',
+      env.MATRIX_HOMESERVER || 'https://matrix.beeper.com',
+    );
+    env.MATRIX_USERID = await ask('Matrix user ID', env.MATRIX_USERID);
+    env.MATRIX_TOKEN = await ask(
+      'Access token (leave empty to use password login)',
+      env.MATRIX_TOKEN,
+    );
+    if (!env.MATRIX_TOKEN) {
+      env.MATRIX_PASSWORD = await ask('Account password', env.MATRIX_PASSWORD, {
+        hidden: true,
+      });
+    } else {
+      env.MATRIX_PASSWORD = '';
+    }
+    env.MATRIX_CACHE_DIR = await ask(
+      'Cache directory',
+      env.MATRIX_CACHE_DIR || './mx-cache',
+    );
+    env.MESSAGE_LOG_DIR = await ask(
+      'Log directory',
+      env.MESSAGE_LOG_DIR || './room-logs',
+    );
+    env.LOG_LEVEL = await ask('Log level', env.LOG_LEVEL || 'info');
+    env.SESSION_SECRET = await ask(
+      'Session encryption secret (leave blank for none)',
+      env.SESSION_SECRET || '',
+    );
+    env.LOG_SECRET = await ask(
+      'Log encryption secret (leave blank for none)',
+      env.LOG_SECRET || '',
+    );
+    env.LOG_MAX_BYTES = await ask(
+      'Max log size in bytes before rotation',
+      env.LOG_MAX_BYTES || '5000000',
+    );
+    const enableSend = await ask(
+      'Enable send_message tool? (y/N)',
+      env.ENABLE_SEND_MESSAGE === '1' ? 'y' : '',
+    );
+    env.ENABLE_SEND_MESSAGE = /^y(es)?$/i.test(enableSend) ? '1' : '';
+
+    const errs = validateEnv(env);
+    if (errs.length === 0) break;
+    console.log('Configuration errors:');
+    for (const e of errs) console.log(' - ' + e);
   }
-  env.MATRIX_CACHE_DIR = await ask('Cache directory', env.MATRIX_CACHE_DIR || './mx-cache');
-  env.MESSAGE_LOG_DIR = await ask('Log directory', env.MESSAGE_LOG_DIR || './room-logs');
-  env.LOG_LEVEL = await ask('Log level', env.LOG_LEVEL || 'info');
+  ensureDir(env.MATRIX_CACHE_DIR);
+  ensureDir(env.MESSAGE_LOG_DIR);
   writeEnvFile(env);
 }
 
@@ -116,4 +182,8 @@ async function main() {
   runPhasedSetup();
 }
 
-main();
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main();
+}
+
+export { autoDetect, validateEnv };
