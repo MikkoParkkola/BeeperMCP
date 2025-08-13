@@ -3,6 +3,7 @@ export function buildMcpServer(
   client: any,
   logDb: any,
   enableSend: boolean,
+  apiKey: string,
   logSecret?: string,
   queryFn?: (
     db: any,

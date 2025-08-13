@@ -22,6 +22,7 @@ import {
   createMediaDownloader,
   createFlushHelper,
   cleanupLogsAndMedia,
+  FileSessionStore,
 } from '../utils.js';
 import { setupEventLogging } from './event-logger.js';
 import { startSync } from './sync.js';
@@ -208,6 +209,7 @@ export async function startServer() {
     client,
     logDb,
     config.enableSendMessage,
+    config.mcpApiKey,
     config.logSecret,
   );
 

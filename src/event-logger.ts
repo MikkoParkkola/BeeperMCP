@@ -1,8 +1,13 @@
 import path from 'path';
 import Pino from 'pino';
-import { MatrixClient } from 'matrix-js-sdk';
-import { createFileAppender, getRoomDir, safeFilename } from '../utils.js';
-import { DecryptionManager } from './decryption-manager.js';
+import { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
+import {
+  createFileAppender,
+  getRoomDir,
+  safeFilename,
+  BoundedMap,
+  pushWithLimit,
+} from '../utils.js';
 import type { createMediaDownloader } from '../utils.js';
 
 export function setupEventLogging(
@@ -177,8 +182,7 @@ export function setupEventLogging(
   const seen = new Set<string>();
   let testCount = 0;
   client.on('event' as any, async (ev: any) => {
-    if (await decryption.maybeHandleRoomKeyEvent(ev)) return;
-    await decryption.decryptEvent(ev);
+    await decryptEvent(ev);
     if (ev.isEncrypted()) return;
     const id = ev.getId();
     if (seen.has(id)) return;
