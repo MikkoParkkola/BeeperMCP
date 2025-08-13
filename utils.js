@@ -449,7 +449,9 @@ export function createFlushHelper() {
     for (const fn of fns) {
       try {
         await fn();
-      } catch {}
+      } catch (err) {
+        logger.warn('Flush handler failed', err);
+      }
     }
   };
   const handler = () => {

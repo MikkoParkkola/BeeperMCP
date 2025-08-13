@@ -13,18 +13,23 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const envFile = path.join(__dirname, '.beeper-mcp-server.env');
 
+const logger = console;
+
 function ensureDir(dir) {
   if (!dir) return;
   try {
     fs.mkdirSync(dir, { recursive: true });
-  } catch {}
+  } catch (err) {
+    logger.warn('Failed to create directory', dir, err);
+  }
 }
 
 function checkCommand(cmd) {
   try {
     execSync(`${cmd} --version`, { stdio: 'ignore' });
     return true;
-  } catch {
+  } catch (err) {
+    logger.warn(`Command ${cmd} not found`, err);
     return false;
   }
 }
@@ -36,8 +41,8 @@ function ensureDeps() {
   }
   try {
     require.resolve('ts-node');
-  } catch {
-    console.log('Installing Node dependencies...');
+  } catch (err) {
+    logger.warn('Installing Node dependencies...', err);
     execSync(
       'npm install ts-node matrix-js-sdk pino dotenv zod @modelcontextprotocol/sdk @matrix-org/olm',
       { stdio: 'inherit' },
@@ -99,7 +104,9 @@ function autoDetect(env) {
         env.MATRIX_USERID ||= data.userId || data.user_id;
         env.MATRIX_TOKEN ||= data.accessToken || data.access_token;
       }
-    } catch {}
+    } catch (err) {
+      logger.warn(`Failed to read config from ${g}`, err);
+    }
   }
 }
 
