@@ -6,7 +6,7 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
 
 - Syncs events from your Beeper homeserver
 - Decrypts end-to-end encrypted rooms
-- Stores message history and media per room
+- Stores message history and media per room with optional SQLite indexing
 - Provides MCP tools: `list_rooms`, `create_room`, `list_messages`, `send_message`
 - Graceful shutdown and local caching of sync tokens and room keys
 
@@ -36,7 +36,11 @@ npx ts-node beeper-mcp-server.ts
 ```
 
 Optional variables include `MATRIX_HOMESERVER`, `MESSAGE_LOG_DIR`, `MATRIX_CACHE_DIR`, `LOG_LEVEL`, `MSC3202`, `MSC4190` and more (see the source file for details). Support for the MSC3202 device-masquerading and MSC4190 key-forwarding extensions is enabled by default. Set `MSC3202=false` or `MSC4190=false` to opt out. These can also be placed in `.beeper-mcp-server.env`.
+`LOG_MAX_BYTES` controls the maximum size of each room log before it is rotated (default `5000000` bytes).
 `KEY_REQUEST_INTERVAL_MS` sets the initial delay before a missing room key is re-requested (default `1000` ms). `KEY_REQUEST_MAX_INTERVAL_MS` limits the maximum delay between requests (default `300000` ms). The delay doubles after each failed attempt until the maximum is reached.
+`SESSION_SECRET` encrypts the session cache on disk when set.
+`LOG_SECRET` encrypts per-room log files when set.
+`LOG_DB_PATH` points to a SQLite database used to index logs for efficient queries (default `room-logs/messages.db`).
 
 The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v3/account/whoami` endpoint before any data is downloaded. If the token does not match the provided `MATRIX_USERID`, the process exits with an error.
 
@@ -62,13 +66,14 @@ easily.
 
 ## Development
 
-Unit tests for the small utility helpers are provided in `test/utils.test.js` and can be executed with:
+Install dependencies with `npm install` and use the provided scripts to run tests or lint the code:
 
 ```bash
-node --test test/utils.test.js
+npm test
+npm run lint
 ```
 
-No external dependencies are required for the tests.
+The test suite currently exercises the utility helpers and runs with Node's built-in test runner.
 
 ## Synapse configuration for self-key requests
 
