@@ -28,7 +28,7 @@ function ensureDeps() {
     console.log('Installing Node dependencies...');
     execSync(
       'npm install ts-node matrix-js-sdk pino dotenv zod @modelcontextprotocol/sdk @matrix-org/olm',
-      { stdio: 'inherit' }
+      { stdio: 'inherit' },
     );
   }
 }
@@ -51,7 +51,10 @@ function writeEnvFile(env) {
 
 function ask(question, def, opts = {}) {
   return new Promise((resolve) => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
     const prompt = def ? `${question} [${def}]: ` : `${question}: `;
     if (opts.hidden) {
       rl.stdoutMuted = true;
@@ -92,17 +95,48 @@ async function configure() {
   const env = readEnvFile();
   autoDetect(env);
   console.log('Configure BeeperMCP environment variables');
-  env.MATRIX_HOMESERVER = await ask('Matrix homeserver URL', env.MATRIX_HOMESERVER || 'https://matrix.beeper.com');
+  env.MATRIX_HOMESERVER = await ask(
+    'Matrix homeserver URL',
+    env.MATRIX_HOMESERVER || 'https://matrix.beeper.com',
+  );
   env.MATRIX_USERID = await ask('Matrix user ID', env.MATRIX_USERID);
-  env.MATRIX_TOKEN = await ask('Access token (leave empty to use password login)', env.MATRIX_TOKEN);
+  env.MATRIX_TOKEN = await ask(
+    'Access token (leave empty to use password login)',
+    env.MATRIX_TOKEN,
+  );
   if (!env.MATRIX_TOKEN) {
-    env.MATRIX_PASSWORD = await ask('Account password', env.MATRIX_PASSWORD, { hidden: true });
+    env.MATRIX_PASSWORD = await ask('Account password', env.MATRIX_PASSWORD, {
+      hidden: true,
+    });
   } else {
     env.MATRIX_PASSWORD = '';
   }
-  env.MATRIX_CACHE_DIR = await ask('Cache directory', env.MATRIX_CACHE_DIR || './mx-cache');
-  env.MESSAGE_LOG_DIR = await ask('Log directory', env.MESSAGE_LOG_DIR || './room-logs');
+  env.MATRIX_CACHE_DIR = await ask(
+    'Cache directory',
+    env.MATRIX_CACHE_DIR || './mx-cache',
+  );
+  env.MESSAGE_LOG_DIR = await ask(
+    'Log directory',
+    env.MESSAGE_LOG_DIR || './room-logs',
+  );
   env.LOG_LEVEL = await ask('Log level', env.LOG_LEVEL || 'info');
+  env.SESSION_SECRET = await ask(
+    'Session encryption secret (leave blank for none)',
+    env.SESSION_SECRET || '',
+  );
+  env.LOG_SECRET = await ask(
+    'Log encryption secret (leave blank for none)',
+    env.LOG_SECRET || '',
+  );
+  env.LOG_MAX_BYTES = await ask(
+    'Max log size in bytes before rotation',
+    env.LOG_MAX_BYTES || '5000000',
+  );
+  const enableSend = await ask(
+    'Enable send_message tool? (y/N)',
+    env.ENABLE_SEND_MESSAGE === '1' ? 'y' : '',
+  );
+  env.ENABLE_SEND_MESSAGE = /^y(es)?$/i.test(enableSend) ? '1' : '';
   writeEnvFile(env);
 }
 
