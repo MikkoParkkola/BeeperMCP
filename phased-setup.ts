@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/// <reference path="./matrix-js-sdk-shim.d.ts" />
 import dotenv from 'dotenv';
 dotenv.config({ path: '.beeper-mcp-server.env' });
 import sdk, { MatrixClient } from 'matrix-js-sdk';
@@ -15,7 +16,9 @@ const CACHE_DIR = process.env.MATRIX_CACHE_DIR ?? './mx-cache';
 const LOG_DIR = process.env.MESSAGE_LOG_DIR ?? './room-logs';
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 
-async function phaseLogin(logger: Pino.Logger): Promise<{client: MatrixClient, token: string}> {
+async function phaseLogin(
+  logger: Pino.Logger,
+): Promise<{ client: MatrixClient; token: string }> {
   logger.info('Phase 1: login');
   if (!UID) throw new Error('MATRIX_USERID is required');
   ensureDir(CACHE_DIR);
@@ -65,16 +68,25 @@ async function phaseLoadCache(logger: Pino.Logger) {
 
 async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   const recoveryKey = process.env.KEY_BACKUP_RECOVERY_KEY;
-  if ((client as any).restoreKeyBackupWithCache && (client as any).getKeyBackupVersion) {
+  if (
+    (client as any).restoreKeyBackupWithCache &&
+    (client as any).getKeyBackupVersion
+  ) {
     try {
       const backupInfo = await (client as any).getKeyBackupVersion();
       if (!backupInfo) {
         logger.info('No key backup configured on server.');
       } else if (recoveryKey) {
-        const restored = await (client as any).restoreKeyBackupWithCache(undefined, recoveryKey, backupInfo as any);
+        const restored = await (client as any).restoreKeyBackupWithCache(
+          undefined,
+          recoveryKey,
+          backupInfo as any,
+        );
         logger.info(`Restored ${restored.length} room keys via secure backup`);
       } else {
-        logger.warn('Key backup exists, but KEY_BACKUP_RECOVERY_KEY not provided.');
+        logger.warn(
+          'Key backup exists, but KEY_BACKUP_RECOVERY_KEY not provided.',
+        );
       }
     } catch (e: any) {
       logger.error('Failed to restore from secure backup:', e.message);
@@ -88,7 +100,9 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
       if (cryptoApi) {
         await cryptoApi.importRoomKeys(exported as any, {});
         if (exported && typeof (exported as any).length === 'number') {
-          logger.info(`Attempted import from room-keys.json: Found ${exported.length} sessions in the file.`);
+          logger.info(
+            `Attempted import from room-keys.json: Found ${exported.length} sessions in the file.`,
+          );
         }
       }
     }
@@ -116,7 +130,7 @@ async function phaseGetKeys(client: MatrixClient, logger: Pino.Logger) {
 async function phaseDecrypt(client: MatrixClient, logger: Pino.Logger) {
   logger.info('Phase 4: start sync');
   await client.startClient({ initialSyncLimit: 10 });
-  await new Promise<void>(resolve => {
+  await new Promise<void>((resolve) => {
     (client as any).once('sync', (s: any) => s === 'PREPARED' && resolve());
   });
   logger.info('Client synced, ready for decryption');
