@@ -1,13 +1,8 @@
 import path from 'path';
 import Pino from 'pino';
-import { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
-import {
-  createFileAppender,
-  getRoomDir,
-  safeFilename,
-  BoundedMap,
-  pushWithLimit,
-} from '../utils.js';
+import type { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
+import { createFileAppender, getRoomDir, safeFilename } from '../utils.js';
+import { DecryptionManager } from './decryption-manager.js';
 import type { createMediaDownloader } from '../utils.js';
 
 export function setupEventLogging(
@@ -43,22 +38,23 @@ export function setupEventLogging(
     uid,
     shutdown,
   } = opts;
-
   const fileWriters = new Map<string, ReturnType<typeof createFileAppender>>();
   const decryption = new DecryptionManager(client, logger, uid);
 
   const seen = new Set<string>();
   let testCount = 0;
-  client.on('event' as any, async (ev: any) => {
-    await decryptEvent(ev);
+  client.on('event' as any, async (ev: MatrixEvent) => {
+    if (await decryption.maybeHandleRoomKeyEvent(ev)) return;
+    await decryption.decryptEvent(ev);
     if (ev.isEncrypted()) return;
     const id = ev.getId();
+    if (!id) return;
     if (seen.has(id)) return;
     seen.add(id);
     const rid = ev.getRoomId() || 'meta';
     if (testRoomId && rid !== testRoomId) return;
-    const type = ev.getClearType?.() || ev.getType();
-    const content = ev.getClearContent?.() || ev.getContent();
+    const type = (ev as any).getClearType?.() || ev.getType();
+    const content = (ev as any).getClearContent?.() || ev.getContent();
     const ts = new Date(ev.getTs() || Date.now()).toISOString();
     const dir = getRoomDir(logDir, rid);
     const logf = path.join(dir, `${safeFilename(rid)}.log`);
@@ -66,7 +62,7 @@ export function setupEventLogging(
     if (type === 'm.room.message') {
       if (content.url) {
         try {
-          const url = client.mxcUrlToHttp(content.url);
+          const url = client.mxcUrlToHttp(content.url as string);
           const ext = path.extname(content.filename || content.body || '');
           const fname = `${ts.replace(/[:.]/g, '')}_${safeFilename(id)}${ext}`;
           const dest = path.join(dir, fname + (mediaSecret ? '.enc' : ''));
@@ -76,7 +72,7 @@ export function setupEventLogging(
             roomId: rid,
             eventId: id,
             ts,
-            sender: ev.getSender(),
+            sender: ev.getSender()!,
             type: content.info?.mimetype,
             size: content.info?.size,
           });
