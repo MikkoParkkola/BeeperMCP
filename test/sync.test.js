@@ -33,7 +33,10 @@ async function backfillRoom(client, room) {
   let more = true;
   while (more) {
     try {
-      more = await client.paginateEventTimeline(tl, { backwards: true, limit: 1000 });
+      more = await client.paginateEventTimeline(tl, {
+        backwards: true,
+        limit: 1000,
+      });
     } catch {
       // retry immediately
     }
@@ -72,7 +75,7 @@ async function decryptEvent(client, pending, ev) {
   try {
     const cryptoApi = client.getCrypto();
     if (cryptoApi) await cryptoApi.decryptEvent(ev);
-  } catch (e) {
+  } catch {
     const wire = ev.getWireContent();
     const mapKey = `${ev.getRoomId()}|${wire.session_id}`;
     const arr = pending.get(mapKey) || [];
@@ -83,7 +86,11 @@ async function decryptEvent(client, pending, ev) {
       const cryptoApi = client.getCrypto();
       if (cryptoApi) {
         await cryptoApi.requestRoomKey(
-          { room_id: ev.getRoomId(), session_id: wire.session_id, algorithm: wire.algorithm },
+          {
+            room_id: ev.getRoomId(),
+            session_id: wire.session_id,
+            algorithm: wire.algorithm,
+          },
           [{ userId: sender, deviceId: '*' }],
         );
       }

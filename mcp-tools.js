@@ -19,6 +19,7 @@ export function buildMcpServer(
   apiKey,
   queryFn = queryLogs,
 ) {
+  if (!apiKey) throw new Error('MCP_API_KEY is required');
   const srv = new McpServer({
     name: 'Beeper',
     version: '2.2.0',
@@ -27,8 +28,7 @@ export function buildMcpServer(
 
   const authWrapper = (cb) => {
     return (args, extra) => {
-      if (apiKey && extra?._meta?.apiKey !== apiKey)
-        throw new Error('Invalid API key');
+      if (extra?._meta?.apiKey !== apiKey) throw new Error('Invalid API key');
       return cb(args, extra);
     };
   };
@@ -98,6 +98,16 @@ export function buildMcpServer(
       }),
     );
   }
+
+  const wrapHandler = (method) => {
+    const orig = srv.server._requestHandlers.get(method);
+    srv.server._requestHandlers.set(method, (req, extra) => {
+      if (extra?._meta?.apiKey !== apiKey) throw new Error('Invalid API key');
+      return orig(req, extra);
+    });
+  };
+  wrapHandler('tools/list');
+  wrapHandler('tools/call');
 
   return srv;
 }

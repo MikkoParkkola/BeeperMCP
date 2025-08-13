@@ -48,6 +48,10 @@ const HS = process.env.MATRIX_HOMESERVER ?? 'https://matrix.beeper.com';
 const UID = process.env.MATRIX_USERID;
 let TOKEN: string | undefined = process.env.MATRIX_TOKEN;
 const MCP_API_KEY = process.env.MCP_API_KEY;
+if (!MCP_API_KEY) {
+  console.error('Error: MCP_API_KEY must be set');
+  process.exit(1);
+}
 if (!TOKEN) {
   try {
     const sessionPath = path.join(CACHE_DIR, 'session.json');
@@ -175,6 +179,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     queueMedia,
     queueLog,
     MEDIA_SECRET,
+    logDb,
   );
   // main Pino logger
   const logger = Pino({ level: LOG_LEVEL });
