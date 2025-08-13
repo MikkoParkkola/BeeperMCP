@@ -173,6 +173,88 @@ test('queryLogs honors since/until, limit and secret', () => {
   assert.ok(lines.includes('[enc]'));
 });
 
+  test('appendWithRotate rotates log files', async () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const file = path.join(tmpBase, 'rot.log');
+    await appendWithRotate(file, 'a'.repeat(50), 100);
+    await appendWithRotate(file, 'b'.repeat(60), 100);
+    assert.ok(fs.existsSync(`${file}.1`));
+    const main = fs.statSync(file).size;
+    assert.ok(main <= 61);
+  });
+
+  test('encrypted logs round-trip', async () => {
+    cleanup();
+    ensureDir(tmpBase);
+    const file = path.join(tmpBase, 'enc.log');
+    const secret = 's3cret';
+    await appendWithRotate(file, 'hello', 1000, secret);
+    const lines = await tailFile(file, 10, secret);
+    assert.deepStrictEqual(lines, ['hello']);
+  });
+
+test('log database stores and retrieves lines', () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const dbPath = path.join(tmpBase, 'logs.db');
+  const db = openLogDb(dbPath);
+  insertLog(db, 'room', '2025-01-01T00:00:00.000Z', '[2025-01-01T00:00:00.000Z] <u> hello');
+  insertLog(db, 'room', '2025-01-02T00:00:00.000Z', '[2025-01-02T00:00:00.000Z] <u> world');
+  const lines = queryLogs(db, 'room', 10);
+  assert.deepStrictEqual(lines, [
+    '[2025-01-01T00:00:00.000Z] <u> hello',
+    '[2025-01-02T00:00:00.000Z] <u> world',
+  ]);
+});
+
+  test('tailFile returns last N lines', async () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const file = path.join(tmpBase, 'log.txt');
+  const all = Array.from({ length: 100 }, (_, i) => `line${i}`);
+  fs.writeFileSync(file, all.join('\n'));
+  const last = await tailFile(file, 5);
+  assert.deepStrictEqual(last, all.slice(-5));
+});
+
+test('pushWithLimit keeps array within limit', () => {
+  const arr = [];
+  for (let i = 0; i < 5; i++) pushWithLimit(arr, i, 3);
+  assert.deepStrictEqual(arr, [2,3,4]);
+});
+
+test('BoundedMap evicts oldest entries', () => {
+  const map = new BoundedMap(2);
+  map.set('a',1);
+  map.set('b',2);
+  map.set('c',3);
+  assert.ok(!map.has('a'));
+  assert.strictEqual(map.get('b'),2);
+  assert.strictEqual(map.get('c'),3);
+});
+
+  test('appendWithRotate rotates log files', async () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const file = path.join(tmpBase, 'rot.log');
+    await appendWithRotate(file, 'a'.repeat(50), 100);
+    await appendWithRotate(file, 'b'.repeat(60), 100);
+    assert.ok(fs.existsSync(`${file}.1`));
+    const main = fs.statSync(file).size;
+    assert.ok(main <= 61);
+  });
+
+  test('encrypted logs round-trip', async () => {
+    cleanup();
+    ensureDir(tmpBase);
+    const file = path.join(tmpBase, 'enc.log');
+    const secret = 's3cret';
+    await appendWithRotate(file, 'hello', 1000, secret);
+    const lines = await tailFile(file, 10, secret);
+    assert.deepStrictEqual(lines, ['hello']);
+  });
+
 test.after(() => {
   cleanup();
 });
