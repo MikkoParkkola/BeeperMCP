@@ -18,11 +18,17 @@ import sdk, { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
 import Pino from 'pino';
 import fs from 'fs';
 import path from 'path';
-import { promisify } from 'util';
-import { pipeline } from 'stream';
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  ensureDir,
+  safeFilename,
+  getRoomDir,
+  pipelineAsync,
+  FileSessionStore,
+  tailFile,
+} from './utils.js';
 
 // --- Constants ---
 const CACHE_DIR = process.env.MATRIX_CACHE_DIR ?? './mx-cache';
@@ -51,18 +57,6 @@ if (!UID || !TOKEN) {
   console.error('Error: MATRIX_USERID and MATRIX_TOKEN must be set');
   process.exit(1);
 }
-
-// --- Utilities ---
-function ensureDir(dir: string) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
-const safeFilename = (s = '') => s.replace(/[^A-Za-z0-9._-]/g, '_');
-const getRoomDir = (roomId: string) => {
-  const d = path.join(LOG_DIR, safeFilename(roomId));
-  ensureDir(d);
-  return d;
-};
-const pipelineAsync = promisify(pipeline);
 
 // --- Credential helpers ---
 async function verifyAccessToken(logger: Pino.Logger): Promise<void> {
@@ -142,33 +136,6 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
 }
 
 // --- Session Store for sync tokens ---
-class FileSessionStore implements Storage {
-  private file: string;
-  constructor(file: string) {
-    this.file = file;
-    ensureDir(path.dirname(file));
-  }
-  private read(): Record<string, string> {
-    try { return JSON.parse(fs.readFileSync(this.file, 'utf8')); }
-    catch { return {}; }
-  }
-  private write(d: Record<string, string>) {
-    fs.writeFileSync(this.file, JSON.stringify(d));
-  }
-  get length() { return Object.keys(this.read()).length; }
-  clear() { this.write({}); }
-  key(index: number) { return Object.keys(this.read())[index] ?? null; }
-  getItem(key: string) { return this.read()[key] ?? null; }
-  setItem(key: string, val: string) {
-    const d = this.read(); d[key] = val;
-    this.write(d);
-  }
-  removeItem(key: string) {
-    const d = this.read(); delete d[key];
-    this.write(d);
-  }
-}
-
 (async () => {
   ensureDir(CACHE_DIR);
   ensureDir(LOG_DIR);
@@ -415,7 +382,7 @@ class FileSessionStore implements Storage {
     const content = ev.getClearContent?.() || ev.getContent();
     const ts = new Date(ev.getTs()||Date.now()).toISOString();
     // reuse 'rid' from above for directory
-    const dir = getRoomDir(rid);
+    const dir = getRoomDir(LOG_DIR, rid);
     const logf = path.join(dir, `${safeFilename(rid)}.log`);
 
     if (type === 'm.room.message') {
@@ -427,16 +394,16 @@ class FileSessionStore implements Storage {
             const ext = path.extname(content.filename||content.body||'');
             const fname = `${ts.replace(/[:.]/g,'')}_${safeFilename(id)}${ext}`;
             await pipelineAsync(res.body as any, fs.createWriteStream(path.join(dir, fname)));
-            fs.appendFileSync(logf, `[${ts}] <${ev.getSender()}> [media] ${fname}\n`);
+            await fs.promises.appendFile(logf, `[${ts}] <${ev.getSender()}> [media] ${fname}\n`);
             return;
           }
         } catch {}
-        fs.appendFileSync(logf, `[${ts}] <${ev.getSender()}> [media download failed]\n`);
+        await fs.promises.appendFile(logf, `[${ts}] <${ev.getSender()}> [media download failed]\n`);
       } else {
-        fs.appendFileSync(logf, `[${ts}] <${ev.getSender()}> ${content.body||'[non-text]'}\n`);
+        await fs.promises.appendFile(logf, `[${ts}] <${ev.getSender()}> ${content.body||'[non-text]'}\n`);
       }
     } else {
-      fs.appendFileSync(logf, `[${ts}] <${ev.getSender()}> [${type}]\n`);
+      await fs.promises.appendFile(logf, `[${ts}] <${ev.getSender()}> [${type}]\n`);
     }
     // test mode: stop after limit
     if (TEST_LIMIT > 0) {
@@ -531,12 +498,20 @@ class FileSessionStore implements Storage {
   });
 
   (srv as any).tool('list_messages', z.object({ room_id:z.string(), limit:z.number().int().positive().optional(), since:z.string().datetime().optional(), until:z.string().datetime().optional() }), async({room_id,limit,since,until}: any)=>{
-    const file=path.join(getRoomDir(room_id),`${safeFilename(room_id)}.log`);
-    let lines=fs.existsSync(file)?fs.readFileSync(file,'utf8').split('\n'):[];
-    if(since) lines=lines.filter(l=>l.slice(1,20)>=since);
-    if(until) lines=lines.filter(l=>l.slice(1,20)<=until);
-    if(limit) lines=lines.slice(-limit);
-    return{ content:[{ type:'json', json:lines.filter(Boolean) }] };
+    const file = path.join(getRoomDir(LOG_DIR, room_id), `${safeFilename(room_id)}.log`);
+    let lines: string[] = [];
+    try {
+      if (limit && !since && !until) {
+        lines = await tailFile(file, limit);
+      } else {
+        const data = await fs.promises.readFile(file, 'utf8');
+        lines = data.split('\n');
+      }
+    } catch {}
+    if (since) lines = lines.filter(l => l.slice(1, 20) >= since);
+    if (until) lines = lines.filter(l => l.slice(1, 20) <= until);
+    if (limit && (since || until)) lines = lines.slice(-limit);
+    return { content: [{ type: 'json', json: lines.filter(Boolean) }] };
   });
 
   (srv as any).tool('send_message', z.object({ room_id:z.string(), message:z.string().min(1) }), async({room_id,message}: any)=>{

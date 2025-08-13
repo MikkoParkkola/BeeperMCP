@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
-import {ensureDir,safeFilename,getRoomDir,FileSessionStore} from '../utils.js';
+import {ensureDir,safeFilename,getRoomDir,FileSessionStore,tailFile} from '../utils.js';
 
 const tmpBase = '.test-tmp';
 
@@ -29,15 +29,42 @@ test('getRoomDir returns sanitized directory path', () => {
   assert.ok(fs.existsSync(roomDir));
 });
 
-test('FileSessionStore persists values', () => {
+test('FileSessionStore implements basic Storage API', async () => {
   cleanup();
   const storePath = path.join(tmpBase, 'session.json');
   const store = new FileSessionStore(storePath);
+  assert.strictEqual(store.length, 0);
   assert.strictEqual(store.getItem('foo'), null);
   store.setItem('foo', 'bar');
+  store.setItem('baz', 'qux');
+  assert.strictEqual(store.length, 2);
+  assert.strictEqual(store.key(0), 'foo');
   assert.strictEqual(store.getItem('foo'), 'bar');
   store.removeItem('foo');
-  assert.strictEqual(store.getItem('foo'), null);
+  assert.strictEqual(store.length, 1);
+  store.clear();
+  assert.strictEqual(store.length, 0);
+  await store.flush();
+});
+
+test('FileSessionStore persists asynchronously', async () => {
+  cleanup();
+  const storePath = path.join(tmpBase, 'session.json');
+  const store = new FileSessionStore(storePath);
+  store.setItem('foo', 'bar');
+  await store.flush();
+  const store2 = new FileSessionStore(storePath);
+  assert.strictEqual(store2.getItem('foo'), 'bar');
+});
+
+test('tailFile returns last N lines', async () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const file = path.join(tmpBase, 'log.txt');
+  const all = Array.from({ length: 100 }, (_, i) => `line${i}`);
+  fs.writeFileSync(file, all.join('\n'));
+  const last = await tailFile(file, 5);
+  assert.deepStrictEqual(last, all.slice(-5));
 });
 
 test.after(() => {
