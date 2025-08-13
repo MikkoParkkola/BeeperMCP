@@ -1,13 +1,8 @@
 import path from 'path';
 import Pino from 'pino';
-import { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
-import {
-  createFileAppender,
-  getRoomDir,
-  safeFilename,
-  pushWithLimit,
-  BoundedMap,
-} from '../utils.js';
+import { MatrixClient } from 'matrix-js-sdk';
+import { createFileAppender, getRoomDir, safeFilename } from '../utils.js';
+import { DecryptionManager } from './decryption-manager.js';
 import type { createMediaDownloader } from '../utils.js';
 
 export function setupEventLogging(
@@ -182,26 +177,8 @@ export function setupEventLogging(
   const seen = new Set<string>();
   let testCount = 0;
   client.on('event' as any, async (ev: any) => {
-    const evtType = ev.getType();
-    if (evtType === 'm.room_key' || evtType === 'm.forwarded_room_key') {
-      const contentAny = ev.getContent() as any;
-      const room_id = contentAny.room_id;
-      const session_id = contentAny.session_id;
-      if (room_id && session_id) {
-        const mapKey = `${room_id}|${session_id}`;
-        logger.trace(`timeline key event ${evtType} for session ${mapKey}`);
-        const arr = pendingDecrypt.get(mapKey);
-        if (arr) {
-          for (const pend of arr) {
-            await decryptEvent(pend);
-            client.emit('event' as any, pend);
-          }
-          pendingDecrypt.delete(mapKey);
-        }
-      }
-      return;
-    }
-    await decryptEvent(ev);
+    if (await decryption.maybeHandleRoomKeyEvent(ev)) return;
+    await decryption.decryptEvent(ev);
     if (ev.isEncrypted()) return;
     const id = ev.getId();
     if (seen.has(id)) return;
