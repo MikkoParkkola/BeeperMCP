@@ -21,6 +21,15 @@ export function appendWithRotate(
   secret?: string,
 ): Promise<void>;
 export function openLogDb(file: string): any;
+export function createLogWriter(
+  db: any,
+  secret?: string,
+  flushMs?: number,
+  maxEntries?: number,
+): {
+  queue: (roomId: string, ts: string, line: string) => void;
+  flush: () => void;
+};
 export function insertLogs(
   db: any,
   entries: { roomId: string; ts: string; line: string }[],

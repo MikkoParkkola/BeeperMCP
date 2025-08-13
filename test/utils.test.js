@@ -13,6 +13,7 @@ import {
   openLogDb,
   insertLog,
   insertLogs,
+  createLogWriter,
   queryLogs,
   pushWithLimit,
   BoundedMap,
@@ -287,6 +288,19 @@ test('insertLogs batches entries and decrypts with secret', () => {
     '[2025-01-01T00:00:00.000Z] <u> a',
     '[2025-01-02T00:00:00.000Z] <u> b',
   ]);
+});
+
+test('createLogWriter queues and flushes entries', () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const dbPath = path.join(tmpBase, 'writer.db');
+  const db = openLogDb(dbPath);
+  const { queue, flush } = createLogWriter(db);
+  queue('room', '2025-01-01T00:00:00.000Z', '[a]');
+  queue('room', '2025-01-02T00:00:00.000Z', '[b]');
+  flush();
+  const lines = queryLogs(db, 'room');
+  assert.deepStrictEqual(lines, ['[a]', '[b]']);
 });
 
 test('encryptFileStream writes encrypted media', async () => {

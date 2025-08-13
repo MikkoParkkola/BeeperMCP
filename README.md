@@ -47,7 +47,7 @@ Common optional variables are shown below (defaults in parentheses):
 
 - `MATRIX_HOMESERVER` – homeserver URL (`https://matrix.beeper.com`)
 - `MESSAGE_LOG_DIR` – directory for room logs (`./room-logs`)
-- `LOG_DB_PATH` – SQLite database for indexed logs (`room-logs/messages.db`)
+- `LOG_DB_PATH` – SQLite database for indexed logs with WAL and batched writes (`room-logs/messages.db`)
 - `LOG_LEVEL` – log verbosity: `trace`, `debug`, `info`, `warn`, or `error` (`info`)
 - `BACKFILL_CONCURRENCY` – simultaneous backfill requests (`5`)
 - `LOG_MAX_BYTES` – rotate log files when they exceed this size (`5000000`)

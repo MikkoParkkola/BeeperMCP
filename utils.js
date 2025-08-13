@@ -130,11 +130,30 @@ export async function appendWithRotate(file, line, maxBytes, secret) {
 export function openLogDb(file) {
   ensureDir(path.dirname(file));
   const db = new Database(file);
+  // enable WAL for concurrent readers and set less strict sync for speed
+  db.pragma('journal_mode = WAL');
+  db.pragma('synchronous = NORMAL');
   db.exec(
     'CREATE TABLE IF NOT EXISTS logs (room_id TEXT, ts TEXT, line TEXT);\n' +
-      'CREATE INDEX IF NOT EXISTS idx_logs_room_ts ON logs(room_id, ts)',
+      'CREATE INDEX IF NOT EXISTS idx_logs_room_ts ON logs(room_id, ts);\n' +
+      'CREATE INDEX IF NOT EXISTS idx_logs_ts ON logs(ts)',
   );
   return db;
+}
+
+export function createLogWriter(db, secret, flushMs = 1000, maxEntries = 100) {
+  const buffer = [];
+  const flush = () => {
+    if (buffer.length) insertLogs(db, buffer.splice(0, buffer.length), secret);
+  };
+  setInterval(flush, flushMs).unref();
+  return {
+    queue(roomId, ts, line) {
+      buffer.push({ roomId, ts, line });
+      if (buffer.length >= maxEntries) flush();
+    },
+    flush,
+  };
 }
 
 export function insertLogs(db, entries, secret) {
