@@ -12,6 +12,7 @@
     "src/mcp.ts",
     "src/auth.ts",
     "src/crypto.ts",
+    "src/client.ts",
     "beeper-mcp-server.ts",
     "phased-setup.ts"
   ],
