@@ -4,5 +4,5 @@ CREATE TABLE IF NOT EXISTS tz_timeline (
 );
 
 INSERT INTO tz_timeline (since, tz)
-VALUES ('1970-01-01Z', 'Europe/Amsterdam')
-ON CONFLICT (since) DO NOTHING;
+VALUES ('1970-01-01T00:00:00Z', 'Europe/Amsterdam')
+ON CONFLICT DO NOTHING;

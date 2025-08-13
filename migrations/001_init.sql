@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS messages (
   chars int,
   attachments int,
   tsv tsvector,
-  embedding vector,
+  embedding vector(384),
   embedding_model_ver text,
   sentiment_score real,
   sentiment_subjectivity real,
@@ -44,4 +44,4 @@ CREATE INDEX IF NOT EXISTS idx_messages_tz ON messages (tz_year, tz_month, tz_we
 CREATE INDEX IF NOT EXISTS idx_messages_participants ON messages USING GIN (participants);
 CREATE INDEX IF NOT EXISTS idx_messages_tsv ON messages USING GIN (tsv);
 -- ivfflat by default; swap to HNSW if available in your pgvector version
-CREATE INDEX IF NOT EXISTS idx_messages_embedding ON messages USING ivfflat (embedding vector_cosine) WITH (lists = 100);
+CREATE INDEX IF NOT EXISTS idx_messages_embedding ON messages USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
