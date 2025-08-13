@@ -16,6 +16,7 @@ export function buildMcpServer(
   logDb,
   enableSend,
   logSecret,
+  apiKey,
   queryFn = queryLogs,
 ) {
   const srv = new McpServer({
@@ -24,10 +25,18 @@ export function buildMcpServer(
     description: 'Matrix↔MCP logger',
   });
 
+  const authWrapper = (cb) => {
+    return (args, extra) => {
+      if (apiKey && extra?._meta?.apiKey !== apiKey)
+        throw new Error('Invalid API key');
+      return cb(args, extra);
+    };
+  };
+
   srv.tool(
     'list_rooms',
     z.object({ limit: z.number().int().positive().default(50) }),
-    async ({ limit }) => {
+    authWrapper(async ({ limit }) => {
       const out = client
         .getRooms()
         .sort(
@@ -38,7 +47,7 @@ export function buildMcpServer(
         .slice(0, limit)
         .map((r) => ({ room_id: r.roomId, name: r.name }));
       return { content: [{ type: 'json', json: out }] };
-    },
+    }),
   );
 
   srv.tool(
@@ -47,7 +56,7 @@ export function buildMcpServer(
       name: z.string().min(1),
       encrypted: z.boolean().default(false),
     }),
-    async ({ name, encrypted }) => {
+    authWrapper(async ({ name, encrypted }) => {
       const opts = { name, visibility: 'private' };
       if (encrypted)
         opts.initial_state = [
@@ -59,7 +68,7 @@ export function buildMcpServer(
         ];
       const { room_id } = await client.createRoom(opts);
       return { content: [{ type: 'json', json: { room_id } }] };
-    },
+    }),
   );
 
   srv.tool(
@@ -70,23 +79,23 @@ export function buildMcpServer(
       since: z.string().datetime().optional(),
       until: z.string().datetime().optional(),
     }),
-    async ({ room_id, limit, since, until }) => {
+    authWrapper(async ({ room_id, limit, since, until }) => {
       let lines = [];
       try {
         lines = queryFn(logDb, room_id, limit, since, until, logSecret);
       } catch {}
       return { content: [{ type: 'json', json: lines.filter(Boolean) }] };
-    },
+    }),
   );
 
   if (enableSend) {
     srv.tool(
       'send_message',
       z.object({ room_id: z.string(), message: z.string().min(1) }),
-      async ({ room_id, message }) => {
+      authWrapper(async ({ room_id, message }) => {
         await client.sendTextMessage(room_id, message);
         return { content: [{ type: 'text', text: 'sent' }] };
-      },
+      }),
     );
   }
 

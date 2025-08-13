@@ -57,10 +57,13 @@ Common optional variables are shown below (defaults in parentheses):
 - `MSC4190` / `MSC3202` – enable experimental key-forwarding/device-masquerading (`true`)
 - `SESSION_SECRET` – encrypt session cache on disk
 - `LOG_SECRET` – encrypt per-room log files
+- `MCP_API_KEY` – require this key in tool requests (`_meta.apiKey`)
 - `MEDIA_SECRET` – encrypt downloaded media files
 - `ENABLE_SEND_MESSAGE` – set to `1` to expose the `send_message` tool
 - `TEST_ROOM_ID` – sync only a specific room (empty)
 - `TEST_LIMIT` – stop after decrypting N events (`0`)
+
+If `MCP_API_KEY` is set, tool invocations must include this value in `_meta.apiKey`. Requests without the correct key are rejected.
 
 The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v3/account/whoami` endpoint before any data is downloaded. If the token does not match the provided `MATRIX_USERID`, the process exits with an error.
 
