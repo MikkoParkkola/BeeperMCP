@@ -165,6 +165,30 @@ export function createFlushHelper(): {
   register: (fn: () => any) => void;
   flush: () => Promise<void>;
 };
+export function computeLocalTzKeys(
+  ts: number | Date,
+  tz: string,
+): {
+  day_local: string;
+  week_local: string;
+  month_local: string;
+  year_local: string;
+  hour_local: string;
+  dow_local: number;
+};
+export class TimezoneTimeline {
+  constructor(defaultTz?: string);
+  set(tz: string, since?: string): void;
+  get(ts: number | Date): string;
+  localKeys(ts: number | Date): {
+    day_local: string;
+    week_local: string;
+    month_local: string;
+    year_local: string;
+    hour_local: string;
+    dow_local: number;
+  };
+}
 export function cleanupLogsAndMedia(
   logDir: string,
   db: any,
