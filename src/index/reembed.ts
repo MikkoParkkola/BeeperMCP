@@ -10,11 +10,22 @@ function getPool() {
 export async function runReembedBatch(limit = 100): Promise<number> {
   // Placeholder: mark rows as current without re-embedding
   const p = getPool();
-  const res = await p.query(
-    `UPDATE messages SET embedding_model_ver = $1
-     WHERE (embedding_model_ver IS NULL OR embedding_model_ver <> $1)
-     LIMIT ${limit}`
-    , [config.embeddings.modelVer]
-  ).catch(async () => ({ rowCount: 0 } as any));
+  const res = await p
+    .query(
+      `
+      WITH to_update AS (
+        SELECT event_id
+        FROM messages
+        WHERE embedding_model_ver IS NULL OR embedding_model_ver <> $1
+        LIMIT $2
+      )
+      UPDATE messages AS m
+      SET embedding_model_ver = $1
+      FROM to_update tu
+      WHERE m.event_id = tu.event_id
+      `,
+      [config.embeddings.modelVer, limit],
+    )
+    .catch(() => ({ rowCount: 0 } as any));
   return (res as any).rowCount ?? 0;
 }

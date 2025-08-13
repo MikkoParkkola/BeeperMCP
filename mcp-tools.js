@@ -114,6 +114,8 @@ export function buildMcpServer(
   };
   wrapHandler('tools/list');
   wrapHandler('tools/call');
+  wrapHandler('resources/list');
+  wrapHandler('resources/read');
 
   return srv;
 }

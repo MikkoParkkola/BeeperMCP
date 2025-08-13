@@ -40,16 +40,41 @@ export async function searchHybrid(query: string, filters: SearchFilters, limit 
     parts.push(`room_id = ANY($${arg++})`);
     args.push(filters.rooms);
   }
+
+  // NEW: participants filter (by sender)
+  if (filters.participants?.length) {
+    parts.push(`sender = ANY($${arg++})`);
+    args.push(filters.participants);
+  }
+
   if (filters.lang) {
     parts.push(`lang = $${arg++}`);
     args.push(filters.lang);
   }
+
+  // NEW: types filter
+  if (filters.types?.length) {
+    const nonText = filters.types.filter((t) => t !== "text");
+    if (nonText.length && filters.types.includes("text")) {
+      parts.push(
+        `( (media_types && $${arg}) OR (media_types IS NULL OR array_length(media_types, 1) = 0) )`,
+      );
+      args.push(nonText);
+      arg += 1;
+    } else if (nonText.length) {
+      parts.push(`media_types && $${arg++}`);
+      args.push(nonText);
+    } else {
+      parts.push(`media_types IS NULL OR array_length(media_types, 1) = 0`);
+    }
+  }
+
   const where = parts.length ? `WHERE ${parts.join(" AND ")}` : "";
   const sql = `
     SELECT event_id, ts_utc, ts_rank(tsv, plainto_tsquery($1)) AS score
     FROM messages
     ${where}
-    ORDER BY score DESC
+    ORDER BY score DESC, ts_utc DESC
     LIMIT ${limit}
   `;
   const res = await p.query(sql, args);
