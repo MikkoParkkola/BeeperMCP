@@ -17,6 +17,7 @@ import {
   queryLogs,
   insertMedia,
   queryMedia,
+  createMediaWriter,
   pushWithLimit,
   BoundedMap,
   envFlag,
@@ -359,6 +360,48 @@ test('insertMedia stores metadata and queryMedia retrieves it', () => {
       file: 'file.txt',
       type: 'text/plain',
       size: 5,
+    },
+  ]);
+});
+
+test('createMediaWriter queues and flushes entries', () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const dbPath = path.join(tmpBase, 'media-writer.db');
+  const db = openLogDb(dbPath);
+  const { queue, flush } = createMediaWriter(db);
+  queue({
+    eventId: 'e1',
+    roomId: 'room',
+    ts: '2025-01-01T00:00:00.000Z',
+    file: 'f1',
+    type: 'text/plain',
+    size: 1,
+  });
+  queue({
+    eventId: 'e2',
+    roomId: 'room',
+    ts: '2025-01-02T00:00:00.000Z',
+    file: 'f2',
+    type: 'image/png',
+    size: 2,
+  });
+  flush();
+  const rows = queryMedia(db, 'room');
+  assert.deepStrictEqual(rows, [
+    {
+      eventId: 'e1',
+      ts: '2025-01-01T00:00:00.000Z',
+      file: 'f1',
+      type: 'text/plain',
+      size: 1,
+    },
+    {
+      eventId: 'e2',
+      ts: '2025-01-02T00:00:00.000Z',
+      file: 'f2',
+      type: 'image/png',
+      size: 2,
     },
   ]);
 });
