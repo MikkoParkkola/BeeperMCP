@@ -18,6 +18,7 @@ import {
   insertMedia,
   queryMedia,
   createMediaDownloader,
+  createMediaWriter,
   pushWithLimit,
   BoundedMap,
   envFlag,
@@ -372,7 +373,7 @@ test('createMediaDownloader reuses cached media for identical events', async () 
   const db = openLogDb(dbPath);
   const logs = [];
   const queueLog = (roomId, ts, line) => logs.push(line);
-  const queueMedia = (meta) => insertMedia(db, meta);
+  const { queue: queueMedia, flush: flushMedia } = createMediaWriter(db);
   let fetchCalls = 0;
   const origFetch = global.fetch;
   global.fetch = async () => {
@@ -386,7 +387,7 @@ test('createMediaDownloader reuses cached media for identical events', async () 
       body: Readable.from(Buffer.from('data')),
     };
   };
-  const dl = createMediaDownloader(db, queueMedia, queueLog);
+  const dl = createMediaDownloader(queueMedia, queueLog, undefined, db);
   const dest1 = path.join(tmpBase, 'a');
   dl.queue({
     url: 'http://x',
@@ -399,6 +400,7 @@ test('createMediaDownloader reuses cached media for identical events', async () 
     size: 4,
   });
   await dl.flush();
+  await flushMedia();
   const dest2 = path.join(tmpBase, 'b');
   dl.queue({
     url: 'http://x',
@@ -411,6 +413,7 @@ test('createMediaDownloader reuses cached media for identical events', async () 
     size: 4,
   });
   await dl.flush();
+  await flushMedia();
   global.fetch = origFetch;
   assert.strictEqual(fetchCalls, 1);
   assert.deepStrictEqual(logs, [

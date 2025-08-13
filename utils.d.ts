@@ -121,6 +121,7 @@ export function createMediaDownloader(
     eventId?: string,
   ) => void,
   secret?: string,
+  db?: any,
   concurrency?: number,
 ): {
   queue: (task: {
