@@ -2,6 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { queryLogs } from './utils.js';
 
+const logger = console;
+
 /**
  * Build an MCP server instance with standard tools.
  * @param {any} client Matrix client
@@ -83,7 +85,9 @@ export function buildMcpServer(
       let lines = [];
       try {
         lines = queryFn(logDb, room_id, limit, since, until, logSecret);
-      } catch {}
+      } catch (err) {
+        logger.warn('Failed to query logs', err);
+      }
       return { content: [{ type: 'json', json: lines.filter(Boolean) }] };
     }),
   );

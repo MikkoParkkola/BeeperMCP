@@ -4,6 +4,8 @@ import { EventEmitter } from 'node:events';
 import { Readable } from 'node:stream';
 import { pushWithLimit, BoundedMap } from '../utils.js';
 
+const logger = console;
+
 // Helper to simulate starting the Matrix client with one retry on failure
 async function startWithRetry(client, retries = 1) {
   for (let i = 0; i <= retries; i++) {
@@ -32,24 +34,25 @@ test('client reconnects after network failure', async () => {
 async function backfillRoom(client, room) {
   const tl = room.getLiveTimeline();
   let more = true;
-  while (more) {
-    try {
-      more = await client.paginateEventTimeline(tl, {
-        backwards: true,
-        limit: 1000,
-      });
-    } catch {
-      // retry immediately
+    while (more) {
+      try {
+        more = await client.paginateEventTimeline(tl, {
+          backwards: true,
+          limit: 1000,
+        });
+      } catch (err) {
+        logger.warn('paginateEventTimeline failed', err);
+        // retry immediately
+      }
     }
-  }
   for (const ev of tl.getEvents().sort((a, b) => a.getTs() - b.getTs())) {
     await client.emit('event', ev);
   }
 }
 
-test('message backfill retries after network failure', async () => {
-  const client = new EventEmitter();
-  let paginates = 0;
+  test('message backfill retries after network failure', async () => {
+    const client = new EventEmitter();
+    let paginates = 0;
   client.paginateEventTimeline = async () => {
     paginates++;
     if (paginates === 1) throw new Error('network');
@@ -57,28 +60,36 @@ test('message backfill retries after network failure', async () => {
   };
   const ev1 = { getTs: () => 2, payload: 'b' };
   const ev2 = { getTs: () => 1, payload: 'a' };
-  const tl = { getEvents: () => [ev1, ev2] };
-  const room = { getLiveTimeline: () => tl };
-  const emitted = [];
-  client.emit = (name, ev) => {
-    if (name === 'event') emitted.push(ev.payload);
-    return EventEmitter.prototype.emit.call(client, name, ev);
-  };
-  await backfillRoom(client, room);
-  assert.equal(paginates, 2);
-  assert.deepEqual(emitted, ['a', 'b']);
-});
+    const tl = { getEvents: () => [ev1, ev2] };
+    const room = { getLiveTimeline: () => tl };
+    const emitted = [];
+    client.emit = (name, ev) => {
+      if (name === 'event') emitted.push(ev.payload);
+      return EventEmitter.prototype.emit.call(client, name, ev);
+    };
+    const warns = [];
+    const origWarn = logger.warn;
+    logger.warn = (...args) => {
+      warns.push(args);
+    };
+    await backfillRoom(client, room);
+    assert.equal(paginates, 2);
+    assert.deepEqual(emitted, ['a', 'b']);
+    assert.equal(warns.length, 1);
+    logger.warn = origWarn;
+  });
 
 // Simplified decrypt helper to test missing key retry logic
 const UID = '@me:test';
 async function decryptEvent(client, pending, ev) {
   if (!ev.isEncrypted()) return;
-  try {
-    const cryptoApi = client.getCrypto();
-    if (cryptoApi) await cryptoApi.decryptEvent(ev);
-  } catch {
-    const wire = ev.getWireContent();
-    const mapKey = `${ev.getRoomId()}|${wire.session_id}`;
+    try {
+      const cryptoApi = client.getCrypto();
+      if (cryptoApi) await cryptoApi.decryptEvent(ev);
+    } catch (err) {
+      logger.warn('Failed to decrypt event', err);
+      const wire = ev.getWireContent();
+      const mapKey = `${ev.getRoomId()}|${wire.session_id}`;
     const arr = pending.get(mapKey) || [];
     pushWithLimit(arr, ev, 5);
     pending.set(mapKey, arr);
@@ -99,9 +110,9 @@ async function decryptEvent(client, pending, ev) {
   }
 }
 
-test('missing keys trigger key request and queued retry', async () => {
-  let requested = 0;
-  const crypto = {
+  test('missing keys trigger key request and queued retry', async () => {
+    let requested = 0;
+    const crypto = {
     async decryptEvent(ev) {
       if (!ev.hasKey) {
         const err = new Error('missing');
@@ -118,23 +129,30 @@ test('missing keys trigger key request and queued retry', async () => {
     getCrypto: () => crypto,
     emit: () => {},
   };
-  const pending = new BoundedMap(10);
-  const event = {
-    hasKey: false,
-    isEncrypted: () => true,
-    getRoomId: () => '!room',
-    getSender: () => '@alice:test',
-    getWireContent: () => ({ session_id: 'sess', algorithm: 'alg' }),
-  };
-  await decryptEvent(client, pending, event);
-  assert.equal(requested, 1);
-  // simulate key arrival and retry queued event
-  event.hasKey = true;
-  for (const pend of pending.get('!room|sess')) {
-    await decryptEvent(client, pending, pend);
-  }
-  assert.equal(requested, 1); // no additional key request
-});
+    const pending = new BoundedMap(10);
+    const event = {
+      hasKey: false,
+      isEncrypted: () => true,
+      getRoomId: () => '!room',
+      getSender: () => '@alice:test',
+      getWireContent: () => ({ session_id: 'sess', algorithm: 'alg' }),
+    };
+    const warns = [];
+    const origWarn = logger.warn;
+    logger.warn = (...args) => {
+      warns.push(args);
+    };
+    await decryptEvent(client, pending, event);
+    assert.equal(requested, 1);
+    // simulate key arrival and retry queued event
+    event.hasKey = true;
+    for (const pend of pending.get('!room|sess')) {
+      await decryptEvent(client, pending, pend);
+    }
+    assert.equal(requested, 1); // no additional key request
+    assert.equal(warns.length, 1);
+    logger.warn = origWarn;
+  });
 
 // Helper to simulate a single /sync request with retry on HTTP failure
 async function syncOnceWithRetry(url, retries = 1) {
@@ -166,14 +184,16 @@ test('sync loop retries after HTTP error', async () => {
 async function backfillAndDecrypt(client, room, pending, downloader) {
   const tl = room.getLiveTimeline();
   let more = true;
-  while (more) {
-    try {
-      more = await client.paginateEventTimeline(tl, {
-        backwards: true,
-        limit: 1000,
-      });
-    } catch {}
-  }
+    while (more) {
+      try {
+        more = await client.paginateEventTimeline(tl, {
+          backwards: true,
+          limit: 1000,
+        });
+      } catch (err) {
+        logger.warn('paginateEventTimeline failed', err);
+      }
+    }
   for (const ev of tl.getEvents().sort((a, b) => a.getTs() - b.getTs())) {
     await decryptEvent(client, pending, ev);
     if (ev.decrypted) {
@@ -183,9 +203,9 @@ async function backfillAndDecrypt(client, room, pending, downloader) {
   }
 }
 
-test('backfilled encrypted media event decrypts and downloads after key arrives', async () => {
-  const pending = new BoundedMap(10);
-  let requested = 0;
+  test('backfilled encrypted media event decrypts and downloads after key arrives', async () => {
+    const pending = new BoundedMap(10);
+    let requested = 0;
   const crypto = {
     async decryptEvent(ev) {
       if (!ev.hasKey) {
@@ -232,26 +252,33 @@ test('backfilled encrypted media event decrypts and downloads after key arrives'
     fetchCalls++;
     return { ok: true, headers: new Headers(), body: Readable.from('data') };
   };
-  const downloader = {
-    queue(meta) {
-      downloads.push(meta.url);
-      fetch(meta.url);
-    },
-  };
-  await backfillAndDecrypt(client, room, pending, downloader);
-  assert.equal(paginates, 2);
-  assert.equal(requested, 1);
-  assert.equal(downloads.length, 0);
-  event.hasKey = true;
-  for (const pend of pending.get('!room|sess') || []) {
-    await decryptEvent(client, pending, pend);
-    if (pend.decrypted) {
-      const content = pend.getContent();
-      if (content.url) downloader.queue({ url: content.url });
+    const downloader = {
+      queue(meta) {
+        downloads.push(meta.url);
+        fetch(meta.url);
+      },
+    };
+    const warns = [];
+    const origWarn = logger.warn;
+    logger.warn = (...args) => {
+      warns.push(args);
+    };
+    await backfillAndDecrypt(client, room, pending, downloader);
+    assert.equal(paginates, 2);
+    assert.equal(requested, 1);
+    assert.equal(downloads.length, 0);
+    assert.equal(warns.length, 2);
+    event.hasKey = true;
+    for (const pend of pending.get('!room|sess') || []) {
+      await decryptEvent(client, pending, pend);
+      if (pend.decrypted) {
+        const content = pend.getContent();
+        if (content.url) downloader.queue({ url: content.url });
+      }
     }
-  }
-  assert.equal(event.decrypted, true);
-  assert.equal(fetchCalls, 1);
-  assert.deepEqual(downloads, ['http://mx/cat']);
-  global.fetch = origFetch;
-});
+    assert.equal(event.decrypted, true);
+    assert.equal(fetchCalls, 1);
+    assert.deepEqual(downloads, ['http://mx/cat']);
+    global.fetch = origFetch;
+    logger.warn = origWarn;
+  });
