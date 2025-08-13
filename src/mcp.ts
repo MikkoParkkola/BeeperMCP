@@ -7,8 +7,7 @@ export async function initMcpServer(
   logDb: any,
   enableSend: boolean,
   logSecret: string | undefined,
-  apiKey: string,
 ) {
-  const srv = buildMcpServer(client, logDb, enableSend, logSecret, apiKey);
+  const srv = buildMcpServer(client, logDb, enableSend, logSecret);
   await srv.connect(new StdioServerTransport());
 }

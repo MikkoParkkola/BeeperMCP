@@ -221,7 +221,7 @@ export function setupEventLogging(
           const ext = path.extname(content.filename || content.body || '');
           const fname = `${ts.replace(/[:.]/g, '')}_${safeFilename(id)}${ext}`;
           const dest = path.join(dir, fname + (mediaSecret ? '.enc' : ''));
-          mediaDownloader.queue({
+          const { queued, file } = mediaDownloader.queue({
             url: url as string,
             dest,
             roomId: rid,
@@ -231,7 +231,9 @@ export function setupEventLogging(
             type: content.info?.mimetype,
             size: content.info?.size,
           });
-          line = `[${ts}] <${ev.getSender()}> [media pending] ${path.basename(dest)}`;
+          line = queued
+            ? `[${ts}] <${ev.getSender()}> [media pending] ${file}`
+            : `[${ts}] <${ev.getSender()}> [media cached] ${file}`;
         } catch (err: any) {
           logger.warn('Failed to queue media download', err);
           line = `[${ts}] <${ev.getSender()}> [media download failed]`;
