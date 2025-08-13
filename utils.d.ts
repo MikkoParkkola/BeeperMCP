@@ -4,8 +4,10 @@ export function getRoomDir(base: string, roomId: string): string;
 export const pipelineAsync: (...streams: any[]) => Promise<void>;
 export class FileSessionStore {
   constructor(file: string);
-  read(): any;
-  getItem(key: string): any;
-  setItem(key: string, val: any): void;
+  readonly length: number;
+  clear(): void;
+  key(index: number): string | null;
+  getItem(key: string): string | null;
+  setItem(key: string, val: string): void;
   removeItem(key: string): void;
 }

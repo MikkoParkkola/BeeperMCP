@@ -24,24 +24,36 @@ export class FileSessionStore {
     this.file = file;
     ensureDir(path.dirname(file));
   }
-  read() {
+  #read() {
     try {
       return JSON.parse(fs.readFileSync(this.file, 'utf8'));
     } catch {
       return {};
     }
   }
+  #write(data) {
+    fs.writeFileSync(this.file, JSON.stringify(data));
+  }
+  get length() {
+    return Object.keys(this.#read()).length;
+  }
+  clear() {
+    this.#write({});
+  }
+  key(index) {
+    return Object.keys(this.#read())[index] ?? null;
+  }
   getItem(key) {
-    return this.read()[key] ?? null;
+    return this.#read()[key] ?? null;
   }
   setItem(key, val) {
-    const data = this.read();
+    const data = this.#read();
     data[key] = val;
-    fs.writeFileSync(this.file, JSON.stringify(data));
+    this.#write(data);
   }
   removeItem(key) {
-    const data = this.read();
+    const data = this.#read();
     delete data[key];
-    fs.writeFileSync(this.file, JSON.stringify(data));
+    this.#write(data);
   }
 }
