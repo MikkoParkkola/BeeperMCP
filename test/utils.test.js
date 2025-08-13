@@ -17,7 +17,7 @@ import {
   queryLogs,
   insertMedia,
   queryMedia,
-  createMediaWriter,
+  createMediaDownloader,
   pushWithLimit,
   BoundedMap,
   envFlag,
@@ -364,45 +364,56 @@ test('insertMedia stores metadata and queryMedia retrieves it', () => {
   ]);
 });
 
-test('createMediaWriter queues and flushes entries', () => {
+test('createMediaDownloader reuses cached media for identical events', async () => {
   cleanup();
   ensureDir(tmpBase);
-  const dbPath = path.join(tmpBase, 'media-writer.db');
+  const dbPath = path.join(tmpBase, 'media.db');
   const db = openLogDb(dbPath);
-  const { queue, flush } = createMediaWriter(db);
-  queue({
+  const logs = [];
+  const queueLog = (roomId, ts, line) => logs.push(line);
+  let fetchCalls = 0;
+  const origFetch = global.fetch;
+  global.fetch = async () => {
+    fetchCalls++;
+    return {
+      ok: true,
+      headers: new Headers({
+        'content-type': 'text/plain',
+        'content-length': '4',
+      }),
+      body: Readable.from(Buffer.from('data')),
+    };
+  };
+  const dl = createMediaDownloader(db, queueLog);
+  const dest1 = path.join(tmpBase, 'a');
+  dl.queue({
+    url: 'http://x',
+    dest: dest1,
+    roomId: 'room',
     eventId: 'e1',
-    roomId: 'room',
     ts: '2025-01-01T00:00:00.000Z',
-    file: 'f1',
+    sender: 'u',
     type: 'text/plain',
-    size: 1,
+    size: 4,
   });
-  queue({
-    eventId: 'e2',
+  await dl.flush();
+  const dest2 = path.join(tmpBase, 'b');
+  dl.queue({
+    url: 'http://x',
+    dest: dest2,
     roomId: 'room',
-    ts: '2025-01-02T00:00:00.000Z',
-    file: 'f2',
-    type: 'image/png',
-    size: 2,
+    eventId: 'e1',
+    ts: '2025-01-01T00:00:00.000Z',
+    sender: 'u',
+    type: 'text/plain',
+    size: 4,
   });
-  flush();
-  const rows = queryMedia(db, 'room');
-  assert.deepStrictEqual(rows, [
-    {
-      eventId: 'e1',
-      ts: '2025-01-01T00:00:00.000Z',
-      file: 'f1',
-      type: 'text/plain',
-      size: 1,
-    },
-    {
-      eventId: 'e2',
-      ts: '2025-01-02T00:00:00.000Z',
-      file: 'f2',
-      type: 'image/png',
-      size: 2,
-    },
+  await dl.flush();
+  global.fetch = origFetch;
+  assert.strictEqual(fetchCalls, 1);
+  assert.deepStrictEqual(logs, [
+    `[2025-01-01T00:00:00.000Z] <u> [media] ${path.basename(dest1)}`,
+    `[2025-01-01T00:00:00.000Z] <u> [media cached] ${path.basename(dest1)}`,
   ]);
 });
 

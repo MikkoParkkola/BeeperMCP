@@ -145,7 +145,8 @@ export function openLogDb(file) {
       'CREATE INDEX IF NOT EXISTS idx_logs_room_ts ON logs(room_id, ts);\n' +
       'CREATE INDEX IF NOT EXISTS idx_logs_event ON logs(event_id);\n' +
       'CREATE TABLE IF NOT EXISTS media (event_id TEXT PRIMARY KEY, room_id TEXT, ts TEXT, file TEXT, type TEXT, size INTEGER);\n' +
-      'CREATE INDEX IF NOT EXISTS idx_media_room_ts ON media(room_id, ts)',
+      'CREATE INDEX IF NOT EXISTS idx_media_room_ts ON media(room_id, ts);\n' +
+      'CREATE INDEX IF NOT EXISTS idx_media_type_size ON media(type, size)',
   );
   return db;
 }
@@ -304,6 +305,30 @@ export function createMediaDownloader(
   };
   return {
     queue(item) {
+      const { eventId, roomId, ts, sender, type, size } = item;
+      let existing = db
+        .prepare('SELECT file FROM media WHERE event_id = ?')
+        .get(eventId);
+      if (!existing && type && size != null) {
+        existing = db
+          .prepare('SELECT file FROM media WHERE type = ? AND size = ? LIMIT 1')
+          .get(type, size);
+        if (existing) {
+          insertMedia(db, {
+            eventId,
+            roomId,
+            ts,
+            file: existing.file,
+            type,
+            size,
+          });
+        }
+      }
+      if (existing) {
+        const line = `[${ts}] <${sender}> [media cached] ${existing.file}`;
+        queueLog(roomId, ts, line, eventId);
+        return;
+      }
       pending.push(item);
       next();
     },
