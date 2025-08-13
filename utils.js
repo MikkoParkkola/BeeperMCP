@@ -144,9 +144,9 @@ export function openLogDb(file) {
     'CREATE TABLE IF NOT EXISTS logs (room_id TEXT, ts TEXT, line TEXT, event_id TEXT);\n' +
       'CREATE INDEX IF NOT EXISTS idx_logs_room_ts ON logs(room_id, ts);\n' +
       'CREATE INDEX IF NOT EXISTS idx_logs_event ON logs(event_id);\n' +
-      'CREATE TABLE IF NOT EXISTS media (event_id TEXT PRIMARY KEY, room_id TEXT, ts TEXT, file TEXT, type TEXT, size INTEGER);\n' +
+      'CREATE TABLE IF NOT EXISTS media (event_id TEXT PRIMARY KEY, room_id TEXT, ts TEXT, file TEXT, type TEXT, size INTEGER, hash TEXT);\n' +
       'CREATE INDEX IF NOT EXISTS idx_media_room_ts ON media(room_id, ts);\n' +
-      'CREATE INDEX IF NOT EXISTS idx_media_type_size ON media(type, size)',
+      'CREATE INDEX IF NOT EXISTS idx_media_hash ON media(hash)',
   );
   return db;
 }
@@ -219,11 +219,19 @@ export function queryLogs(db, roomId, limit, since, until, secret) {
 
 export function insertMedias(db, entries) {
   const stmt = db.prepare(
-    'INSERT OR REPLACE INTO media (event_id, room_id, ts, file, type, size) VALUES (?, ?, ?, ?, ?, ?)',
+    'INSERT OR REPLACE INTO media (event_id, room_id, ts, file, type, size, hash) VALUES (?, ?, ?, ?, ?, ?, ?)',
   );
   const run = db.transaction((items) => {
-    for (const { eventId, roomId, ts, file, type, size } of items) {
-      stmt.run(eventId, roomId, ts, file, type ?? null, size ?? null);
+    for (const { eventId, roomId, ts, file, type, size, hash } of items) {
+      stmt.run(
+        eventId,
+        roomId,
+        ts,
+        file,
+        type ?? null,
+        size ?? null,
+        hash ?? null,
+      );
     }
   });
   run(entries);
@@ -235,7 +243,7 @@ export function insertMedia(db, meta) {
 
 export function queryMedia(db, roomId, limit) {
   let sql =
-    'SELECT event_id as eventId, ts, file, type, size FROM media WHERE room_id = ?';
+    'SELECT event_id as eventId, ts, file, type, size, hash FROM media WHERE room_id = ?';
   const params = [roomId];
   sql += ' ORDER BY ts DESC';
   if (limit) {
@@ -262,6 +270,7 @@ export function createMediaWriter(db, flushMs = 1000, maxEntries = 100) {
 }
 
 export function createMediaDownloader(
+  db,
   queueMedia,
   queueLog,
   secret,
@@ -275,7 +284,8 @@ export function createMediaDownloader(
       const item = pending.shift();
       active++;
       (async () => {
-        const { url, dest, roomId, eventId, ts, sender, type, size } = item;
+        const { url, dest, roomId, eventId, ts, sender, type, size, hash } =
+          item;
         let line;
         try {
           const res = await fetch(url);
@@ -291,6 +301,7 @@ export function createMediaDownloader(
             file: path.basename(dest),
             type: ctype,
             size: clen,
+            hash,
           });
           line = `[${ts}] <${sender}> [media] ${path.basename(dest)}`;
         } catch (err) {
@@ -306,22 +317,23 @@ export function createMediaDownloader(
   };
   return {
     queue(item) {
-      const { eventId, roomId, ts, sender, type, size } = item;
+      const { eventId, roomId, ts, sender, type, size, hash } = item;
       let existing = db
         .prepare('SELECT file FROM media WHERE event_id = ?')
         .get(eventId);
-      if (!existing && type && size != null) {
+      if (!existing && hash) {
         existing = db
-          .prepare('SELECT file FROM media WHERE type = ? AND size = ? LIMIT 1')
-          .get(type, size);
+          .prepare('SELECT file FROM media WHERE hash = ? LIMIT 1')
+          .get(hash);
         if (existing) {
-          insertMedia(db, {
+          queueMedia({
             eventId,
             roomId,
             ts,
             file: existing.file,
             type,
             size,
+            hash,
           });
         }
       }
