@@ -63,13 +63,14 @@ easily.
 
 ## Development
 
-Unit tests for the small utility helpers are provided in `test/utils.test.js` and can be executed with:
+Install dependencies with `npm install` and use the provided scripts to run tests or lint the code:
 
 ```bash
-node --test test/utils.test.js
+npm test
+npm run lint
 ```
 
-No external dependencies are required for the tests.
+The test suite currently exercises the utility helpers and runs with Node's built-in test runner.
 
 ## Synapse configuration for self-key requests
 
