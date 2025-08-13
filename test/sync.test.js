@@ -30,6 +30,18 @@ test('client reconnects after network failure', async () => {
   assert.equal(attempts, 2);
 });
 
+test('reconnection gives up after exceeding retries', async () => {
+  let attempts = 0;
+  const client = {
+    async startClient() {
+      attempts++;
+      throw new Error('network');
+    },
+  };
+  await assert.rejects(startWithRetry(client, 1));
+  assert.equal(attempts, 2);
+});
+
 // Helper to perform message backfill with retry on paginate errors
 async function backfillRoom(client, room) {
   const tl = room.getLiveTimeline();
@@ -76,6 +88,57 @@ test('message backfill retries after network failure', async () => {
   assert.equal(paginates, 2);
   assert.deepEqual(emitted, ['a', 'b']);
   assert.equal(warns.length, 1);
+  logger.warn = origWarn;
+});
+
+test('failed key request is retried on next decrypt attempt', async () => {
+  let requests = 0;
+  const crypto = {
+    async decryptEvent(ev) {
+      if (!ev.hasKey) {
+        const err = new Error('missing');
+        err.name = 'DecryptionError';
+        err.code = 'MEGOLM_UNKNOWN_INBOUND_SESSION_ID';
+        throw err;
+      }
+    },
+    async requestRoomKey() {
+      requests++;
+      if (requests === 1) throw new Error('network');
+    },
+  };
+  const client = {
+    getCrypto: () => crypto,
+    emit: () => {},
+  };
+  const pending = new BoundedMap(10);
+  const event = {
+    hasKey: false,
+    isEncrypted: () => true,
+    getRoomId: () => '!room',
+    getSender: () => '@alice:test',
+    getWireContent: () => ({ session_id: 'sess', algorithm: 'alg' }),
+  };
+  await decryptEvent(client, pending, event).catch(() => {});
+  await decryptEvent(client, pending, event).catch(() => {});
+  assert.equal(requests, 2);
+});
+
+test('backfill keeps retrying until success', async () => {
+  const client = new EventEmitter();
+  let paginates = 0;
+  client.paginateEventTimeline = async () => {
+    paginates++;
+    if (paginates < 3) throw new Error('network');
+    return false;
+  };
+  const room = { getLiveTimeline: () => ({ getEvents: () => [] }) };
+  const warns = [];
+  const origWarn = logger.warn;
+  logger.warn = (...args) => warns.push(args);
+  await backfillRoom(client, room);
+  assert.equal(paginates, 3);
+  assert.equal(warns.length, 2);
   logger.warn = origWarn;
 });
 
