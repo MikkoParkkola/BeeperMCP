@@ -2,6 +2,7 @@ export function ensureDir(dir: string): void;
 export function safeFilename(s?: string): string;
 export function getRoomDir(base: string, roomId: string): string;
 export const pipelineAsync: (...streams: any[]) => Promise<void>;
+export function envFlag(name: string, def?: boolean): boolean;
 export function tailFile(file: string, limit: number, secret?: string): Promise<string[]>;
 export function appendWithRotate(
   file: string,

@@ -7,7 +7,7 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
 - Syncs events from your Beeper homeserver
 - Decrypts end-to-end encrypted rooms
 - Stores message history and media per room with optional SQLite indexing
-- Provides MCP tools: `list_rooms`, `create_room`, `list_messages`, `send_message`
+- Provides MCP tools: `list_rooms`, `create_room`, `list_messages`, and optionally `send_message`
 - Graceful shutdown and local caching of sync tokens and room keys
 
 ## Quick setup (macOS)
@@ -48,6 +48,7 @@ Optional variables include `MATRIX_HOMESERVER`, `MESSAGE_LOG_DIR`, `MATRIX_CACHE
 `SESSION_SECRET` encrypts the session cache on disk when set.
 `LOG_SECRET` encrypts per-room log files when set.
 `LOG_DB_PATH` points to a SQLite database used to index logs for efficient queries (default `room-logs/messages.db`).
+`ENABLE_SEND_MESSAGE` must be set to `1` to expose the `send_message` tool.
 
 The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v3/account/whoami` endpoint before any data is downloaded. If the token does not match the provided `MATRIX_USERID`, the process exits with an error.
 

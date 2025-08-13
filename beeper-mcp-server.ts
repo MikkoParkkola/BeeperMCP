@@ -33,6 +33,7 @@ import {
   queryLogs,
   pushWithLimit,
   BoundedMap,
+  envFlag,
 } from './utils.js';
 
 // --- Constants ---
@@ -60,6 +61,7 @@ const MAX_REQUEST_INTERVAL_MS = Number(process.env.KEY_REQUEST_MAX_INTERVAL_MS ?
 const MSC4190 = process.env.MSC4190 !== 'false';
 // enable MSC3202 device masquerading by default; set MSC3202=false to disable
 const MSC3202 = process.env.MSC3202 !== 'false';
+const ENABLE_SEND = envFlag('ENABLE_SEND_MESSAGE');
 if (!UID || !TOKEN) {
   console.error('Error: MATRIX_USERID and MATRIX_TOKEN must be set');
   process.exit(1);
@@ -566,10 +568,12 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     }
   );
 
-  (srv as any).tool('send_message', z.object({ room_id:z.string(), message:z.string().min(1) }), async({room_id,message}: any)=>{
-    await client.sendTextMessage(room_id,message);
-    return{ content:[{ type:'text', text:'sent' }] };
-  });
+  if (ENABLE_SEND) {
+    (srv as any).tool('send_message', z.object({ room_id:z.string(), message:z.string().min(1) }), async({room_id,message}: any)=>{
+      await client.sendTextMessage(room_id,message);
+      return{ content:[{ type:'text', text:'sent' }] };
+    });
+  }
 
   await srv.connect(new StdioServerTransport());
 

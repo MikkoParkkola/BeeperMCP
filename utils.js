@@ -22,6 +22,15 @@ export function getRoomDir(base, roomId) {
 
 export const pipelineAsync = promisify(pipeline);
 
+export function envFlag(name, def = false) {
+  const val = process.env[name];
+  if (val === undefined) return def;
+  const v = val.toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(v)) return true;
+  if (['0', 'false', 'no', 'off'].includes(v)) return false;
+  return def;
+}
+
 function keyFromSecret(secret) {
   return crypto.createHash('sha256').update(secret).digest();
 }
