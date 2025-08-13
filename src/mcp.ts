@@ -6,8 +6,9 @@ export async function initMcpServer(
   client: MatrixClient,
   logDb: any,
   enableSend: boolean,
+  apiKey: string,
   logSecret: string | undefined,
 ) {
-  const srv = buildMcpServer(client, logDb, enableSend, logSecret);
+  const srv = buildMcpServer(client, logDb, enableSend, apiKey, logSecret);
   await srv.connect(new StdioServerTransport());
 }

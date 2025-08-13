@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { buildMcpServer } from '../mcp-tools.js';
 
 const API_KEY = 'sekret';
-process.env.MCP_API_KEY = API_KEY;
 
 class StubClient {
   constructor() {
@@ -21,7 +20,7 @@ class StubClient {
 
 test('send_message handles message edits via stub client', async () => {
   const client = new StubClient();
-  const srv = buildMcpServer(client, null, true, undefined);
+  const srv = buildMcpServer(client, null, true, API_KEY, undefined);
   await srv._registeredTools.send_message.callback(
     { room_id: 'r1', message: 'hello' },
     { _meta: { apiKey: API_KEY } },
@@ -38,7 +37,7 @@ test('send_message handles message edits via stub client', async () => {
 
 test('send_message can send media-style messages', async () => {
   const client = new StubClient();
-  const srv = buildMcpServer(client, null, true, undefined);
+  const srv = buildMcpServer(client, null, true, API_KEY, undefined);
   await srv._registeredTools.send_message.callback(
     { room_id: 'r1', message: 'mxc://image' },
     { _meta: { apiKey: API_KEY } },
@@ -48,7 +47,7 @@ test('send_message can send media-style messages', async () => {
 
 test('send_message surfaces client errors', async () => {
   const client = new StubClient();
-  const srv = buildMcpServer(client, null, true, undefined);
+  const srv = buildMcpServer(client, null, true, API_KEY, undefined);
   await assert.rejects(
     srv._registeredTools.send_message.callback(
       { room_id: 'r1', message: 'fail' },

@@ -204,6 +204,7 @@ export async function startServer() {
     client,
     logDb,
     config.enableSendMessage,
+    config.mcpApiKey,
     config.logSecret,
   );
 
