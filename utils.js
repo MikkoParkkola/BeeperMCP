@@ -130,6 +130,9 @@ export async function appendWithRotate(file, line, maxBytes, secret) {
 export function openLogDb(file) {
   ensureDir(path.dirname(file));
   const db = new Database(file);
+  try {
+    fs.chmodSync(file, 0o600);
+  } catch {}
   // enable WAL for concurrent readers and set less strict sync for speed
   db.pragma('journal_mode = WAL');
   db.pragma('synchronous = NORMAL');
