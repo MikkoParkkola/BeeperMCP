@@ -79,6 +79,57 @@ test('message backfill retries after network failure', async () => {
   logger.warn = origWarn;
 });
 
+test('media download failure is logged', async () => {
+  const pending = new BoundedMap(10);
+  const crypto = {
+    async decryptEvent(ev) {
+      ev.decrypted = true;
+    },
+  };
+  const client = new EventEmitter();
+  client.getCrypto = () => crypto;
+  client.paginateEventTimeline = async () => false;
+  const event = {
+    hasKey: true,
+    decrypted: false,
+    isEncrypted: () => true,
+    getTs: () => 1,
+    getRoomId: () => '!room',
+    getSender: () => '@alice:test',
+    getWireContent: () => ({ session_id: 'sess', algorithm: 'alg' }),
+    getContent: () => ({ msgtype: 'm.image', url: 'http://mx/cat' }),
+    getId: () => '$e1',
+  };
+  const tl = { getEvents: () => [event] };
+  const room = { getLiveTimeline: () => tl };
+  let fetchCalls = 0;
+  const origFetch = global.fetch;
+  global.fetch = async () => {
+    fetchCalls++;
+    throw new Error('network');
+  };
+  const downloads = [];
+  const warns = [];
+  const origWarn = logger.warn;
+  logger.warn = (...args) => {
+    warns.push(args);
+  };
+  const downloader = {
+    queue(meta) {
+      downloads.push(meta.url);
+      return fetch(meta.url).catch((err) => {
+        logger.warn('download failed', err);
+      });
+    },
+  };
+  await backfillAndDecrypt(client, room, pending, downloader);
+  assert.equal(fetchCalls, 1);
+  assert.deepEqual(downloads, ['http://mx/cat']);
+  assert.equal(warns.length, 1);
+  global.fetch = origFetch;
+  logger.warn = origWarn;
+});
+
 // Simplified decrypt helper to test missing key retry logic
 const UID = '@me:test';
 async function decryptEvent(client, pending, ev) {
@@ -97,14 +148,18 @@ async function decryptEvent(client, pending, ev) {
     if (sender !== UID) {
       const cryptoApi = client.getCrypto();
       if (cryptoApi) {
-        await cryptoApi.requestRoomKey(
-          {
-            room_id: ev.getRoomId(),
-            session_id: wire.session_id,
-            algorithm: wire.algorithm,
-          },
-          [{ userId: sender, deviceId: '*' }],
-        );
+        try {
+          await cryptoApi.requestRoomKey(
+            {
+              room_id: ev.getRoomId(),
+              session_id: wire.session_id,
+              algorithm: wire.algorithm,
+            },
+            [{ userId: sender, deviceId: '*' }],
+          );
+        } catch (reqErr) {
+          logger.warn('requestRoomKey failed', reqErr);
+        }
       }
     }
   }
@@ -151,6 +206,56 @@ test('missing keys trigger key request and queued retry', async () => {
   }
   assert.equal(requested, 1); // no additional key request
   assert.equal(warns.length, 1);
+  logger.warn = origWarn;
+});
+
+test('failed key request is retried and logged', async () => {
+  let requested = 0;
+  let first = true;
+  const crypto = {
+    async decryptEvent(ev) {
+      if (!ev.hasKey) {
+        const err = new Error('missing');
+        err.name = 'DecryptionError';
+        err.code = 'MEGOLM_UNKNOWN_INBOUND_SESSION_ID';
+        throw err;
+      }
+    },
+    async requestRoomKey() {
+      requested++;
+      if (first) {
+        first = false;
+        throw new Error('network');
+      }
+    },
+  };
+  const client = { getCrypto: () => crypto, emit: () => {} };
+  const pending = new BoundedMap(10);
+  const event = {
+    hasKey: false,
+    isEncrypted: () => true,
+    getRoomId: () => '!room',
+    getSender: () => '@alice:test',
+    getWireContent: () => ({ session_id: 'sess', algorithm: 'alg' }),
+  };
+  const warns = [];
+  const origWarn = logger.warn;
+  logger.warn = (...args) => {
+    warns.push(args);
+  };
+  await decryptEvent(client, pending, event);
+  assert.equal(requested, 1);
+  assert.equal(warns.length, 2);
+  assert.equal((pending.get('!room|sess') || []).length, 1);
+  await decryptEvent(client, pending, event);
+  assert.equal(requested, 2);
+  assert.equal(warns.length, 3);
+  assert.equal((pending.get('!room|sess') || []).length, 2);
+  event.hasKey = true;
+  for (const pend of pending.get('!room|sess') || []) {
+    await decryptEvent(client, pending, pend);
+  }
+  assert.equal(requested, 2);
   logger.warn = origWarn;
 });
 
