@@ -29,7 +29,7 @@ import {
   FileSessionStore,
   appendWithRotate,
   openLogDb,
-  insertLog,
+  insertLogs,
   queryLogs,
   pushWithLimit,
   BoundedMap,
@@ -160,6 +160,12 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   const LOG_DB_PATH =
     process.env.LOG_DB_PATH ?? path.join(LOG_DIR, 'messages.db');
   const logDb = openLogDb(LOG_DB_PATH);
+  const logBuffer: { roomId: string; ts: string; line: string }[] = [];
+  const flushLogs = () => {
+    if (logBuffer.length)
+      insertLogs(logDb, logBuffer.splice(0, logBuffer.length), LOG_SECRET);
+  };
+  setInterval(flushLogs, 1000).unref();
   // main Pino logger
   const logger = Pino({ level: LOG_LEVEL });
   // wrap for matrix-js-sdk: suppress expected decryption errors
@@ -494,7 +500,8 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
       line = `[${ts}] <${ev.getSender()}> [${type}]`;
     }
     await appendWithRotate(logf, line, LOG_MAX_BYTES, LOG_SECRET);
-    insertLog(logDb, rid, ts, line, LOG_SECRET);
+    logBuffer.push({ roomId: rid, ts, line });
+    if (logBuffer.length >= 20) flushLogs();
     // test mode: stop after limit
     if (TEST_LIMIT > 0) {
       testCount++;
@@ -695,6 +702,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   const shutdown = async () => {
     logger.info('Shutting down');
     try {
+      flushLogs();
       await client.stopClient();
     } catch {}
     process.exit(0);

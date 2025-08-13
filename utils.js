@@ -135,13 +135,21 @@ export function openLogDb(file) {
   return db;
 }
 
-export function insertLog(db, roomId, ts, line, secret) {
-  const payload = secret ? encrypt(line, secret) : line;
-  db.prepare('INSERT INTO logs (room_id, ts, line) VALUES (?, ?, ?)').run(
-    roomId,
-    ts,
-    payload,
+export function insertLogs(db, entries, secret) {
+  const stmt = db.prepare(
+    'INSERT INTO logs (room_id, ts, line) VALUES (?, ?, ?)',
   );
+  const run = db.transaction((items) => {
+    for (const { roomId, ts, line } of items) {
+      const payload = secret ? encrypt(line, secret) : line;
+      stmt.run(roomId, ts, payload);
+    }
+  });
+  run(entries);
+}
+
+export function insertLog(db, roomId, ts, line, secret) {
+  insertLogs(db, [{ roomId, ts, line }], secret);
 }
 
 export function queryLogs(db, roomId, limit, since, until, secret) {
