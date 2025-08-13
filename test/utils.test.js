@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
-import {ensureDir,safeFilename,getRoomDir,FileSessionStore,tailFile,pushWithLimit,BoundedMap} from '../utils.js';
+import {ensureDir,safeFilename,getRoomDir,FileSessionStore,tailFile,appendWithRotate,pushWithLimit,BoundedMap} from '../utils.js';
 
 const tmpBase = '.test-tmp';
 
@@ -81,6 +81,17 @@ test('BoundedMap evicts oldest entries', () => {
   assert.ok(!map.has('a'));
   assert.strictEqual(map.get('b'),2);
   assert.strictEqual(map.get('c'),3);
+});
+
+test('appendWithRotate rotates log files', async () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const file = path.join(tmpBase, 'rot.log');
+  await appendWithRotate(file, 'a'.repeat(50), 100);
+  await appendWithRotate(file, 'b'.repeat(60), 100);
+  assert.ok(fs.existsSync(`${file}.1`));
+  const main = fs.statSync(file).size;
+  assert.ok(main <= 60);
 });
 
 test.after(() => {

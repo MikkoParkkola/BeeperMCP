@@ -28,6 +28,7 @@ import {
   pipelineAsync,
   FileSessionStore,
   tailFile,
+  appendWithRotate,
   pushWithLimit,
   BoundedMap,
 } from './utils.js';
@@ -35,6 +36,7 @@ import {
 // --- Constants ---
 const CACHE_DIR = process.env.MATRIX_CACHE_DIR ?? './mx-cache';
 const LOG_DIR   = process.env.MESSAGE_LOG_DIR  ?? './room-logs';
+const LOG_MAX_BYTES = Number(process.env.LOG_MAX_BYTES ?? '5000000');
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 const HS        = process.env.MATRIX_HOMESERVER ?? 'https://matrix.beeper.com';
 const UID       = process.env.MATRIX_USERID;
@@ -410,16 +412,16 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
             const ext = path.extname(content.filename||content.body||'');
             const fname = `${ts.replace(/[:.]/g,'')}_${safeFilename(id)}${ext}`;
             await pipelineAsync(res.body as any, fs.createWriteStream(path.join(dir, fname)));
-            await fs.promises.appendFile(logf, `[${ts}] <${ev.getSender()}> [media] ${fname}\n`);
+            await appendWithRotate(logf, `[${ts}] <${ev.getSender()}> [media] ${fname}\n`, LOG_MAX_BYTES);
             return;
           }
         } catch {}
-        await fs.promises.appendFile(logf, `[${ts}] <${ev.getSender()}> [media download failed]\n`);
+        await appendWithRotate(logf, `[${ts}] <${ev.getSender()}> [media download failed]\n`, LOG_MAX_BYTES);
       } else {
-        await fs.promises.appendFile(logf, `[${ts}] <${ev.getSender()}> ${content.body||'[non-text]'}\n`);
+        await appendWithRotate(logf, `[${ts}] <${ev.getSender()}> ${content.body||'[non-text]'}\n`, LOG_MAX_BYTES);
       }
     } else {
-      await fs.promises.appendFile(logf, `[${ts}] <${ev.getSender()}> [${type}]\n`);
+      await appendWithRotate(logf, `[${ts}] <${ev.getSender()}> [${type}]\n`, LOG_MAX_BYTES);
     }
     // test mode: stop after limit
     if (TEST_LIMIT > 0) {

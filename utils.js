@@ -32,6 +32,19 @@ export async function tailFile(file, limit) {
   return lines;
 }
 
+export async function appendWithRotate(file, line, maxBytes) {
+  try {
+    ensureDir(path.dirname(file));
+    const size = await fs.promises.stat(file).then(s => s.size).catch(() => 0);
+    if (size + Buffer.byteLength(line) > maxBytes) {
+      try {
+        await fs.promises.rename(file, `${file}.1`);
+      } catch {}
+    }
+    await fs.promises.appendFile(file, line);
+  } catch {}
+}
+
 export function pushWithLimit(arr, val, limit) {
   arr.push(val);
   if (arr.length > limit) arr.shift();
