@@ -312,7 +312,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     process.exit(0);
   };
 
-  setupEventLogging(client, logger, {
+  const { flush: flushFileLogs } = setupEventLogging(client, logger, {
     logDir: LOG_DIR,
     logMaxBytes: LOG_MAX_BYTES,
     logSecret: LOG_SECRET,
@@ -324,6 +324,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     uid: UID,
     shutdown,
   });
+  flusher.register(flushFileLogs);
 
   await startSync(client, sessionStore, syncKey, logger, {
     concurrency: CONC,
