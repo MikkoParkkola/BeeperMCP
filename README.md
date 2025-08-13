@@ -42,13 +42,23 @@ Create a `.beeper-mcp-server.env` file containing at least `MATRIX_USERID` and `
 npx ts-node beeper-mcp-server.ts
 ```
 
-Optional variables include `MATRIX_HOMESERVER`, `MESSAGE_LOG_DIR`, `MATRIX_CACHE_DIR`, `LOG_LEVEL`, `MSC3202`, `MSC4190` and more (see the source file for details). Support for the MSC3202 device-masquerading and MSC4190 key-forwarding extensions is enabled by default. Set `MSC3202=false` or `MSC4190=false` to opt out. These can also be placed in `.beeper-mcp-server.env`.
-`LOG_MAX_BYTES` controls the maximum size of each room log before it is rotated (default `5000000` bytes).
-`KEY_REQUEST_INTERVAL_MS` sets the initial delay before a missing room key is re-requested (default `1000` ms). `KEY_REQUEST_MAX_INTERVAL_MS` limits the maximum delay between requests (default `300000` ms). The delay doubles after each failed attempt until the maximum is reached.
-`SESSION_SECRET` encrypts the session cache on disk when set.
-`LOG_SECRET` encrypts per-room log files when set.
-`LOG_DB_PATH` points to a SQLite database used to index logs for efficient queries (default `room-logs/messages.db`).
-`ENABLE_SEND_MESSAGE` must be set to `1` to expose the `send_message` tool.
+Common optional variables are shown below (defaults in parentheses):
+
+- `MATRIX_HOMESERVER` – homeserver URL (`https://matrix.beeper.com`)
+- `MESSAGE_LOG_DIR` – directory for room logs (`./room-logs`)
+- `LOG_DB_PATH` – SQLite database for indexed logs (`room-logs/messages.db`)
+- `LOG_LEVEL` – log verbosity: `trace`, `debug`, `info`, `warn`, or `error` (`info`)
+- `BACKFILL_CONCURRENCY` – simultaneous backfill requests (`5`)
+- `LOG_MAX_BYTES` – rotate log files when they exceed this size (`5000000`)
+- `KEY_BACKUP_RECOVERY_KEY` – restore room keys from server backup
+- `KEY_REQUEST_INTERVAL_MS` – initial retry delay for missing keys (`1000`)
+- `KEY_REQUEST_MAX_INTERVAL_MS` – max retry delay for missing keys (`300000`)
+- `MSC4190` / `MSC3202` – enable experimental key-forwarding/device-masquerading (`true`)
+- `SESSION_SECRET` – encrypt session cache on disk
+- `LOG_SECRET` – encrypt per-room log files
+- `ENABLE_SEND_MESSAGE` – set to `1` to expose the `send_message` tool
+- `TEST_ROOM_ID` – sync only a specific room (empty)
+- `TEST_LIMIT` – stop after decrypting N events (`0`)
 
 The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v3/account/whoami` endpoint before any data is downloaded. If the token does not match the provided `MATRIX_USERID`, the process exits with an error.
 
