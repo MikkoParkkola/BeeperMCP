@@ -27,6 +27,7 @@ import {
   createMediaDownloader,
   createFlushHelper,
   envFlag,
+  cleanupLogsAndMedia,
 } from './utils.js';
 import { setupEventLogging } from './src/event-logger.js';
 import { startSync } from './src/sync.js';
@@ -40,6 +41,7 @@ const LOG_SECRET = process.env.LOG_SECRET;
 const MEDIA_SECRET = process.env.MEDIA_SECRET;
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 const logger = Pino({ level: LOG_LEVEL });
+const LOG_RETENTION_DAYS = Number(process.env.LOG_RETENTION_DAYS ?? '30');
 const HS = process.env.MATRIX_HOMESERVER ?? 'https://matrix.beeper.com';
 const UID = process.env.MATRIX_USERID;
 let TOKEN: string | undefined = process.env.MATRIX_TOKEN;
@@ -157,6 +159,7 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   const LOG_DB_PATH =
     process.env.LOG_DB_PATH ?? path.join(LOG_DIR, 'messages.db');
   const logDb = openLogDb(LOG_DB_PATH);
+  await cleanupLogsAndMedia(LOG_DIR, logDb, LOG_RETENTION_DAYS);
   const flusher = createFlushHelper();
   const { queue: queueLog, flush: flushLogs } = createLogWriter(
     logDb,

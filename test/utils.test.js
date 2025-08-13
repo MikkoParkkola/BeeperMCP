@@ -24,6 +24,7 @@ import {
   envFlag,
   encryptFileStream,
   decryptFile,
+  cleanupLogsAndMedia,
 } from '../utils.js';
 
 const tmpBase = '.test-tmp';
@@ -1220,6 +1221,31 @@ test('encrypted logs round-trip', async () => {
   await appendWithRotate(file, 'hello', 1000, secret);
   const lines = await tailFile(file, 10, secret);
   assert.deepStrictEqual(lines, ['hello']);
+});
+
+test('cleanupLogsAndMedia prunes old data', async () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const logDir = path.join(tmpBase, 'logs');
+  ensureDir(logDir);
+  const db = openLogDb(path.join(logDir, 'messages.db'));
+  const oldTs = new Date(Date.now() - 10 * 86400000).toISOString();
+  const newTs = new Date().toISOString();
+  insertLog(db, 'room', oldTs, 'old');
+  insertLog(db, 'room', newTs, 'new');
+  insertMedia(db, { eventId: 'e1', roomId: 'room', ts: oldTs, file: 'a' });
+  insertMedia(db, { eventId: 'e2', roomId: 'room', ts: newTs, file: 'b' });
+  const roomDir = getRoomDir(logDir, 'room');
+  const logf = path.join(roomDir, `${safeFilename('room')}.log`);
+  await fs.promises.writeFile(`${logf}.1`, 'x');
+  const past = new Date(Date.now() - 10 * 86400000);
+  fs.utimesSync(`${logf}.1`, past, past);
+  await cleanupLogsAndMedia(logDir, db, 7);
+  assert.ok(!fs.existsSync(`${logf}.1`));
+  assert.deepStrictEqual(queryLogs(db, 'room'), ['new']);
+  const mediaRows = queryMedia(db, 'room');
+  assert.strictEqual(mediaRows.length, 1);
+  assert.strictEqual(mediaRows[0].eventId, 'e2');
 });
 
 test.after(() => {

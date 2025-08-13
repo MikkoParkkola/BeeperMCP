@@ -167,6 +167,10 @@ async function configure() {
       'Max log size in bytes before rotation',
       env.LOG_MAX_BYTES || '5000000',
     );
+    env.LOG_RETENTION_DAYS = await ask(
+      'Days to retain rotated logs and metadata',
+      env.LOG_RETENTION_DAYS || '30',
+    );
     const enableSend = await ask(
       'Enable send_message tool? (y/N)',
       env.ENABLE_SEND_MESSAGE === '1' ? 'y' : '',
