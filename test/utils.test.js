@@ -29,15 +29,21 @@ test('getRoomDir returns sanitized directory path', () => {
   assert.ok(fs.existsSync(roomDir));
 });
 
-test('FileSessionStore persists values', () => {
+test('FileSessionStore implements basic Storage API', () => {
   cleanup();
   const storePath = path.join(tmpBase, 'session.json');
   const store = new FileSessionStore(storePath);
+  assert.strictEqual(store.length, 0);
   assert.strictEqual(store.getItem('foo'), null);
   store.setItem('foo', 'bar');
+  store.setItem('baz', 'qux');
+  assert.strictEqual(store.length, 2);
+  assert.strictEqual(store.key(0), 'foo');
   assert.strictEqual(store.getItem('foo'), 'bar');
   store.removeItem('foo');
-  assert.strictEqual(store.getItem('foo'), null);
+  assert.strictEqual(store.length, 1);
+  store.clear();
+  assert.strictEqual(store.length, 0);
 });
 
 test.after(() => {
