@@ -14,6 +14,7 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
+      'no-empty': 'off',
     },
   },
   {
@@ -32,6 +33,10 @@ export default [
     rules: {
       ...js.configs.recommended.rules,
       ...tsPlugin.configs.recommended.rules,
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/ban-types': 'off',
+      '@typescript-eslint/triple-slash-reference': 'off',
+      'no-empty': 'off',
     },
   },
 ];

@@ -150,13 +150,13 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
     warn:  (msg: any, ...args: any[]) => {
       try {
         if (typeof msg === 'string' && msg.startsWith('Error decrypting event')) return;
-      } catch {};
+      } catch { /* ignore */ }
       logger.warn(msg as any, ...args);
     },
     log:   (msg: any, ...args: any[]) => {
       try {
         if (typeof msg === 'string' && msg.startsWith('Error decrypting event')) return;
-      } catch {};
+      } catch { /* ignore */ }
       // map sdk.log to info
       logger.info(msg as any, ...args);
     },
