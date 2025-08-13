@@ -3,3 +3,6 @@ dist
 npm-debug.log
 .DS_Store
 coverage
+.beeper-mcp-server.env
+room-logs
+mx-cache

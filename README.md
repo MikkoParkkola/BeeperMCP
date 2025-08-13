@@ -19,7 +19,14 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
    cd BeeperMCP
    ```
 
-2. Run the interactive setup script which installs dependencies, creates `.beeper-mcp-server.env` and performs the phased setup:
+2. Copy the sample environment file and edit it with your homeserver and credentials:
+
+   ```bash
+   cp .beeper-mcp-server.env.example .beeper-mcp-server.env
+   $EDITOR .beeper-mcp-server.env
+   ```
+
+3. Run the interactive setup script which installs dependencies, validates the env file and performs the phased setup:
 
    ```bash
    node setup.js
@@ -29,7 +36,7 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
 
 ## Usage
 
-Create a `.beeper-mcp-server.env` file containing at least `MATRIX_USERID` and `MATRIX_TOKEN` (or `MATRIX_PASSWORD`). The `setup.js` script creates this automatically. If you provide only a password, the generated access token is saved to `mx-cache/session.json` and used automatically on future runs. The server is written in TypeScript so you'll need `ts-node` (installed by `setup.js`) to run it:
+Create a `.beeper-mcp-server.env` file containing at least `MATRIX_USERID` and `MATRIX_TOKEN` (or `MATRIX_PASSWORD`). You can copy `.beeper-mcp-server.env.example` and edit it, or let the `setup.js` script generate one. If you provide only a password, the generated access token is saved to `mx-cache/session.json` and used automatically on future runs. The server is written in TypeScript so you'll need `ts-node` (installed by `setup.js`) to run it:
 
 ```bash
 npx ts-node beeper-mcp-server.ts

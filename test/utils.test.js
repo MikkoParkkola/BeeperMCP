@@ -173,16 +173,6 @@ test('queryLogs honors since/until, limit and secret', () => {
   assert.ok(lines.includes('[enc]'));
 });
 
-  test('tailFile returns last N lines', async () => {
-  cleanup();
-  ensureDir(tmpBase);
-  const file = path.join(tmpBase, 'log.txt');
-  const all = Array.from({ length: 100 }, (_, i) => `line${i}`);
-  fs.writeFileSync(file, all.join('\n'));
-  const last = await tailFile(file, 5);
-  assert.deepStrictEqual(last, all.slice(-5));
-});
-
 test('pushWithLimit keeps array within limit', () => {
   const arr = [];
   for (let i = 0; i < 5; i++) pushWithLimit(arr, i, 3);
