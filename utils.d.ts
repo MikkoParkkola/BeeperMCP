@@ -20,6 +20,16 @@ export function appendWithRotate(
   maxBytes: number,
   secret?: string,
 ): Promise<void>;
+export function createFileAppender(
+  file: string,
+  maxBytes: number,
+  secret?: string,
+  flushMs?: number,
+  maxEntries?: number,
+): {
+  queue: (line: string) => void;
+  flush: () => Promise<void>;
+};
 export function openLogDb(file: string): any;
 export function createLogWriter(
   db: any,

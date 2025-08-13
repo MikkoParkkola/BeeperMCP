@@ -2,7 +2,7 @@ import path from 'path';
 import Pino from 'pino';
 import { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
 import {
-  appendWithRotate,
+  createFileAppender,
   getRoomDir,
   safeFilename,
   pushWithLimit,
@@ -65,6 +65,8 @@ export function setupEventLogging(
     string,
     { last: number; interval: number; logged: boolean }
   >(REQUESTED_KEYS_MAX);
+
+  const fileWriters = new Map<string, ReturnType<typeof createFileAppender>>();
 
   client.on('toDeviceEvent' as any, async (ev: MatrixEvent) => {
     try {
@@ -244,7 +246,12 @@ export function setupEventLogging(
     } else {
       line = `[${ts}] <${ev.getSender()}> [${type}]`;
     }
-    await appendWithRotate(logf, line, logMaxBytes, logSecret);
+    let writer = fileWriters.get(logf);
+    if (!writer) {
+      writer = createFileAppender(logf, logMaxBytes, logSecret);
+      fileWriters.set(logf, writer);
+    }
+    writer.queue(line);
     queueLog(rid, ts, line, id);
     if (testLimit > 0) {
       testCount++;
@@ -256,4 +263,9 @@ export function setupEventLogging(
       }
     }
   });
+  return {
+    flush: async () => {
+      for (const w of fileWriters.values()) await w.flush();
+    },
+  };
 }

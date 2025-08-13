@@ -10,6 +10,7 @@ import {
   FileSessionStore,
   tailFile,
   appendWithRotate,
+  createFileAppender,
   openLogDb,
   insertLog,
   insertLogs,
@@ -339,6 +340,18 @@ test('createLogWriter queues and flushes entries', () => {
   flush();
   const lines = queryLogs(db, 'room');
   assert.deepStrictEqual(lines, ['[a]', '[b]']);
+});
+
+test('createFileAppender queues and flushes lines', async () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const file = path.join(tmpBase, 'app.log');
+  const { queue, flush } = createFileAppender(file, 1000);
+  queue('a');
+  queue('b');
+  await flush();
+  const lines = fs.readFileSync(file, 'utf8').trim().split('\n');
+  assert.deepStrictEqual(lines, ['a', 'b']);
 });
 
 test('insertMedia stores metadata and queryMedia retrieves it', () => {
