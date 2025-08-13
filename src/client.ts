@@ -18,6 +18,7 @@ export interface ClientConfig {
   msc4190: boolean;
   msc3202: boolean;
   sessionSecret?: string;
+  keyBackupRecoveryKey?: string;
 }
 
 export async function createMatrixClient(
@@ -32,6 +33,7 @@ export async function createMatrixClient(
     msc4190,
     msc3202,
     sessionSecret,
+    keyBackupRecoveryKey,
   } = config;
 
   await loadOlm(logger);
@@ -111,7 +113,7 @@ export async function createMatrixClient(
     logger.debug('rust-crypto adapter initialized');
   }
 
-  await restoreRoomKeys(client, cacheDir, logger);
+  await restoreRoomKeys(client, cacheDir, logger, keyBackupRecoveryKey);
 
   return { client, sessionStore };
 }
