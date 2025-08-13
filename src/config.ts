@@ -29,6 +29,7 @@ export interface Config {
   keyRequestIntervalMs: number;
   keyRequestMaxIntervalMs: number;
   keyBackupRecoveryKey?: string;
+  mcpPort: number;
 }
 
 export function loadConfig(): Config {
@@ -59,6 +60,7 @@ export function loadConfig(): Config {
     KEY_REQUEST_INTERVAL_MS: z.coerce.number().default(1000),
     KEY_REQUEST_MAX_INTERVAL_MS: z.coerce.number().default(300000),
     KEY_BACKUP_RECOVERY_KEY: z.string().optional(),
+    MCP_PORT: z.coerce.number().default(3000),
   });
   const result = schema.safeParse(process.env);
   if (!result.success) {
@@ -92,5 +94,6 @@ export function loadConfig(): Config {
     keyRequestIntervalMs: env.KEY_REQUEST_INTERVAL_MS,
     keyRequestMaxIntervalMs: env.KEY_REQUEST_MAX_INTERVAL_MS,
     keyBackupRecoveryKey: env.KEY_BACKUP_RECOVERY_KEY,
+    mcpPort: env.MCP_PORT,
   };
 }
