@@ -40,6 +40,14 @@ test('ensureDir creates directories recursively', () => {
   assert.ok(fs.existsSync(dir));
 });
 
+test('ensureDir sets 0700 permissions', () => {
+  cleanup();
+  const dir = path.join(tmpBase, 'secure');
+  ensureDir(dir);
+  const mode = fs.statSync(dir).mode & 0o777;
+  assert.strictEqual(mode, 0o700);
+});
+
 test('getRoomDir returns sanitized directory path', () => {
   cleanup();
   const roomDir = getRoomDir(tmpBase, '!room:example.org');
@@ -77,6 +85,16 @@ test('FileSessionStore persists asynchronously', async () => {
   await store.flush();
   const store2 = new FileSessionStore(storePath);
   assert.strictEqual(store2.getItem('foo'), 'bar');
+});
+
+test('FileSessionStore writes 0600 permissions', async () => {
+  cleanup();
+  const storePath = path.join(tmpBase, 'perm.json');
+  const store = new FileSessionStore(storePath);
+  store.setItem('a', 'b');
+  await store.flush();
+  const mode = fs.statSync(storePath).mode & 0o777;
+  assert.strictEqual(mode, 0o600);
 });
 
 test('FileSessionStore encrypts data with secret', async () => {
@@ -138,6 +156,15 @@ test('appendWithRotate rotates log files', async () => {
   assert.ok(fs.existsSync(`${file}.1`));
   const main = fs.statSync(file).size;
   assert.ok(main <= 61);
+});
+
+test('appendWithRotate applies 0600 permissions', async () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const file = path.join(tmpBase, 'perm.log');
+  await appendWithRotate(file, 'hello', 100);
+  const mode = fs.statSync(file).mode & 0o777;
+  assert.strictEqual(mode, 0o600);
 });
 
 test('encrypted logs round-trip', async () => {
@@ -260,6 +287,17 @@ test('insertLogs batches entries and decrypts with secret', () => {
     '[2025-01-01T00:00:00.000Z] <u> a',
     '[2025-01-02T00:00:00.000Z] <u> b',
   ]);
+});
+
+test('encryptFileStream writes encrypted media', async () => {
+  const secret = 'media-secret';
+  const dest = path.join(tmpBase, 'media.enc');
+  const src = Readable.from(Buffer.from('hello'));
+  await encryptFileStream(src, dest, secret);
+  const dec = await decryptFile(dest, secret);
+  assert.strictEqual(dec.toString(), 'hello');
+  const mode = fs.statSync(dest).mode & 0o777;
+  assert.strictEqual(mode, 0o600);
 });
 
 test('encryptFileStream writes encrypted media', async () => {

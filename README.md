@@ -9,6 +9,7 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
 - Stores message history and media per room with optional SQLite indexing
 - Provides MCP tools: `list_rooms`, `create_room`, `list_messages`, and optionally `send_message`
 - Graceful shutdown and local caching of sync tokens and room keys
+- Writes caches and logs with owner-only file permissions
 
 ## Quick setup (macOS)
 

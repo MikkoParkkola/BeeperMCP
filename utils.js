@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import Database from 'better-sqlite3';
 
 export function ensureDir(dir) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 }
 
 export function safeFilename(s = '') {
@@ -61,11 +61,12 @@ export async function encryptFileStream(src, dest, secret) {
   const key = keyFromSecret(secret);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   ensureDir(path.dirname(dest));
-  const out = fs.createWriteStream(dest);
+  const out = fs.createWriteStream(dest, { mode: 0o600 });
   out.write(iv);
   await pipelineAsync(src, cipher, out);
   const tag = cipher.getAuthTag();
   await fs.promises.appendFile(dest, tag);
+  await fs.promises.chmod(dest, 0o600).catch(() => {});
 }
 
 export async function decryptFile(file, secret) {
@@ -119,7 +120,8 @@ export async function appendWithRotate(file, line, maxBytes, secret) {
         /* ignore: rotation best-effort */
       }
     }
-    await fs.promises.appendFile(file, payload);
+    await fs.promises.appendFile(file, payload, { mode: 0o600 });
+    await fs.promises.chmod(file, 0o600).catch(() => {});
   } catch {
     /* ignore: log append failure */
   }
@@ -224,7 +226,8 @@ export class FileSessionStore {
     const write = (this.#writePromise ?? Promise.resolve()).then(async () => {
       let out = JSON.stringify(this.#data);
       if (this.secret) out = encrypt(out, this.secret);
-      await fs.promises.writeFile(this.file, out);
+      await fs.promises.writeFile(this.file, out, { mode: 0o600 });
+      await fs.promises.chmod(this.file, 0o600).catch(() => {});
     });
     this.#writePromise = write.finally(() => {
       if (this.#writePromise === write) this.#writePromise = null;
