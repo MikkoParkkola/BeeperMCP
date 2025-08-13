@@ -60,6 +60,7 @@ export function insertMedia(
     file: string;
     type?: string;
     size?: number;
+    hash?: string;
   },
 ): void;
 export function insertMedias(
@@ -71,6 +72,7 @@ export function insertMedias(
     file: string;
     type?: string;
     size?: number;
+    hash?: string;
   }[],
 ): void;
 export function queryMedia(
@@ -83,6 +85,7 @@ export function queryMedia(
   file: string;
   type: string | null;
   size: number | null;
+  hash: string | null;
 }[];
 export function createMediaWriter(
   db: any,
@@ -96,6 +99,7 @@ export function createMediaWriter(
     file: string;
     type?: string;
     size?: number;
+    hash?: string;
   }) => void;
   flush: () => void;
 };
@@ -108,6 +112,7 @@ export function createMediaDownloader(
     file: string;
     type?: string;
     size?: number;
+    hash?: string;
   }) => void,
   queueLog: (
     roomId: string,
@@ -127,6 +132,7 @@ export function createMediaDownloader(
     sender: string;
     type?: string;
     size?: number;
+    hash?: string;
   }) => void;
   flush: () => Promise<void>;
 };

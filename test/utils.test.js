@@ -360,6 +360,7 @@ test('insertMedia stores metadata and queryMedia retrieves it', () => {
       file: 'file.txt',
       type: 'text/plain',
       size: 5,
+      hash: null,
     },
   ]);
 });
@@ -408,6 +409,66 @@ test('createMediaDownloader reuses cached media for identical events', async () 
     sender: 'u',
     type: 'text/plain',
     size: 4,
+  });
+  await dl.flush();
+  global.fetch = origFetch;
+  assert.strictEqual(fetchCalls, 1);
+  assert.deepStrictEqual(logs, [
+    `[2025-01-01T00:00:00.000Z] <u> [media] ${path.basename(dest1)}`,
+    `[2025-01-01T00:00:00.000Z] <u> [media cached] ${path.basename(dest1)}`,
+  ]);
+});
+
+test('createMediaDownloader reuses cached media for matching hashes', async () => {
+  cleanup();
+  ensureDir(tmpBase);
+  const dbPath = path.join(tmpBase, 'media.db');
+  const db = openLogDb(dbPath);
+  const logs = [];
+  const queueLog = (roomId, ts, line) => logs.push(line);
+  let fetchCalls = 0;
+  const origFetch = global.fetch;
+  global.fetch = async () => {
+    fetchCalls++;
+    return {
+      ok: true,
+      headers: new Headers({
+        'content-type': 'text/plain',
+        'content-length': '4',
+      }),
+      body: Readable.from(Buffer.from('data')),
+    };
+  };
+  const dl = createMediaDownloader(
+    db,
+    (meta) => insertMedia(db, meta),
+    queueLog,
+  );
+  const dest1 = path.join(tmpBase, 'a');
+  const hash = 'deadbeef';
+  dl.queue({
+    url: 'http://x',
+    dest: dest1,
+    roomId: 'room',
+    eventId: 'e1',
+    ts: '2025-01-01T00:00:00.000Z',
+    sender: 'u',
+    type: 'text/plain',
+    size: 4,
+    hash,
+  });
+  await dl.flush();
+  const dest2 = path.join(tmpBase, 'b');
+  dl.queue({
+    url: 'http://x',
+    dest: dest2,
+    roomId: 'room',
+    eventId: 'e2',
+    ts: '2025-01-01T00:00:00.000Z',
+    sender: 'u',
+    type: 'text/plain',
+    size: 4,
+    hash,
   });
   await dl.flush();
   global.fetch = origFetch;
