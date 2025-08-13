@@ -1,13 +1,8 @@
 import path from 'path';
 import Pino from 'pino';
-import { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
-import {
-  createFileAppender,
-  getRoomDir,
-  safeFilename,
-  pushWithLimit,
-  BoundedMap,
-} from '../utils.js';
+import { MatrixClient } from 'matrix-js-sdk';
+import { createFileAppender, getRoomDir, safeFilename } from '../utils.js';
+import { DecryptionManager } from './decryption-manager.js';
 import type { createMediaDownloader } from '../utils.js';
 
 export function setupEventLogging(
@@ -44,166 +39,14 @@ export function setupEventLogging(
     shutdown,
   } = opts;
 
-  const PENDING_DECRYPT_MAX_SESSIONS = Number(
-    process.env.PENDING_DECRYPT_MAX_SESSIONS ?? '1000',
-  );
-  const PENDING_DECRYPT_MAX_PER_SESSION = Number(
-    process.env.PENDING_DECRYPT_MAX_PER_SESSION ?? '100',
-  );
-  const REQUESTED_KEYS_MAX = Number(process.env.REQUESTED_KEYS_MAX ?? '1000');
-  const INITIAL_REQUEST_INTERVAL_MS = Number(
-    process.env.KEY_REQUEST_INTERVAL_MS ?? '1000',
-  );
-  const MAX_REQUEST_INTERVAL_MS = Number(
-    process.env.KEY_REQUEST_MAX_INTERVAL_MS ?? '300000',
-  );
-
-  const pendingDecrypt = new BoundedMap<string, MatrixEvent[]>(
-    PENDING_DECRYPT_MAX_SESSIONS,
-  );
-  const requestedKeys = new BoundedMap<
-    string,
-    { last: number; interval: number; logged: boolean }
-  >(REQUESTED_KEYS_MAX);
-
   const fileWriters = new Map<string, ReturnType<typeof createFileAppender>>();
-
-  client.on('toDeviceEvent' as any, async (ev: MatrixEvent) => {
-    try {
-      const evtType = ev.getType();
-      logger.trace(`toDeviceEvent ${evtType} from ${ev.getSender()}`);
-      const cryptoApi = client.getCrypto();
-      if (cryptoApi) {
-        await (cryptoApi as any).decryptEvent(ev as any);
-      }
-      if (evtType === 'm.room_key' || evtType === 'm.forwarded_room_key') {
-        const content = ev.getClearContent?.() || ev.getContent();
-        const room_id = (content as any).room_id;
-        const session_id = (content as any).session_id;
-        if (room_id && session_id) {
-          const key = `${room_id}|${session_id}`;
-          const arr = pendingDecrypt.get(key);
-          if (arr) {
-            for (const pending of arr) {
-              await decryptEvent(pending);
-              client.emit('event' as any, pending);
-            }
-            pendingDecrypt.delete(key);
-          }
-          requestedKeys.delete(key);
-        }
-      }
-    } catch (err: any) {
-      logger.warn('Failed to handle toDeviceEvent', err);
-    }
-  });
-
-  const decryptEvent = async (ev: MatrixEvent) => {
-    if (!ev.isEncrypted()) return;
-    try {
-      const cryptoApi = client.getCrypto();
-      if (cryptoApi) {
-        await (cryptoApi as any).decryptEvent(ev as any);
-      }
-    } catch (e: any) {
-      const wire =
-        (ev.getWireContent?.() as any) || (ev.event as any).content || {};
-      const roomId = ev.getRoomId();
-      if (
-        e.name === 'DecryptionError' &&
-        e.code === 'MEGOLM_UNKNOWN_INBOUND_SESSION_ID'
-      ) {
-        logger.debug(
-          `Unknown session for event ${ev.getId()} in room ${roomId}: session ${wire.session_id}`,
-        );
-      } else if (e.name === 'DecryptionError') {
-        logger.error(
-          `Decrypt: Serious decryption error for event ${ev.getId()} in room ${roomId} (Code: ${e.code || 'unknown'}): ${e.message}. Queuing for retry.`,
-        );
-      } else {
-        logger.error(
-          { err: e },
-          `Decrypt: Unexpected error for event ${ev.getId()} in room ${roomId}: ${e.message}. Queuing for retry.`,
-        );
-      }
-      try {
-        const sessionId = (wire as any).session_id;
-        const algorithm = (wire as any).algorithm;
-        if (roomId && sessionId && algorithm) {
-          const mapKey = `${roomId}|${sessionId}`;
-          const arr = pendingDecrypt.get(mapKey) || [];
-          pushWithLimit(arr, ev, PENDING_DECRYPT_MAX_PER_SESSION);
-          pendingDecrypt.set(mapKey, arr);
-          const sender = ev.getSender();
-          if (sender === uid) {
-            logger.info(
-              `Decrypt: Missing keys for our own event ${ev.getId()} in room ${roomId}; not requesting from ourselves.`,
-            );
-          } else {
-            const entry = requestedKeys.get(mapKey) || {
-              last: 0,
-              interval: INITIAL_REQUEST_INTERVAL_MS,
-              logged: false,
-            };
-            const now = Date.now();
-            if (now - entry.last >= entry.interval) {
-              entry.last = now;
-              entry.interval = Math.min(
-                entry.interval * 2,
-                MAX_REQUEST_INTERVAL_MS,
-              );
-              requestedKeys.set(mapKey, entry);
-              if (!entry.logged) {
-                logger.warn(
-                  `Requesting missing room key for session ${mapKey}`,
-                );
-                entry.logged = true;
-              } else {
-                logger.debug(`Retrying room key request for session ${mapKey}`);
-              }
-              const cryptoApi = client.getCrypto();
-              if (cryptoApi) {
-                await (cryptoApi as any).requestRoomKey(
-                  { room_id: roomId, session_id: sessionId, algorithm },
-                  [{ userId: sender!, deviceId: '*' }],
-                );
-              }
-            } else {
-              logger.trace(
-                `room key for session ${mapKey} already requested recently`,
-              );
-            }
-          }
-        }
-      } catch (ex: any) {
-        logger.warn(`requestRoomKey failed: ${ex.message}`);
-      }
-    }
-  };
+  const decryption = new DecryptionManager(client, logger, uid);
 
   const seen = new Set<string>();
   let testCount = 0;
   client.on('event' as any, async (ev: any) => {
-    const evtType = ev.getType();
-    if (evtType === 'm.room_key' || evtType === 'm.forwarded_room_key') {
-      const contentAny = ev.getContent() as any;
-      const room_id = contentAny.room_id;
-      const session_id = contentAny.session_id;
-      if (room_id && session_id) {
-        const mapKey = `${room_id}|${session_id}`;
-        logger.trace(`timeline key event ${evtType} for session ${mapKey}`);
-        const arr = pendingDecrypt.get(mapKey);
-        if (arr) {
-          for (const pend of arr) {
-            await decryptEvent(pend);
-            client.emit('event' as any, pend);
-          }
-          pendingDecrypt.delete(mapKey);
-        }
-      }
-      return;
-    }
-    await decryptEvent(ev);
+    if (await decryption.maybeHandleRoomKeyEvent(ev)) return;
+    await decryption.decryptEvent(ev);
     if (ev.isEncrypted()) return;
     const id = ev.getId();
     if (seen.has(id)) return;
