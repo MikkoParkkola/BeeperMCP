@@ -22,6 +22,7 @@ import {
   createMediaDownloader,
   createFlushHelper,
   cleanupLogsAndMedia,
+  FileSessionStore,
 } from '../utils.js';
 import { setupEventLogging } from './event-logger.js';
 import { startSync } from './sync.js';
@@ -191,11 +192,6 @@ export async function startServer() {
     testLimit: TEST_LIMIT,
     uid: config.userId!,
     shutdown,
-    pendingDecryptMaxSessions: config.pendingDecryptMaxSessions,
-    pendingDecryptMaxPerSession: config.pendingDecryptMaxPerSession,
-    requestedKeysMax: config.requestedKeysMax,
-    keyRequestIntervalMs: config.keyRequestIntervalMs,
-    keyRequestMaxIntervalMs: config.keyRequestMaxIntervalMs,
   });
 
   await startSync(client, sessionStore, syncKey, logger, {
