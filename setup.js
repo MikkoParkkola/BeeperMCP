@@ -120,6 +120,23 @@ async function configure() {
     env.MESSAGE_LOG_DIR || './room-logs',
   );
   env.LOG_LEVEL = await ask('Log level', env.LOG_LEVEL || 'info');
+  env.SESSION_SECRET = await ask(
+    'Session encryption secret (leave blank for none)',
+    env.SESSION_SECRET || '',
+  );
+  env.LOG_SECRET = await ask(
+    'Log encryption secret (leave blank for none)',
+    env.LOG_SECRET || '',
+  );
+  env.LOG_MAX_BYTES = await ask(
+    'Max log size in bytes before rotation',
+    env.LOG_MAX_BYTES || '5000000',
+  );
+  const enableSend = await ask(
+    'Enable send_message tool? (y/N)',
+    env.ENABLE_SEND_MESSAGE === '1' ? 'y' : '',
+  );
+  env.ENABLE_SEND_MESSAGE = /^y(es)?$/i.test(enableSend) ? '1' : '';
   writeEnvFile(env);
 }
 
