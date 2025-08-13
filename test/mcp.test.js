@@ -44,6 +44,7 @@ test('list_messages passes parameters to queryLogs', async () => {
     logDb,
     false,
     undefined,
+    undefined,
     (db, roomId, limit, since, until, secret) => {
       called = { db, roomId, limit, since, until, secret };
       return ['a', '', 'b'];
@@ -84,4 +85,18 @@ test('send_message only registered when enabled', async () => {
     message: 'hi',
   });
   assert.deepEqual(args, { room: 'r1', msg: 'hi' });
+});
+
+test('requires matching MCP_API_KEY', async () => {
+  const client = { getRooms: () => [] };
+  const srv = buildMcpServer(client, null, false, undefined, 'sekret');
+  assert.throws(
+    () => srv._registeredTools.list_rooms.callback({ limit: 1 }),
+    /Invalid API key/,
+  );
+  const res = await srv._registeredTools.list_rooms.callback(
+    { limit: 1 },
+    { _meta: { apiKey: 'sekret' } },
+  );
+  assert.deepEqual(res.content[0].json, []);
 });

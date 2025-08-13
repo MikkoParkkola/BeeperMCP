@@ -44,6 +44,7 @@ const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 const HS = process.env.MATRIX_HOMESERVER ?? 'https://matrix.beeper.com';
 const UID = process.env.MATRIX_USERID;
 let TOKEN: string | undefined = process.env.MATRIX_TOKEN;
+const MCP_API_KEY = process.env.MCP_API_KEY;
 if (!TOKEN) {
   try {
     const sessionPath = path.join(CACHE_DIR, 'session.json');
@@ -620,7 +621,13 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   }
 
   // MCP tools
-  const srv = buildMcpServer(client, logDb, ENABLE_SEND, LOG_SECRET);
+  const srv = buildMcpServer(
+    client,
+    logDb,
+    ENABLE_SEND,
+    LOG_SECRET,
+    MCP_API_KEY,
+  );
   await srv.connect(new StdioServerTransport());
 
   // graceful shutdown
