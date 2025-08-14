@@ -1,20 +1,29 @@
 /*
   NOTE: To make further edits here I can also modify other project files —
-  please add any files you want me to edit to the chat. Common files you
-  may want to include when making changes to the MCP HTTP server:
+  please add any files you want me to edit to the chat.
 
-  - package.json
-  - tsconfig.json
-  - src/config.ts
-  - src/mcp/resources.ts
-  - src/mcp/capabilities.ts
-  - src/mcp/tools/*.ts (e.g. search.ts, whoSaid.ts, sendMessage.ts, sentimentTrends.ts)
-  - mcp-tools.js
-  - utils.js
-  - src/mcp/server.ts (this file)
+  Based on the current checklist, please add these files if you want me to
+  apply the remaining fixes and wiring (recommended):
 
-  Add whichever of the above (or others) to the chat and I will produce
-  SEARCH/REPLACE blocks to edit them.
+  - package.json                       (fix duplicate object, scripts, add pg)
+  - tsconfig.json                      (switch to single NodeNext project)
+  - src/config.ts                      (resolve Config name collisions, fix types)
+  - src/ingest/matrix.ts               (remove unused imports / implement ingest)
+  - utils.js                           (log DB access used by resources)
+  - mcp-tools.js                       (MCP tool wiring)
+  - src/mcp/resources.ts               (wire history resource to SQLite logs)
+  - src/mcp.ts                         (ensure resources() is called with logDb/logSecret)
+  - src/mcp/tools/sentimentTrends.ts   (fix subjectivity column + add filters)
+  - src/mcp/tools/sentimentDistribution.ts (add filters for target/lang/types)
+  - src/mcp/tools/whoSaid.ts           (add participants/lang filters, safe regex)
+  - src/mcp/tools/activity.ts          (support participant target + types)
+  - src/index/reembed.ts               (re-embed batch is present; include if changes needed)
+  - src/index/search.ts                (search filters already present; include if modifying)
+  - any other src/mcp/tools/*.ts you want adjusted (e.g. sendMessage, recap)
+
+  If you add those files to the chat I will produce exact SEARCH/REPLACE blocks
+  to apply the minimal edits required. If you prefer I can also create a short
+  prioritized patch list — tell me which files you want me to edit first.
 */
 import { config } from "../config.js";
 import { capabilities } from "./capabilities.js";
