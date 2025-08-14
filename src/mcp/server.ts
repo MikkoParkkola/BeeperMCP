@@ -2,38 +2,27 @@
   NOTE: To make further edits here I can also modify other project files —
   please add any files you want me to edit to the chat.
 
-  Based on the current checklist, please add these files if you want me to
-  apply the remaining fixes and wiring (recommended):
+  To complete the MCP resources wiring, analytics filters and build fixes,
+  please add any of the following files that are missing. I can then apply
+  minimal SEARCH/REPLACE patches for each:
 
-  - package.json                       (fix duplicate object, scripts, add pg)
-  - tsconfig.json                      (switch to single NodeNext project)
-  - src/config.ts                      (resolve Config name collisions, fix types)
-  - src/ingest/matrix.ts               (remove unused imports / implement ingest)
-  - utils.js                           (log DB access used by resources)
-  - mcp-tools.js                       (MCP tool wiring)
-  - src/mcp/resources.ts               (wire history resource to SQLite logs)
-  - src/mcp.ts                         (ensure resources() is called with logDb/logSecret)
-  - src/mcp/tools/sentimentTrends.ts   (fix subjectivity column + add filters)
-  - src/mcp/tools/sentimentDistribution.ts (add filters for target/lang/types)
-  - src/mcp/tools/whoSaid.ts           (add participants/lang filters, safe regex)
-  - src/mcp/tools/activity.ts          (support participant target + types)
-  - src/index/reembed.ts               (re-embed batch is present; include if changes needed)
-  - src/index/search.ts                (search filters already present; include if modifying)
-  - any other src/mcp/tools/*.ts you want adjusted (e.g. sendMessage, recap)
+  - package.json
+  - tsconfig.json
+  - src/config.ts
+  - utils.js
+  - mcp-tools.js
+  - src/mcp/resources.ts
+  - src/index/search.ts
+  - src/index/reembed.ts
+  - src/mcp/tools/sentimentTrends.ts
+  - src/mcp/tools/sentimentDistribution.ts
+  - src/mcp/tools/whoSaid.ts
+  - src/mcp/tools/activity.ts
+  - (optional) any other src/mcp/tools/*.ts you want adjusted (e.g. sendMessage, recap)
 
-  If you add those files to the chat I will produce exact SEARCH/REPLACE blocks
-  to apply the minimal edits required. If you prefer I can also create a short
-  prioritized patch list — tell me which files you want me to edit first.
-
-  NOTE: I see you've added src/mcp/server.ts. Based on the current requested
-  changes, the most important additional files to have in the chat (if you
-  want me to edit them) are: package.json, tsconfig.json, src/config.ts,
-  utils.js, mcp-tools.js, src/mcp/resources.ts, and the analytics tool files
-  under src/mcp/tools/*.ts (sentimentTrends, sentimentDistribution,
-  whoSaid, activity). If those are already present (or have already been
-  added), no further files are strictly required right now — add or update
-  any specific files you want me to modify next and I will produce exact
-  SEARCH/REPLACE edits.
+  If you already added some of these files to the chat, great — add only the
+  remaining ones. Once those are present I'll provide exact SEARCH/REPLACE
+  blocks to finish building and bringing MCP resources online.
 */
 import { config } from "../config.js";
 import { capabilities } from "./capabilities.js";
