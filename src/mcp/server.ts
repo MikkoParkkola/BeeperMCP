@@ -1,16 +1,15 @@
 /*
-  NOTE: To make further edits here I can also modify other project files —
-  please add any files you want me to edit to the chat.
+  NOTE: This MCP HTTP server requires several other project files to be present
+  to build and operate. Please add the following files (if not already added):
 
-  To complete the MCP resources wiring, analytics filters and build fixes,
-  please add any of the following files that are missing. I can then apply
-  minimal SEARCH/REPLACE patches for each:
-
+  Required to build & run:
   - package.json
   - tsconfig.json
   - src/config.ts
   - utils.js
   - mcp-tools.js
+
+  MCP resources & analytics (needed to wire tools/resources):
   - src/mcp/resources.ts
   - src/index/search.ts
   - src/index/reembed.ts
@@ -18,11 +17,14 @@
   - src/mcp/tools/sentimentDistribution.ts
   - src/mcp/tools/whoSaid.ts
   - src/mcp/tools/activity.ts
-  - (optional) any other src/mcp/tools/*.ts you want adjusted (e.g. sendMessage, recap)
+  - (optional) other src/mcp/tools/*.ts (recap, responseTime, draftReply, sendMessage)
 
-  If you already added some of these files to the chat, great — add only the
-  remaining ones. Once those are present I'll provide exact SEARCH/REPLACE
-  blocks to finish building and bringing MCP resources online.
+  Ingest & DB:
+  - src/ingest/matrix.ts (to persist messages into Postgres)
+  - Postgres messages schema (CREATE TABLE)
+
+  After you add the missing files, I'll apply focused SEARCH/REPLACE patches
+  to finish wiring resources, parameterized queries and analytics behavior.
 */
 import { config } from "../config.js";
 import { capabilities } from "./capabilities.js";
