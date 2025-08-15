@@ -24,10 +24,11 @@ function addResource(template: string, handler: ResourceHandler) {
 }
 
 export function registerResources(logDb?: any, logSecret?: string) {
-  if (registered) return;
-  registered = true;
+  // Always update DB/secret references so tests or callers can rebind.
   logDbRef = logDb;
   logSecretRef = logSecret;
+  if (registered) return;
+  registered = true;
   addResource("im://matrix/room/:roomId/history", async (params, query) => {
     const roomId = params.roomId;
     const from = query.get("from") ?? undefined;

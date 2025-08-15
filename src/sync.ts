@@ -31,43 +31,31 @@ export async function startSync(
       data.nextBatch && sessionStore.setItem(syncKey, data.nextBatch),
   );
   logger.info('Matrix sync ready');
+  // SECURITY: Do not auto-verify devices. This was previously used to
+  // force decryption to succeed, but it weakens trust and can lead to
+  // inadvertent key sharing. We keep a lightweight key download to warm
+  // caches, but leave verification to explicit user workflows.
   try {
     const users = new Set<string>();
     client
       .getRooms()
       .forEach((r) => r.getJoinedMembers().forEach((m) => users.add(m.userId)));
-    let verifiedCount = 0;
-    let failedCount = 0;
     const usersToProcess = [...users];
     if (usersToProcess.length > 0) {
       logger.info(
         `Downloading device keys for ${usersToProcess.length} users...`,
       );
-      await client.downloadKeys(usersToProcess, true);
-      for (const u of usersToProcess) {
-        const devs = await client.getStoredDevicesForUser(u);
-        for (const d of Object.keys(devs)) {
-          try {
-            await client.setDeviceVerified(u, d, true);
-            verifiedCount++;
-          } catch (err: any) {
-            logger.warn(
-              `Could not verify device ${d} for user ${u}: ${err.message}`,
-            );
-            failedCount++;
-          }
-        }
+      if (typeof (client as any).downloadKeys === 'function') {
+        await (client as any).downloadKeys(usersToProcess, true);
       }
-      logger.info(
-        `Device verification attempt complete. Verified: ${verifiedCount}, Failed: ${failedCount} devices.`,
-      );
+      logger.info('Device keys downloaded; skipping automatic verification.');
     } else {
       logger.info(
-        'No users found in joined rooms to perform device verification on.',
+        'No users found in joined rooms to download device keys for.',
       );
     }
   } catch (e: any) {
-    logger.warn('Key trust failed:', e.message);
+    logger.warn('Key prefetch failed:', e.message);
   }
 
   const limiter = ((n: number) => {

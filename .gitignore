@@ -7,3 +7,4 @@ coverage
 room-logs
 mx-cache
 .aider*
+.test-resources*.db

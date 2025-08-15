@@ -90,7 +90,9 @@ export async function createMatrixClient(
 
   await verifyAccessToken(baseUrl, accessToken, userId, logger);
 
-  await client.initCrypto();
+  if (typeof (client as any).initCrypto === 'function') {
+    await (client as any).initCrypto();
+  }
   logger.info('matrix-js-sdk crypto initialized');
   const cryptoApiGlobal = client.getCrypto();
   if (cryptoApiGlobal) {
