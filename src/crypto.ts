@@ -114,28 +114,50 @@ export async function restoreRoomKeys(
   Helpful: files you should add to the chat/repo to finish wiring and make a
   release-ready package (many are already referenced by other modules):
 
-  - src/config.ts
-      Central configuration loader used by server and analytics code.
+  Core required for build & runtime (high priority):
+  - mcp-tools.js
+      Runtime MCP server builder (required by src/mcp.ts and by the build step).
   - utils.js
       Runtime utilities used across the project (file logging, sqlite helpers, media downloader).
-  - mcp-tools.js and mcp-tools.d.ts
-      Helper used by src/mcp.ts to build the MCP server and TypeScript types.
-  - src/mcp/resources.ts
-      Resource handlers for history, message context and media (accepting logDb/logSecret).
   - scripts/migrate.ts and migrations/*.sql
       DB migrations to create the Postgres `messages` table and indexes.
+  - Postgres messages schema
+      CREATE TABLE messages (...) and indexes (ts_utc, room_id, sender; GIN on tsv and media_types).
+
+  Other important application pieces:
   - src/ingest/matrix.ts
       Full /sync ingest to persist messages to Postgres.
   - src/decryption-manager.js
       Decryption manager implementation used by event-logger for E2EE flows.
-  - src/event-logger.ts
-      Wiring to log events, queue media downloads and write to SQLite.
-  - src/mcp/tools/*.ts (whoSaid, activity, sentimentTrends, sentimentDistribution, recap, responseTime, draftReply, sendMessage)
-      Analytics and tools used by the MCP server.
-  - tests/
-      Unit and integration tests (vitest or node --test). Consider adding pg-mem based tests.
-  - Dockerfile / docker-compose.yml
-      For packaging and deployment.
+  - src/mcp/tools/sendMessage.ts
+      Tool to actually send messages (approval + guardrails + integration).
+  - src/mcp/tools/whoSaid.ts
+  - src/mcp/tools/activity.ts
+  - src/mcp/tools/sentimentTrends.ts
+  - src/mcp/tools/sentimentDistribution.ts
+      Analytics/tools used by MCP; several stubs exist but full behavior needs these.
+
+  Helpful for CI/tests/packaging:
+  - tests/ (vitest or node --test), preferably with pg-mem based integration tests
+  - Dockerfile / docker-compose.yml for local/dev deployment
+  - mcp-tools.d.ts (type hints) — already useful for TypeScript builds
+
+  Notes:
+  - You've already added many server-side TypeScript files; the two missing runtime
+    pieces that will block a full release build/run are mcp-tools.js (required by
+    the build script and src/mcp.ts) and utils.js (used widely at runtime).
+  - Adding the Postgres schema + migrations and scripts/migrate.ts is required to
+    run analytics tools against a real DB.
+  - If you plan to exercise E2EE decryption and media download, add
+    src/decryption-manager.js and ensure src/crypto.ts and src/auth.ts are present
+    (you've already added src/crypto.ts and src/auth.ts).
+
+  What I can do next:
+  - Once you add mcp-tools.js and utils.js (and optionally the migrations and
+    ingest code), I will apply the remaining precise SEARCH/REPLACE patches to:
+      * Wire mcp-tools into the build and init paths
+      * Finalize resource handlers and tools queries
+      * Add small test hooks and CI tweaks we discussed
 
   Add any of the above files to the chat/repo and I'll apply precise SEARCH/REPLACE
   edits to wire them into the build, tests, and CI.
