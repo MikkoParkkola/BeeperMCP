@@ -5,3 +5,6 @@ export function incr(name: string, by = 1) {
 export function get(name: string): number {
   return counters.get(name) ?? 0;
 }
+export function snapshot(): Record<string, number> {
+  return Object.fromEntries(counters.entries());
+}
