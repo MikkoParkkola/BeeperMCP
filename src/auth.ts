@@ -27,34 +27,20 @@ export async function verifyAccessToken(
   Recommended additional files to add (if not already present).  These support
   building, running, and testing the MCP server and analytics tooling:
 
-  - src/decryption-manager.js
-      Implementation of DecryptionManager used by event-logger for E2EE flows.
-
-  - scripts/create_messages_table.sql
-      SQL to create the Postgres `messages` table used by analytics & tools.
-
-  - scripts/migrate.ts
-      Migration runner to apply DB schema/setup.
-
+  - utils.js
+      Runtime utilities referenced widely (file logging, sqlite helpers, media downloader).
+  - mcp-tools.js
+      MCP helper used by src/mcp.ts (buildMcpServer).
+  - scripts/create_messages_table.sql or scripts/migrate.ts
+      SQL/migration to create the Postgres `messages` table used by analytics & tools.
   - src/mcp/resources.ts
       Resource handlers (history, media, index/status) — ensure the version that
       accepts (logDb, logSecret) is present.
+  - src/decryption-manager.js
+      DecryptionManager implementation used by event-logger for E2EE flows.
+  - test/
+      Unit, integration, and system tests (see roadmap tests added earlier).
 
-  - mcp-tools.js
-      MCP tooling wiring used by build/test; ensure canonical copy exists.
-
-  - src/index/search.ts
-      (analytics search; present in repo but verify it's the intended version)
-
-  - Any missing src/mcp/tools/*.ts you plan to use in tests (e.g. mediaProxy,
-    messageContext) — many analytics tools are present, confirm they are the
-    final versions.
-
-  Notes:
-  - If you add the SQL migration and decryption-manager, I can apply the final
-    SEARCH/REPLACE patches and wire the test helpers (pg-mem injection) and CI.
-  - You've already provided many files; the two most commonly-missing pieces for
-    full integration tests are the Postgres schema (CREATE TABLE messages ...) and
-    the decryption manager stub used by event-logger. Adding those next will let
-    me complete the remaining patches and tests.
+  Once you add any of the files above, tell me and I'll apply the remaining
+  focused SEARCH/REPLACE patches to finish wiring, tests, and CI.
 */
