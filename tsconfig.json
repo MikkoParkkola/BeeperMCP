@@ -11,7 +11,6 @@
     "sourceMap": true
   },
   "include": [
-    "src/*.ts",
     "src/**/*.ts",
     "tests/**/*.ts",
     "beeper-mcp-server.ts",

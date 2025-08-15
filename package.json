@@ -7,8 +7,8 @@
     "lint": "eslint .",
     "format": "prettier --check .",
     "start": "node dist/beeper-mcp-server.js",
-    "test": "npm run build && node --test test dist/tests",
-    "test:coverage": "npm run build && c8 --check-coverage --lines 80 --branches 80 --functions 80 --exclude setup.js node --test test dist/tests",
+    "test": "npm run build && node --test dist/tests/**/*.js",
+    "test:coverage": "npm run build && c8 --check-coverage --lines 80 --branches 80 --functions 80 --exclude setup.js node --test dist/tests/**/*.js",
     "prepare": "husky"
   },
   "devDependencies": {
