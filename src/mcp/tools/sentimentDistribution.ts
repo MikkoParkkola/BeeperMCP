@@ -1,24 +1,29 @@
-import { Pool } from "pg";
-import { config } from "../../config.js";
-import { JSONSchema7 } from "json-schema";
-import { toolsSchemas } from "../schemas/tools.js";
+import { Pool } from 'pg';
+import { config } from '../../config.js';
+import { JSONSchema7 } from 'json-schema';
+import { toolsSchemas } from '../schemas/tools.js';
 
 let pool: Pool | null = null;
 export function __setTestPool(p: any) {
   pool = p as any;
 }
 function getPool() {
-  if (!pool) pool = new Pool({ connectionString: config.db.url, ssl: config.db.ssl as any, max: config.db.pool.max });
+  if (!pool)
+    pool = new Pool({
+      connectionString: config.db.url,
+      ssl: config.db.ssl as any,
+      max: config.db.pool.max,
+    });
   return pool!;
 }
 
-export const id = "sentiment_distribution";
+export const id = 'sentiment_distribution';
 export const inputSchema = toolsSchemas.sentiment_distribution as JSONSchema7;
 
 export async function handler(input: any) {
   const p = getPool();
   const bins = Math.min(Math.max(input.bins ?? 20, 5), 200);
-  const where: string[] = ["sentiment_score IS NOT NULL"];
+  const where: string[] = ['sentiment_score IS NOT NULL'];
   const args: any[] = [bins];
   let i = 2;
   if (input.target?.room) {
@@ -34,9 +39,11 @@ export async function handler(input: any) {
     args.push(input.lang);
   }
   if (input.types?.length) {
-    const nonText = input.types.filter((t: string) => t !== "text");
-    if (nonText.length && input.types.includes("text")) {
-      where.push(`((media_types && $${i}) OR (media_types IS NULL OR array_length(media_types,1)=0))`);
+    const nonText = input.types.filter((t: string) => t !== 'text');
+    if (nonText.length && input.types.includes('text')) {
+      where.push(
+        `((media_types && $${i}) OR (media_types IS NULL OR array_length(media_types,1)=0))`,
+      );
       args.push(nonText);
       i += 1;
     } else if (nonText.length) {
@@ -56,7 +63,7 @@ export async function handler(input: any) {
   }
   const sql = `
     WITH data AS (
-      SELECT sentiment_score FROM messages WHERE ${where.join(" AND ")}
+      SELECT sentiment_score FROM messages WHERE ${where.join(' AND ')}
     )
     SELECT width_bucket(sentiment_score, -1, 1, $1) AS bucket,
            COUNT(*)::int AS count,

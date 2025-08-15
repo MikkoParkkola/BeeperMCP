@@ -142,7 +142,7 @@ async function phaseGetKeys(client: MatrixClient, logger: Pino.Logger) {
     logger.error(`Olm init failed: ${e.message}`);
     throw e;
   }
-  await client.initCrypto();
+  await (client as any).initCrypto();
   await restoreRoomKeys(client, logger);
 }
 

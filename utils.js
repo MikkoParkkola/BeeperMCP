@@ -529,7 +529,8 @@ export class TimezoneTimeline {
   }
   set(tz, since = new Date().toISOString()) {
     // Validate timezone
-    if (!DateTime.now().setZone(tz).isValid) throw new Error('Invalid time zone');
+    if (!DateTime.now().setZone(tz).isValid)
+      throw new Error('Invalid time zone');
     this.timeline.push({ tz, since });
     this.timeline.sort((a, b) => new Date(a.since) - new Date(b.since));
   }

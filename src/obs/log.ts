@@ -3,8 +3,7 @@ export function log(kind: string, payload: any, correlationId?: string) {
     ts: new Date().toISOString(),
     kind,
     correlationId: correlationId ?? null,
-    payload
+    payload,
   };
-  // eslint-disable-next-line no-console
   console.log(JSON.stringify(rec));
 }
