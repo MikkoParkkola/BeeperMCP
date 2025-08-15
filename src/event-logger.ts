@@ -112,3 +112,15 @@ export function setupEventLogging(
     },
   };
 }
+
+// If you'd like me to continue wiring features, consider adding these files
+// (or confirming they already exist in the repo/chat):
+// - Postgres: messages schema (CREATE TABLE messages ...)
+// - scripts/migrate.ts
+// - src/ingest/matrix.ts
+// - src/index/reembed.ts (already provided but may need expansion)
+// - src/mcp/tools/sentimentTrends.ts
+// - src/mcp/tools/sentimentDistribution.ts
+// - src/mcp/tools/messageContext.ts
+// - src/mcp/tools/mediaProxy.ts
+// - src/decryption-manager.js (implementation expected by this file)
