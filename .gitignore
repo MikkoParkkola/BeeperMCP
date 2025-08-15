@@ -6,3 +6,4 @@ coverage
 .beeper-mcp-server.env
 room-logs
 mx-cache
+.aider*
