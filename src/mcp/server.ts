@@ -34,6 +34,13 @@
 
   After you add the missing files, I'll apply focused SEARCH/REPLACE patches
   to finish wiring resources, parameterized queries and analytics behavior.
+
+  // Suggested additional files (if not already added):
+  // - src/config.ts
+  // - utils.js
+  // - mcp-tools.js
+  // These are commonly required to build/run the MCP server and to enable
+  // full resource/tool wiring and tests.
 */
 import { config } from "../config.js";
 import { capabilities } from "./capabilities.js";
