@@ -182,3 +182,7 @@ Notes for contributors
 - Keep API key gating consistent across MCP surfaces (tools and resources).
 - Use prepared statements and pooling (one Pool per process) for Postgres.
 - Before adding new tools/resources, add/update JSON schemas in src/mcp/schemas/tools.ts and corresponding tests.
+- Security advisories and mitigations
+  - matrix-js-sdk upgraded to ^37.13.0 to address GHSA advisories (freeze on bad predecessor, overly permissive key sharing, MXC path traversal). Breaking changes are managed via our stubs and wrappers.
+  - Do not auto-verify devices. The previous `setDeviceVerified` sweep has been removed to avoid accidental key sharing to malicious devices. Leave verification to explicit user workflows and cross-signing.
+  - Media MXC handling: we sanitize filenames and store media under per-room directories to avoid traversal; keep using `safeFilename` and never trust remote filenames.
