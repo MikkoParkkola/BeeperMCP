@@ -68,7 +68,18 @@ export async function verifyAccessToken(
   - tests/ (unit and integration tests, fixtures)
   - .github/workflows/ci.yml (ensure npm ci is used and build runs before tests)
 
-  Once you add any of the files above, tell me which ones you added and I'll
+  Remaining high-priority files you should add (if not already present):
+  - mcp-tools.js            (required by build & runtime to construct MCP server)
+  - utils.js                (runtime utilities used widely by server and tools)
+  - scripts/migrate.ts      (DB migrations to create messages table)
+  - migrations/*.sql        (Postgres schema for messages table and indexes)
+  - src/decryption-manager.js (decryption manager used by event-logger)
+
+  Optional but helpful for testing & CI:
+  - tests/** (unit and integration tests using pg-mem and supertest)
+  - Dockerfile / docker-compose.yml
+
+  Once you add any of the above, tell me which ones you added and I'll
   apply the remaining precise SEARCH/REPLACE patches to finish wiring, tests,
   CI and migrations.
 */
