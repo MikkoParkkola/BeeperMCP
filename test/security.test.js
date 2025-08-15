@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sanitizeText } from '../dist/src/security/sanitize.js';
 import { checkGuardrails } from '../dist/src/security/guardrails.js';
-import { rateLimiter, __resetRateLimiter } from '../dist/src/security/rateLimit.js';
+import {
+  rateLimiter,
+  __resetRateLimiter,
+} from '../dist/src/security/rateLimit.js';
 
 test('sanitizeText strips html and clamps length', () => {
   const html = '<b>Hello</b>   world\n<script>alert(1)</script>';

@@ -7,7 +7,7 @@ export interface ApprovalForm {
 }
 
 export async function requestApproval(
-  form: Omit<ApprovalForm, "send"> & { send?: boolean }
+  form: Omit<ApprovalForm, 'send'> & { send?: boolean },
 ): Promise<ApprovalForm> {
   // Stub: always deny
   return { ...form, send: false };

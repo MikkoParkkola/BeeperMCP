@@ -1,7 +1,6 @@
-import { describe, it, expect } from "vitest";
+import test from 'node:test';
+import assert from 'node:assert/strict';
 
-describe("MCP capability discovery", () => {
-  it("should expose capabilities endpoint", async () => {
-    expect(true).toBe(true);
-  });
+test('MCP capability discovery: should expose capabilities endpoint', async () => {
+  assert.equal(true, true);
 });

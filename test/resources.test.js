@@ -1,27 +1,46 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'fs';
-import path from 'path';
 import { openLogDb, insertLog, insertMedia } from '../utils.js';
-import { registerResources, handleResource } from '../dist/src/mcp/resources.js';
+import {
+  registerResources,
+  handleResource,
+} from '../dist/src/mcp/resources.js';
 
 test('resources: history returns logs from SQLite', async () => {
   const dbPath = `.test-resources-${Date.now()}-${Math.random().toString(36).slice(2)}.db`;
-  try { fs.unlinkSync(dbPath); } catch {}
+  try {
+    fs.unlinkSync(dbPath);
+  } catch {}
   const db = openLogDb(dbPath);
   insertLog(db, '!r', '2025-01-01T00:00:00.000Z', '[a]', undefined, 'e1');
   insertLog(db, '!r', '2025-01-02T00:00:00.000Z', '[b]', undefined, 'e2');
   registerResources(db);
-  const res = await handleResource('im://matrix/room/!r/history', new URLSearchParams('limit=10'));
+  const res = await handleResource(
+    'im://matrix/room/!r/history',
+    new URLSearchParams('limit=10'),
+  );
   assert.deepEqual(res.items, ['[a]', '[b]']);
 });
 
 test('resources: media returns metadata by eventId', async () => {
   const dbPath = `.test-resources-media-${Date.now()}-${Math.random().toString(36).slice(2)}.db`;
-  try { fs.unlinkSync(dbPath); } catch {}
+  try {
+    fs.unlinkSync(dbPath);
+  } catch {}
   const db = openLogDb(dbPath);
-  insertMedia(db, { eventId: 'e1', roomId: '!r', ts: '2025-01-01T00:00:00.000Z', file: 'f.bin', type: 'application/bin', size: 1 });
+  insertMedia(db, {
+    eventId: 'e1',
+    roomId: '!r',
+    ts: '2025-01-01T00:00:00.000Z',
+    file: 'f.bin',
+    type: 'application/bin',
+    size: 1,
+  });
   registerResources(db);
-  const res = await handleResource('im://matrix/media/e1/file', new URLSearchParams());
+  const res = await handleResource(
+    'im://matrix/media/e1/file',
+    new URLSearchParams(),
+  );
   assert.equal(res.file, 'f.bin');
 });
