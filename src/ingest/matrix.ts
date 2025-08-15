@@ -1,4 +1,5 @@
 import { config } from '../config.js';
+ 
 
 export async function startMatrixIngestLoop(): Promise<void> {
   // Minimal skeleton; implement full sync later
