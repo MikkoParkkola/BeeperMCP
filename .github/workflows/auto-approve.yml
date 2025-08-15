@@ -18,6 +18,13 @@ jobs:
       - name: Auto-approve
         uses: hmarr/auto-approve-action@v4
         with:
+<<<<<<< HEAD
           review-message: 'Auto-approving trusted author PR'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+=======
+          review-message: "Auto-approving trusted author PR"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+>>>>>>> 87a361b (ci: split CI into build/tests/lint and rename workflow to 'Node CI')

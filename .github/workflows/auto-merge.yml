@@ -11,16 +11,27 @@ permissions:
 jobs:
   enable-auto-merge:
     if: >-
+<<<<<<< HEAD
       github.event.repository.allow_auto_merge && (
         github.event.pull_request.user.login == 'MikkoParkkola' ||
         github.actor == 'MikkoParkkola' ||
         contains(join(github.event.pull_request.labels.*.name, ','), 'automerge')
       )
+=======
+      github.event.pull_request.user.login == 'MikkoParkkola' ||
+      github.actor == 'MikkoParkkola' ||
+      contains(join(github.event.pull_request.labels.*.name, ','), 'automerge')
+>>>>>>> 87a361b (ci: split CI into build/tests/lint and rename workflow to 'Node CI')
     runs-on: ubuntu-latest
     steps:
       - name: Enable auto-merge (squash)
         uses: peter-evans/enable-pull-request-automerge@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+<<<<<<< HEAD
           pull-request-number: ${{ github.event.pull_request.number }}
           merge-method: squash
+=======
+          merge-method: squash
+
+>>>>>>> 87a361b (ci: split CI into build/tests/lint and rename workflow to 'Node CI')
