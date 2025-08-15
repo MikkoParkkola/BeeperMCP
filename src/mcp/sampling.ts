@@ -7,6 +7,6 @@ export interface SamplingResult {
   citations?: { event_id: string; ts_utc: string }[];
 }
 
-export async function sample(_req: SamplingRequest): Promise<SamplingResult> {
-  return { text: "TODO: sampling result" };
+export async function sample(): Promise<SamplingResult> {
+  return { text: 'TODO: sampling result' };
 }

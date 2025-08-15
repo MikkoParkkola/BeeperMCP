@@ -76,6 +76,7 @@ When running the HTTP MCP server (via `src/mcp.ts`), a read-only metrics endpoin
 ```
 GET /metrics  ->  { counters: { decrypt_ok: N, decrypt_missing_session: M, ... } }
 ```
+
 These counters provide basic observability for E2EE decryption and key request activity.
 
 ### Phased setup

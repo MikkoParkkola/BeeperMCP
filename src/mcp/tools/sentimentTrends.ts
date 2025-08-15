@@ -1,24 +1,29 @@
-import { Pool } from "pg";
-import { config } from "../../config.js";
-import { JSONSchema7 } from "json-schema";
-import { toolsSchemas } from "../schemas/tools.js";
-import { applyCommonFilters } from "./filters.js";
+import { Pool } from 'pg';
+import { config } from '../../config/analytics.js';
+import { JSONSchema7 } from 'json-schema';
+import { toolsSchemas } from '../schemas/tools.js';
+import { applyCommonFilters } from './filters.js';
 
 let pool: Pool | null = null;
 export function __setTestPool(p: any) {
   pool = p as any;
 }
 function getPool() {
-  if (!pool) pool = new Pool({ connectionString: config.db.url, ssl: config.db.ssl as any, max: config.db.pool.max });
+  if (!pool)
+    pool = new Pool({
+      connectionString: config.db.url,
+      ssl: config.db.ssl as any,
+      max: config.db.pool.max,
+    });
   return pool!;
 }
 
-export const id = "sentiment_trends";
+export const id = 'sentiment_trends';
 export const inputSchema = toolsSchemas.sentiment_trends as JSONSchema7;
 
 export async function handler(input: any) {
   const p = getPool();
-  const where: string[] = ["sentiment_score IS NOT NULL"];
+  const where: string[] = ['sentiment_score IS NOT NULL'];
   const args: any[] = [];
   let i = 1;
   if (input.target?.room) {
@@ -35,15 +40,15 @@ export async function handler(input: any) {
     lang: input.lang,
     types: input.types,
   } as any);
-  const bucket = input.bucket ?? "day";
+  const bucket = input.bucket ?? 'day';
   const bucketKey =
-    bucket === "day"
-      ? "tz_day::text"
-      : bucket === "week"
-      ? "tz_year||'-W'||lpad(tz_week::text,2,'0')"
-      : bucket === "month"
-      ? "tz_month::text"
-      : "tz_year::text";
+    bucket === 'day'
+      ? 'tz_day::text'
+      : bucket === 'week'
+        ? "tz_year||'-W'||lpad(tz_week::text,2,'0')"
+        : bucket === 'month'
+          ? 'tz_month::text'
+          : 'tz_year::text';
   const sql = `
     SELECT ${bucketKey} AS bucket_key,
            COUNT(*) AS count,
@@ -56,7 +61,7 @@ export async function handler(input: any) {
            AVG((sentiment_score < -0.2)::int)::float AS neg_rate,
            AVG(subjectivity) AS subjectivity_mean
     FROM messages
-    WHERE ${where.join(" AND ")}
+    WHERE ${where.join(' AND ')}
     GROUP BY bucket_key
     ORDER BY MIN(ts_utc)
   `;
@@ -64,7 +69,12 @@ export async function handler(input: any) {
   // No smoothing / change point detection in stub
   return {
     filters: { ...input },
-    bucket_def: { kind: bucket, tz: "local", disambiguation: "prefer_earlier_offset", k_min: 5 },
-    buckets: res.rows
+    bucket_def: {
+      kind: bucket,
+      tz: 'local',
+      disambiguation: 'prefer_earlier_offset',
+      k_min: 5,
+    },
+    buckets: res.rows,
   };
 }

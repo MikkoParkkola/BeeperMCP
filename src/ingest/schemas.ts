@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 export const NormalizedEvent = z.object({
   event_id: z.string(),
@@ -21,11 +21,11 @@ export const NormalizedEvent = z.object({
       transcriptOf: z.string().optional(),
       ocrOf: z.string().optional(),
       captionOf: z.string().optional(),
-      kind: z.enum(["stt", "ocr", "caption"]).optional()
+      kind: z.enum(['stt', 'ocr', 'caption']).optional(),
     })
     .passthrough()
     .nullable()
-    .optional()
+    .optional(),
 });
 
-export type NormalizedEvent = z.infer<typeof NormalizedEvent>;
+export type NormalizedEventT = z.infer<typeof NormalizedEvent>;

@@ -4,7 +4,7 @@ export interface CommonFilterInput {
   rooms?: string[];
   participants?: string[]; // aka senders
   lang?: string;
-  types?: ("text" | "audio" | "image" | "video")[];
+  types?: ('text' | 'audio' | 'image' | 'video')[];
 }
 
 export function applyCommonFilters(
@@ -35,8 +35,8 @@ export function applyCommonFilters(
     args.push(new Date(input.to).toISOString());
   }
   if (input.types?.length) {
-    const nonText = input.types.filter((t) => t !== "text");
-    if (nonText.length && input.types.includes("text")) {
+    const nonText = input.types.filter((t) => t !== 'text');
+    if (nonText.length && input.types.includes('text')) {
       where.push(
         `((media_types && $${i}) OR (media_types IS NULL OR array_length(media_types,1)=0))`,
       );
@@ -51,4 +51,3 @@ export function applyCommonFilters(
   }
   return i;
 }
-

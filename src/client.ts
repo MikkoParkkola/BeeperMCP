@@ -120,24 +120,24 @@ export async function createMatrixClient(
   return { client, sessionStore };
 }
 
- // Recommended additional files to add to the chat/repo if you want me to continue
- // wiring functionality and tests:
- // - Postgres: messages schema (CREATE TABLE messages ...)
- // - scripts/migrate.ts
- // - src/ingest/matrix.ts        // full /sync ingest to populate messages table
- // - src/index/reembed.ts        // re-embedding worker (expand if necessary)
- // - src/mcp/tools/sentimentTrends.ts
- // - src/mcp/tools/sentimentDistribution.ts
- // - src/mcp/tools/messageContext.ts
- // - src/mcp/tools/mediaProxy.ts
- // - src/decryption-manager.js
- // - src/event-logger.ts         // already provided but may need tweaks for E2EE
- // - mcp-tools.d.ts              // already provided
- //
- // Additional recommended files to add now (high priority to enable a full build/run):
- // - utils.js
- // - mcp-tools.js
- // - src/mcp/resources.ts
- // - src/mcp/server.ts
- // - scripts/migrate.ts
- // - migrations/*.sql
+// Recommended additional files to add to the chat/repo if you want me to continue
+// wiring functionality and tests:
+// - Postgres: messages schema (CREATE TABLE messages ...)
+// - scripts/migrate.ts
+// - src/ingest/matrix.ts        // full /sync ingest to populate messages table
+// - src/index/reembed.ts        // re-embedding worker (expand if necessary)
+// - src/mcp/tools/sentimentTrends.ts
+// - src/mcp/tools/sentimentDistribution.ts
+// - src/mcp/tools/messageContext.ts
+// - src/mcp/tools/mediaProxy.ts
+// - src/decryption-manager.js
+// - src/event-logger.ts         // already provided but may need tweaks for E2EE
+// - mcp-tools.d.ts              // already provided
+//
+// Additional recommended files to add now (high priority to enable a full build/run):
+// - utils.js
+// - mcp-tools.js
+// - src/mcp/resources.ts
+// - src/mcp/server.ts
+// - scripts/migrate.ts
+// - migrations/*.sql

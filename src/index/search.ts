@@ -1,9 +1,14 @@
-import { Pool } from "pg";
-import { config } from "../config.js";
+import { Pool } from 'pg';
+import { config } from '../config/analytics.js';
 
 let pool: Pool | null = null;
 function getPool() {
-  if (!pool) pool = new Pool({ connectionString: config.db.url, ssl: config.db.ssl as any, max: config.db.pool.max });
+  if (!pool)
+    pool = new Pool({
+      connectionString: config.db.url,
+      ssl: config.db.ssl as any,
+      max: config.db.pool.max,
+    });
   return pool;
 }
 
@@ -13,7 +18,7 @@ export interface SearchFilters {
   rooms?: string[];
   participants?: string[];
   lang?: string;
-  types?: ("text" | "audio" | "image" | "video")[];
+  types?: ('text' | 'audio' | 'image' | 'video')[];
 }
 
 export interface SearchHit {
@@ -22,10 +27,14 @@ export interface SearchHit {
   score: number;
 }
 
-export async function searchHybrid(query: string, filters: SearchFilters, limit = 50): Promise<SearchHit[]> {
+export async function searchHybrid(
+  query: string,
+  filters: SearchFilters,
+  limit = 50,
+): Promise<SearchHit[]> {
   // Minimal stub: BM25 via ts_rank only
   const p = getPool();
-  const parts: string[] = ["tsv @@ plainto_tsquery($1)"];
+  const parts: string[] = ['tsv @@ plainto_tsquery($1)'];
   const args: any[] = [query];
   let arg = 2;
   if (filters.from) {
@@ -54,8 +63,8 @@ export async function searchHybrid(query: string, filters: SearchFilters, limit 
 
   // NEW: types filter
   if (filters.types?.length) {
-    const nonText = filters.types.filter((t) => t !== "text");
-    if (nonText.length && filters.types.includes("text")) {
+    const nonText = filters.types.filter((t) => t !== 'text');
+    if (nonText.length && filters.types.includes('text')) {
       parts.push(
         `( (media_types && $${arg}) OR (media_types IS NULL OR array_length(media_types, 1) = 0) )`,
       );
@@ -69,7 +78,7 @@ export async function searchHybrid(query: string, filters: SearchFilters, limit 
     }
   }
 
-  const where = parts.length ? `WHERE ${parts.join(" AND ")}` : "";
+  const where = parts.length ? `WHERE ${parts.join(' AND ')}` : '';
   const sql = `
     SELECT event_id, ts_utc, ts_rank(tsv, plainto_tsquery($1)) AS score
     FROM messages

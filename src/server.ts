@@ -26,7 +26,7 @@ import { setupEventLogging } from './event-logger.js';
 import { startSync } from './sync.js';
 import { initMcpServer } from './mcp.js';
 import { createMatrixClient } from './client.js';
-import { loadConfig } from './config.js';
+import { loadConfig } from './config/runtime.js';
 const config = loadConfig();
 const logger = pino({ level: config.logLevel }) as any;
 let TOKEN: string | undefined = config.token;

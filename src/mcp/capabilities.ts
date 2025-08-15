@@ -1,6 +1,6 @@
-import { JSONSchema7 } from "json-schema";
-import { toolsSchemas } from "./schemas/tools.js";
-import { config } from "../config.js";
+import { JSONSchema7 } from 'json-schema';
+import { toolsSchemas } from './schemas/tools.js';
+import { config } from '../config/analytics.js';
 
 export interface Capabilities {
   resources: string[];
@@ -17,18 +17,21 @@ export interface Capabilities {
 export function capabilities(): Capabilities {
   return {
     resources: [
-      "im://matrix/room/{roomId}/history",
-      "im://matrix/room/{roomId}/message/{eventId}/context",
-      "im://matrix/media/{eventId}/{transcript|ocr|caption}",
-      "im://matrix/index/status"
+      'im://matrix/room/{roomId}/history',
+      'im://matrix/room/{roomId}/message/{eventId}/context',
+      'im://matrix/media/{eventId}/{transcript|ocr|caption}',
+      'im://matrix/index/status',
     ],
-    tools: Object.entries(toolsSchemas).map(([id, schema]) => ({ id, inputSchema: schema as JSONSchema7 })),
+    tools: Object.entries(toolsSchemas).map(([id, schema]) => ({
+      id,
+      inputSchema: schema as JSONSchema7,
+    })),
     sampling: true,
     elicitation: true,
-    utilities: ["progress", "cancel"],
+    utilities: ['progress', 'cancel'],
     overview: {
       rateLimits: config.mcp.rateLimits,
-      featureFlags: config.mcp.featureFlags
-    }
+      featureFlags: config.mcp.featureFlags,
+    },
   };
 }
