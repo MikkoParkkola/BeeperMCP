@@ -23,6 +23,15 @@
   - src/ingest/matrix.ts (to persist messages into Postgres)
   - Postgres messages schema (CREATE TABLE)
 
+  Additional files often required by runtime wiring (please add these if you
+  plan to exercise crypto/decryption, auth, or event logging):
+  - src/auth.js (or src/auth.ts)                 // token/password verification helpers
+  - src/crypto.js (or src/crypto.ts)             // Olm / rust-crypto init & helpers
+  - src/decryption-manager.js                    // decryption manager used by event-logger
+  - src/event-logger.ts                          // event logging wiring (exists in repo)
+  - src/client.ts / src/matrix/client.ts         // matrix helper clients
+  - Any other src/mcp/tools/*.ts you expect to extend
+
   After you add the missing files, I'll apply focused SEARCH/REPLACE patches
   to finish wiring resources, parameterized queries and analytics behavior.
 */
