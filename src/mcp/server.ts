@@ -63,7 +63,14 @@ export const requiredFiles = [
   "src/mcp/tools/sendMessage.ts",
   "src/ingest/matrix.ts",
   "Postgres: messages schema (CREATE TABLE messages ...)",
-  "Optional: scripts/migrate.ts"
+  "Optional: scripts/migrate.ts",
+  // Suggested additional files to add to the chat if you want me to patch them:
+  "src/auth.js (or src/auth.ts)",
+  "src/crypto.js (or src/crypto.ts)",
+  "src/decryption-manager.js",
+  "src/event-logger.ts",
+  "src/client.ts",
+  "src/matrix/client.ts"
 ];
 
 // Placeholder HTTP-SSE transport wiring
