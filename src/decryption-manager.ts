@@ -1,6 +1,7 @@
 import Pino from 'pino';
 import { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
 import { BoundedMap, pushWithLimit } from '../utils.js';
+import { incr } from './obs/metrics.js';
 
 interface KeyRequestEntry {
   last: number;
@@ -46,6 +47,7 @@ export class DecryptionManager {
     const cryptoApi = this.client.getCrypto();
     if (cryptoApi) {
       await (cryptoApi as any).decryptEvent(ev as any);
+      incr('decrypt_ok');
     }
   }
 
@@ -116,15 +118,18 @@ export class DecryptionManager {
         this.logger.debug(
           `Unknown session for event ${ev.getId()} in room ${roomId}: session ${wire.session_id}`,
         );
+        incr('decrypt_missing_session');
       } else if (e.name === 'DecryptionError') {
         this.logger.error(
           `Decrypt: Serious decryption error for event ${ev.getId()} in room ${roomId} (Code: ${e.code || 'unknown'}): ${e.message}. Queuing for retry.`,
         );
+        incr('decrypt_error');
       } else {
         this.logger.error(
           { err: e },
           `Decrypt: Unexpected error for event ${ev.getId()} in room ${roomId}: ${e.message}. Queuing for retry.`,
         );
+        incr('decrypt_error');
       }
       try {
         const sessionId = (wire as any).session_id;
@@ -155,10 +160,12 @@ export class DecryptionManager {
                   `Requesting missing room key for session ${mapKey}`,
                 );
                 entry.logged = true;
+                incr('key_request');
               } else {
                 this.logger.debug(
                   `Retrying room key request for session ${mapKey}`,
                 );
+                incr('key_request_retry');
               }
               const cryptoApi = this.client.getCrypto();
               if (cryptoApi) {
