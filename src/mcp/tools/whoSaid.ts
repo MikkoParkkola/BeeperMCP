@@ -4,9 +4,13 @@ import { toolsSchemas } from "../schemas/tools.js";
 import { JSONSchema7 } from "json-schema";
 
 let pool: Pool | null = null;
+export function __setTestPool(p: any) {
+  // test helper to inject a fake pool
+  pool = p as any;
+}
 function getPool() {
   if (!pool) pool = new Pool({ connectionString: config.db.url, ssl: config.db.ssl as any, max: config.db.pool.max });
-  return pool;
+  return pool!;
 }
 
 export const id = "who_said";
@@ -20,6 +24,14 @@ export async function handler(input: any) {
   if (input.rooms?.length) {
     where.push(`room_id = ANY($${i++})`);
     args.push(input.rooms);
+  }
+  if (input.participants?.length) {
+    where.push(`sender = ANY($${i++})`);
+    args.push(input.participants);
+  }
+  if (input.lang) {
+    where.push(`lang = $${i++}`);
+    args.push(input.lang);
   }
   if (input.from) {
     where.push(`ts_utc >= $${i++}`);
@@ -37,9 +49,22 @@ export async function handler(input: any) {
     ORDER BY ts_utc ASC
     LIMIT 1000
   `;
-  const rows = (await p.query(sql, args)).rows;
-  const results = rows.filter((r) =>
-    input.isRegex ? new RegExp(input.pattern).test(r.text ?? "") : (r.text ?? "") === input.pattern
-  );
+  const rows = (await p.query(sql, args)).rows as any[];
+  // Guard regex usage
+  let useRegex = Boolean(input.isRegex);
+  let regex: RegExp | null = null;
+  const text = String(input.pattern ?? "");
+  if (useRegex) {
+    if (text.length > 200) useRegex = false;
+    try {
+      regex = new RegExp(text, "i");
+    } catch {
+      useRegex = false;
+    }
+  }
+  const results = rows.filter((r) => {
+    const t = r.text ?? "";
+    return useRegex ? regex!.test(t) : t === text;
+  });
   return { hits: results.slice(0, 200) };
 }

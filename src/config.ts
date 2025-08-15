@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import { z } from 'zod';
 import { envFlag } from '../utils.js';
 
-export interface Config {
+export interface LocalConfig {
   cacheDir: string;
   logDir: string;
   logMaxBytes: number;
@@ -32,7 +32,7 @@ export interface Config {
   mcpPort: number;
 }
 
-export function loadConfig(): Config {
+export function loadConfig(): LocalConfig {
   dotenv.config({ path: '.beeper-mcp-server.env' });
   const schema = z.object({
     MATRIX_CACHE_DIR: z.string().default('./mx-cache'),
@@ -98,7 +98,7 @@ export function loadConfig(): Config {
   };
 }
 export type Provider = "local" | "remote";
-export interface Config {
+export interface AnalyticsConfig {
   mcp: {
     transport: "http-sse";
     baseUrl: string;
@@ -127,7 +127,7 @@ export interface Config {
   };
 }
 
-export const config: Config = {
+export const config: AnalyticsConfig = {
   mcp: {
     transport: "http-sse",
     baseUrl: process.env.MCP_BASE_URL ?? "http://127.0.0.1:8757",

@@ -3,6 +3,25 @@
 Purpose
 - This document summarizes the current state of the codebase and the prioritized TODOs to reach a high‑quality release, both for local use and future cloud hosting.
 
+How We Work (Agent Guide)
+- Build and test flow:
+  - Use `npm ci && npm run build` before running tests.
+  - Run all tests via `npm test` or `npm run test:coverage` (compiles TS to `dist/` and runs Node test runner).
+- MCP surface:
+  - Prefer the Streamable HTTP MCP server initialized in `src/mcp.ts`. Avoid duplicating tool/resource wiring elsewhere.
+  - Resources are registered via `registerResources(logDb, logSecret)` and backed by SQLite (`utils.js`).
+- TDD hooks for Postgres tools and send pipeline:
+  - `src/mcp/tools/*`: modules export `__setTestPool(p)` to inject a fake PG pool in tests (avoid real DB).
+  - `src/mcp/tools/sendMessage.ts` exports `__setSendFn(fn)` to stub Matrix send in tests.
+  - `src/security/rateLimit.ts` exports `__resetRateLimiter(name?)` to reset token buckets between tests.
+- Config:
+  - Local server uses `loadConfig()`; analytics tools use `config` constants. Do not mix the two shapes.
+  - Defaults: `config.mcp.rateLimits.send=3`. Adjust in CI via env if needed.
+- Principles:
+  - Push filters/aggregations to SQL. Avoid client-side loops over large sets.
+  - Keep API key enforcement consistent across MCP tools and resources.
+  - Tests first where feasible; add minimal injection points instead of heavyweight mocks.
+
 Architecture snapshot
 - Surfaces
   - MCP server (HTTP, streamable) is initialized in src/mcp.ts using buildMcpServer from mcp-tools.js.
@@ -20,21 +39,21 @@ Architecture snapshot
 
 Current state (as of this repo snapshot)
 - Build/CI
-  - package.json contains duplicate second JSON object (mcp-matrix-analytics). Scripts run TS directly (tsc -b), tests do not build first, and start points at dist/beeper-mcp-server.js. Missing pg dependency in the first object. Needs consolidation.
-  - tsconfig.json is a references file (tsconfig.utils.json, tsconfig.server.json) rather than a single NodeNext project; dist output not unified.
-  - .github/workflows/ci.yml uses npm install and does not build before tests.
+  - package.json consolidated; test scripts build first; `pg` is a dependency for analytics tools.
+  - tsconfig.json is a single NodeNext project emitting to `dist/`.
+  - CI uses `npm ci`, builds, then runs tests and lint.
 - Resources (src/mcp/resources.ts)
-  - registerResources() exists; history/context/media endpoints are stubs returning empty items; not wired to SQLite logs/media.
-  - src/mcp.ts registers resources without passing logDb/logSecret (so history cannot read encrypted logs).
+  - registerResources(logDb, logSecret) wires history/context/media to SQLite logs/media.
+  - src/mcp.ts passes logDb/logSecret to registerResources.
 - Tools (Postgres)
-  - who_said (src/mcp/tools/whoSaid.ts): missing participants/lang filters; unsafe regex (unbounded new RegExp with user input).
-  - sentiment_trends (src/mcp/tools/sentimentTrends.ts): uses AVG(sentiment_subjectivity) but data model expects subjectivity; missing filters for target room/participant/lang/types.
-  - sentiment_distribution (src/mcp/tools/sentimentDistribution.ts): computes histogram client‑side; missing full filters; should push down to SQL via width_bucket.
-  - stats_activity (src/mcp/tools/activity.ts): uses is_me which is not in the schema; missing types/participant filters; my_share_pct should be computed by sender match (percentage) using config.matrix.userId.
+  - who_said: participants/lang filters added; regex guarded.
+  - sentiment_trends: uses AVG(subjectivity) with filters for target/lang/types.
+  - sentiment_distribution: SQL width_bucket with filters; returns edges/counts/summary.
+  - stats_activity: my_share_pct computed from sender match; types/lang filters added.
 - Send pipeline
-  - src/mcp/tools/sendMessage.ts is a stub (always approval_required). Lacks rate limiting, guardrails, sanitize, approval flow, and actual send via src/matrix/client.ts.
+  - src/mcp/tools/sendMessage.ts applies rate limiting, guardrails, approval gating, sanitization, and uses Matrix client to send.
 - Ingest
-  - src/ingest/matrix.ts imports node-fetch; sync loop is a stub (intended to be implemented later).
+  - src/ingest/matrix.ts relies on global fetch (Node >=18). Sync loop remains a future task.
 - Index/search and status
   - src/index/search.ts: functional BM25 ts_rank; supports from/to, rooms, participants, lang, and types filters.
   - src/index/status.ts: returns basic index status (embedding model version and pending_reembed).

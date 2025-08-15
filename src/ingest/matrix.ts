@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import { Pool } from "pg";
 import { config } from "../config.js";
 import { NormalizedEvent } from "./schemas.js";

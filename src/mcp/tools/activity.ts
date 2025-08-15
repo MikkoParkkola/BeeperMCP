@@ -4,9 +4,12 @@ import { JSONSchema7 } from "json-schema";
 import { toolsSchemas } from "../schemas/tools.js";
 
 let pool: Pool | null = null;
+export function __setTestPool(p: any) {
+  pool = p as any;
+}
 function getPool() {
   if (!pool) pool = new Pool({ connectionString: config.db.url, ssl: config.db.ssl as any, max: config.db.pool.max });
-  return pool;
+  return pool!;
 }
 
 export const id = "stats_activity";
@@ -29,9 +32,26 @@ export async function handler(input: any) {
     where.push(`room_id = $${i++}`);
     args.push(input.target.room);
   }
+  if (input.target?.participant) {
+    where.push(`sender = $${i++}`);
+    args.push(input.target.participant);
+  }
   if (input.lang) {
     where.push(`lang = $${i++}`);
     args.push(input.lang);
+  }
+  if (input.types?.length) {
+    const nonText = input.types.filter((t: string) => t !== "text");
+    if (nonText.length && input.types.includes("text")) {
+      where.push(`((media_types && $${i}) OR (media_types IS NULL OR array_length(media_types,1)=0))`);
+      args.push(nonText);
+      i += 1;
+    } else if (nonText.length) {
+      where.push(`media_types && $${i++}`);
+      args.push(nonText);
+    } else {
+      where.push(`media_types IS NULL OR array_length(media_types,1)=0`);
+    }
   }
   const bucket = input.bucket ?? "day";
   const bucketKey =
@@ -48,7 +68,7 @@ export async function handler(input: any) {
            COUNT(DISTINCT sender) AS unique_senders,
            COALESCE(SUM(words),0) AS words,
            COALESCE(SUM(attachments),0) AS attachments,
-           AVG(CASE WHEN is_me THEN 1 ELSE 0 END)::float AS my_share_pct,
+           AVG(CASE WHEN sender = $${i++} THEN 1 ELSE 0 END)::float AS my_share_pct,
            AVG(NULLIF(words,0)) AS avg_len,
            STDDEV_POP(NULLIF(words,0)) AS stdev_len,
            MIN(ts_utc) AS start_utc,
@@ -58,7 +78,7 @@ export async function handler(input: any) {
     GROUP BY bucket_key
     ORDER BY MIN(ts_utc)
   `;
-  const res = await p.query(sql, args);
+  const res = await p.query(sql, [...args, config.matrix.userId]);
   return {
     filters: { ...input },
     bucket_def: { kind: bucket, tz: "local", disambiguation: "prefer_earlier_offset", k_min: 5 },

@@ -150,10 +150,10 @@ sqlite3 room-logs/messages.db 'PRAGMA journal_mode=DELETE;' # disable WAL
 
 ## Development
 
-Install dependencies with `npm install` and use the provided scripts to check formatting, run tests, or lint the code:
+Install dependencies with `npm ci` and use the provided scripts to build, run tests (compiled), or lint the code:
 
 ```bash
-npm run format
+npm run build
 npm test
 npm run test:coverage
 npm run lint

@@ -20,13 +20,13 @@ export async function initMcpServer(
   });
   await srv.connect(transport);
   // Register MCP Resources (list/read) with API key enforcement
-  registerResources();
-  srv.server._requestHandlers.set('resources/list', (_req: any, extra: any) => {
+  registerResources(logDb, logSecret);
+  (srv.server as any)._requestHandlers.set('resources/list', (_req: any, extra: any) => {
     if (extra?._meta?.apiKey !== apiKey) throw new Error('Invalid API key');
     const resources = listResources().map((uri) => ({ uri }));
     return { resources };
   });
-  srv.server._requestHandlers.set('resources/read', async (req: any, extra: any) => {
+  (srv.server as any)._requestHandlers.set('resources/read', async (req: any, extra: any) => {
     if (extra?._meta?.apiKey !== apiKey) throw new Error('Invalid API key');
     const uri: string | undefined =
       (req && (req.uri || req.resource?.uri || req.params?.uri)) || undefined;
@@ -45,6 +45,6 @@ export async function initMcpServer(
       void transport.handleRequest(req, res);
     }
   });
-  await new Promise((resolve) => httpServer.listen(port, resolve));
+  await new Promise<void>((resolve) => httpServer.listen(port, () => resolve()));
   return { mcpServer: srv, httpServer };
 }

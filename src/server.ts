@@ -10,7 +10,7 @@
 
 /// <reference path="../matrix-js-sdk-shim.d.ts" />
 
-import Pino from 'pino';
+import pino from 'pino';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -28,7 +28,7 @@ import { initMcpServer } from './mcp.js';
 import { createMatrixClient } from './client.js';
 import { loadConfig } from './config.js';
 const config = loadConfig();
-const logger = Pino({ level: config.logLevel });
+const logger = pino({ level: config.logLevel }) as any;
 let TOKEN: string | undefined = config.token;
 if (!TOKEN) {
   try {
@@ -88,8 +88,8 @@ export async function startServer() {
   );
 
   const syncKey = `syncToken:${config.userId}`;
-  let mcpServerInstance;
-  let httpServer;
+  let mcpServerInstance: any;
+  let httpServer: any;
 
   const shutdown = async () => {
     logger.info('Shutting down');

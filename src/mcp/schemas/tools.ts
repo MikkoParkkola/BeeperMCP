@@ -23,6 +23,8 @@ const who_said: JSONSchema7 = {
     pattern: { type: "string" },
     isRegex: { type: "boolean", default: false },
     rooms: { type: "array", items: { type: "string" } },
+    participants: { type: "array", items: { type: "string" } },
+    lang: { type: "string" },
     from: { type: "string", format: "date-time" },
     to: { type: "string", format: "date-time" }
   },

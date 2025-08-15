@@ -4,9 +4,12 @@ import { JSONSchema7 } from "json-schema";
 import { toolsSchemas } from "../schemas/tools.js";
 
 let pool: Pool | null = null;
+export function __setTestPool(p: any) {
+  pool = p as any;
+}
 function getPool() {
   if (!pool) pool = new Pool({ connectionString: config.db.url, ssl: config.db.ssl as any, max: config.db.pool.max });
-  return pool;
+  return pool!;
 }
 
 export const id = "sentiment_trends";
@@ -17,6 +20,31 @@ export async function handler(input: any) {
   const where: string[] = ["sentiment_score IS NOT NULL"];
   const args: any[] = [];
   let i = 1;
+  if (input.target?.room) {
+    where.push(`room_id = $${i++}`);
+    args.push(input.target.room);
+  }
+  if (input.target?.participant) {
+    where.push(`sender = $${i++}`);
+    args.push(input.target.participant);
+  }
+  if (input.lang) {
+    where.push(`lang = $${i++}`);
+    args.push(input.lang);
+  }
+  if (input.types?.length) {
+    const nonText = input.types.filter((t: string) => t !== "text");
+    if (nonText.length && input.types.includes("text")) {
+      where.push(`((media_types && $${i}) OR (media_types IS NULL OR array_length(media_types,1)=0))`);
+      args.push(nonText);
+      i += 1;
+    } else if (nonText.length) {
+      where.push(`media_types && $${i++}`);
+      args.push(nonText);
+    } else {
+      where.push(`media_types IS NULL OR array_length(media_types,1)=0`);
+    }
+  }
   if (input.from) {
     where.push(`ts_utc >= $${i++}`);
     args.push(new Date(input.from).toISOString());
@@ -44,7 +72,7 @@ export async function handler(input: any) {
            PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY sentiment_score) AS p90,
            AVG((sentiment_score > 0.2)::int)::float AS pos_rate,
            AVG((sentiment_score < -0.2)::int)::float AS neg_rate,
-           AVG(sentiment_subjectivity) AS subjectivity_mean
+           AVG(subjectivity) AS subjectivity_mean
     FROM messages
     WHERE ${where.join(" AND ")}
     GROUP BY bucket_key

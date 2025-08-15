@@ -13,3 +13,9 @@ export function rateLimiter(name: string, ratePerMinute: number) {
   bucket.tokens -= 1;
   buckets.set(name, bucket);
 }
+
+// test helper
+export function __resetRateLimiter(name?: string) {
+  if (!name) buckets.clear();
+  else buckets.delete(name);
+}
