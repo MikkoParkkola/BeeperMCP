@@ -86,7 +86,7 @@ export const requiredFiles = [
 import http from "node:http";
 import { URL } from "node:url";
 
-registerResources();
+registerResources(undefined, undefined);
 
 const tools = new Map<string, (input: any) => Promise<any>>([
   [searchTool.id, searchTool.handler],
