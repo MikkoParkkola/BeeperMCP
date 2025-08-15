@@ -1,5 +1,24 @@
 #!/usr/bin/env node
 /// <reference path="./matrix-js-sdk-shim.d.ts" />
+/*
+  Helper note: phased-setup.ts references several runtime modules and
+  project files. If you haven't added them yet, consider adding:
+
+  - src/config.ts
+  - utils.js
+  - mcp-tools.js
+  - src/decryption-manager.js
+  - src/crypto.js
+  - src/auth.js
+  - src/mcp/resources.ts
+  - src/index/search.ts
+  - src/index/reembed.ts
+  - src/mcp/tools/*.ts (recap, responseTime, sentimentTrends, sentimentDistribution, whoSaid, activity, draftReply, sendMessage)
+
+  These are not strictly required for the setup script itself but are
+  referenced elsewhere in the project and useful to include now to
+  allow subsequent SEARCH/REPLACE edits to be applied cleanly.
+*/
 import dotenv from 'dotenv';
 dotenv.config({ path: '.beeper-mcp-server.env' });
 import sdk, { MatrixClient } from 'matrix-js-sdk';
