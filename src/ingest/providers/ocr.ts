@@ -11,5 +11,5 @@ export interface OcrProvider {
 export const ocrProvider: OcrProvider = {
   async ocr() {
     return null;
-  }
+  },
 };

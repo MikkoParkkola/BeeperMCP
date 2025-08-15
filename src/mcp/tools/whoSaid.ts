@@ -1,7 +1,7 @@
-import { Pool } from "pg";
-import { config } from "../../config.js";
-import { toolsSchemas } from "../schemas/tools.js";
-import { JSONSchema7 } from "json-schema";
+import { Pool } from 'pg';
+import { config } from '../../config.js';
+import { toolsSchemas } from '../schemas/tools.js';
+import { JSONSchema7 } from 'json-schema';
 
 let pool: Pool | null = null;
 export function __setTestPool(p: any) {
@@ -9,11 +9,16 @@ export function __setTestPool(p: any) {
   pool = p as any;
 }
 function getPool() {
-  if (!pool) pool = new Pool({ connectionString: config.db.url, ssl: config.db.ssl as any, max: config.db.pool.max });
+  if (!pool)
+    pool = new Pool({
+      connectionString: config.db.url,
+      ssl: config.db.ssl as any,
+      max: config.db.pool.max,
+    });
   return pool!;
 }
 
-export const id = "who_said";
+export const id = 'who_said';
 export const inputSchema = toolsSchemas.who_said as JSONSchema7;
 
 export async function handler(input: any) {
@@ -41,7 +46,7 @@ export async function handler(input: any) {
     where.push(`ts_utc <= $${i++}`);
     args.push(new Date(input.to).toISOString());
   }
-  const cond = where.length ? "WHERE " + where.join(" AND ") : "";
+  const cond = where.length ? 'WHERE ' + where.join(' AND ') : '';
   const sql = `
     SELECT event_id, room_id, sender, ts_utc, text
     FROM messages
@@ -53,17 +58,17 @@ export async function handler(input: any) {
   // Guard regex usage
   let useRegex = Boolean(input.isRegex);
   let regex: RegExp | null = null;
-  const text = String(input.pattern ?? "");
+  const text = String(input.pattern ?? '');
   if (useRegex) {
     if (text.length > 200) useRegex = false;
     try {
-      regex = new RegExp(text, "i");
+      regex = new RegExp(text, 'i');
     } catch {
       useRegex = false;
     }
   }
   const results = rows.filter((r) => {
-    const t = r.text ?? "";
+    const t = r.text ?? '';
     return useRegex ? regex!.test(t) : t === text;
   });
   return { hits: results.slice(0, 200) };
