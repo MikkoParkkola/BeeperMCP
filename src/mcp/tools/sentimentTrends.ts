@@ -2,6 +2,7 @@ import { Pool } from "pg";
 import { config } from "../../config.js";
 import { JSONSchema7 } from "json-schema";
 import { toolsSchemas } from "../schemas/tools.js";
+import { applyCommonFilters } from "./filters.js";
 
 let pool: Pool | null = null;
 export function __setTestPool(p: any) {
@@ -28,31 +29,12 @@ export async function handler(input: any) {
     where.push(`sender = $${i++}`);
     args.push(input.target.participant);
   }
-  if (input.lang) {
-    where.push(`lang = $${i++}`);
-    args.push(input.lang);
-  }
-  if (input.types?.length) {
-    const nonText = input.types.filter((t: string) => t !== "text");
-    if (nonText.length && input.types.includes("text")) {
-      where.push(`((media_types && $${i}) OR (media_types IS NULL OR array_length(media_types,1)=0))`);
-      args.push(nonText);
-      i += 1;
-    } else if (nonText.length) {
-      where.push(`media_types && $${i++}`);
-      args.push(nonText);
-    } else {
-      where.push(`media_types IS NULL OR array_length(media_types,1)=0`);
-    }
-  }
-  if (input.from) {
-    where.push(`ts_utc >= $${i++}`);
-    args.push(new Date(input.from).toISOString());
-  }
-  if (input.to) {
-    where.push(`ts_utc <= $${i++}`);
-    args.push(new Date(input.to).toISOString());
-  }
+  i = applyCommonFilters(where, args, i, {
+    from: input.from,
+    to: input.to,
+    lang: input.lang,
+    types: input.types,
+  } as any);
   const bucket = input.bucket ?? "day";
   const bucketKey =
     bucket === "day"

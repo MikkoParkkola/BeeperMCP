@@ -69,6 +69,15 @@ The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v
 
 The server will begin syncing your rooms and expose an MCP server over STDIO. AI clients can connect using the Model Context Protocol and invoke the provided tools to read or send messages on your behalf.
 
+### Metrics endpoint
+
+When running the HTTP MCP server (via `src/mcp.ts`), a read-only metrics endpoint is exposed:
+
+```
+GET /metrics  ->  { counters: { decrypt_ok: N, decrypt_missing_session: M, ... } }
+```
+These counters provide basic observability for E2EE decryption and key request activity.
+
 ### Phased setup
 
 For troubleshooting new device registration and key import, the repository

@@ -1,0 +1,26 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mcp
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/mcp
+      MCP_BASE_URL: http://0.0.0.0:8757
+    ports:
+      - "8757:8757"
+      - "3000:3000"
+    depends_on:
+      - db
+
+volumes:
+  pgdata: {}
