@@ -40,6 +40,32 @@ import * as sentimentDistributionTool from "./tools/sentimentDistribution.js";
 import * as draftReplyTool from "./tools/draftReply.js";
 import * as sendMessageTool from "./tools/sendMessage.js";
 
+/*
+  Helper: list files that are typically required to build & run the MCP server.
+  Useful when triaging missing files to add to the chat/repo.
+*/
+export const requiredFiles = [
+  "package.json",
+  "tsconfig.json",
+  "src/config.ts",
+  "utils.js",
+  "mcp-tools.js",
+  "src/mcp/resources.ts",
+  "src/index/search.ts",
+  "src/index/reembed.ts",
+  "src/mcp/tools/sentimentTrends.ts",
+  "src/mcp/tools/sentimentDistribution.ts",
+  "src/mcp/tools/whoSaid.ts",
+  "src/mcp/tools/activity.ts",
+  "src/mcp/tools/recap.ts",
+  "src/mcp/tools/responseTime.ts",
+  "src/mcp/tools/draftReply.ts",
+  "src/mcp/tools/sendMessage.ts",
+  "src/ingest/matrix.ts",
+  "Postgres: messages schema (CREATE TABLE messages ...)",
+  "Optional: scripts/migrate.ts"
+];
+
 // Placeholder HTTP-SSE transport wiring
 import http from "node:http";
 import { URL } from "node:url";
