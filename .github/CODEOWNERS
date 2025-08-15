@@ -1,0 +1,10 @@
+# Default owners
+* @MikkoParkkola
+
+# Critical paths
+/src/** @MikkoParkkola
+/test/** @MikkoParkkola
+/.github/** @MikkoParkkola
+/utils.js @MikkoParkkola
+/package.json @MikkoParkkola
+/tsconfig.json @MikkoParkkola
