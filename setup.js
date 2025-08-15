@@ -11,6 +11,29 @@ import { fileURLToPath } from 'url';
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/*
+  Helpful files to add to the chat/repo if you plan to build/run the MCP
+  server and want me to continue wiring resources, tools and analytics:
+
+  - src/config.ts
+  - utils.js
+  - mcp-tools.js
+  - mcp-tools.d.ts
+  - src/index/search.ts
+  - src/index/reembed.ts
+  - src/mcp/resources.ts
+  - src/mcp/tools/sentimentTrends.ts
+  - src/mcp/tools/sentimentDistribution.ts
+  - src/mcp/tools/whoSaid.ts
+  - src/mcp/tools/activity.ts
+  - src/mcp/tools/recap.ts
+  - src/mcp/tools/responseTime.ts
+  - src/mcp/tools/draftReply.ts
+  - src/mcp/tools/sendMessage.ts
+  - src/ingest/matrix.ts
+  - Postgres: messages schema (CREATE TABLE messages ...)
+*/
+
 const envFile = path.join(__dirname, '.beeper-mcp-server.env');
 
 const logger = console;
