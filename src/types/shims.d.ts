@@ -1,12 +1,14 @@
 declare module 'json-schema' {
-  export interface JSONSchema7 { [key: string]: any }
+  export interface JSONSchema7 {
+    [key: string]: any;
+  }
 }
 
 declare module 'pg' {
   export class Pool {
-    constructor(opts?: any)
-    query<T = any>(sql: string, args?: any[]): Promise<{ rows: T[] }>
-    end?: () => Promise<void>
+    constructor(opts?: any);
+    query<T = any>(sql: string, args?: any[]): Promise<{ rows: T[] }>;
+    end?: () => Promise<void>;
   }
 }
 
@@ -16,7 +18,9 @@ declare module 'pino' {
 }
 
 declare namespace Pino {
-  interface Logger { [key: string]: any }
+  interface Logger {
+    [key: string]: any;
+  }
 }
 
 declare module 'luxon' {

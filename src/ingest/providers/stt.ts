@@ -11,5 +11,5 @@ export interface SttProvider {
 export const sttProvider: SttProvider = {
   async transcribe() {
     return null;
-  }
+  },
 };

@@ -22,7 +22,7 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        project: ['./tsconfig.server.json', './tsconfig.utils.json'],
+        project: ['./tsconfig.json'],
         sourceType: 'module',
       },
       globals: globals.node,

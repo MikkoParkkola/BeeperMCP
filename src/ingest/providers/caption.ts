@@ -11,5 +11,5 @@ export interface CaptionProvider {
 export const captionProvider: CaptionProvider = {
   async caption() {
     return null;
-  }
+  },
 };

@@ -1,5 +1,5 @@
-import { Pool } from "pg";
-import { config } from "../config.js";
+import { Pool } from 'pg';
+import { config } from '../config.js';
 
 /*
   Suggested additional files to add to the chat/repo for full wiring and testing:
@@ -24,7 +24,12 @@ import { config } from "../config.js";
 
 let pool: Pool | null = null;
 function getPool() {
-  if (!pool) pool = new Pool({ connectionString: config.db.url, ssl: config.db.ssl as any, max: config.db.pool.max });
+  if (!pool)
+    pool = new Pool({
+      connectionString: config.db.url,
+      ssl: config.db.ssl as any,
+      max: config.db.pool.max,
+    });
   return pool;
 }
 
@@ -47,6 +52,6 @@ export async function runReembedBatch(limit = 100): Promise<number> {
       `,
       [config.embeddings.modelVer, limit],
     )
-    .catch(() => ({ rowCount: 0 } as any));
+    .catch(() => ({ rowCount: 0 }) as any);
   return (res as any).rowCount ?? 0;
 }

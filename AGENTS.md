@@ -1,9 +1,11 @@
 # Project status and roadmap (for agents and contributors)
 
 Purpose
+
 - This document summarizes the current state of the codebase and the prioritized TODOs to reach a high‑quality release, both for local use and future cloud hosting.
 
 How We Work (Agent Guide)
+
 - Build and test flow:
   - Use `npm ci && npm run build` before running tests.
   - Run all tests via `npm test` or `npm run test:coverage` (compiles TS to `dist/` and runs Node test runner).
@@ -23,21 +25,23 @@ How We Work (Agent Guide)
   - Tests first where feasible; add minimal injection points instead of heavyweight mocks.
 
 Architecture snapshot
+
 - Surfaces
   - MCP server (HTTP, streamable) is initialized in src/mcp.ts using buildMcpServer from mcp-tools.js.
     - Tools in mcp-tools.js: list_rooms, create_room, list_messages, send_message (optional).
     - Resources (resources/list, resources/read) are gated by API key in src/mcp.ts and delegated to src/mcp/resources.ts.
-  - Postgres analytics tools (src/mcp/tools/*.ts) are separate modules (who_said, sentiment_trends, sentiment_distribution, stats_activity), intended to run with a PG “messages” schema.
+  - Postgres analytics tools (src/mcp/tools/\*.ts) are separate modules (who_said, sentiment_trends, sentiment_distribution, stats_activity), intended to run with a PG “messages” schema.
 - Data stores
-  - Postgres: analytics (messages table with tsv, media_types, sentiment_score, subjectivity, tz_*, etc.).
+  - Postgres: analytics (messages table with tsv, media*types, sentiment_score, subjectivity, tz*\*, etc.).
   - SQLite (better-sqlite3): logging/media (utils.js): logs and media tables; used by list_messages in mcp-tools.js and resources in src/mcp/resources.ts (once wired).
 - Security
   - API key enforcement in src/mcp.ts and mcp-tools.js wrappers.
-  - Guardrails/rateLimit/sanitize scaffolds in src/security/*.
+  - Guardrails/rateLimit/sanitize scaffolds in src/security/\*.
 - Timezone
   - TZ helpers in src/time/tz.ts: getEffectiveTz, toLocalKeys, resolveNaturalRange.
 
 Current state (as of this repo snapshot)
+
 - Build/CI
   - package.json consolidated; test scripts build first; `pg` is a dependency for analytics tools.
   - tsconfig.json is a single NodeNext project emitting to `dist/`.
@@ -65,20 +69,22 @@ Current state (as of this repo snapshot)
 What’s missing vs. the roadmap (prioritized TODOs)
 
 Batch A — Build/packaging and CI hygiene
+
 - package.json
   - Remove the duplicate second top-level JSON object.
   - Scripts:
     - build: tsc -p tsconfig.json && cp mcp-tools.js dist/
     - start: node dist/server.js (or node dist/src/server.js if that’s your emitted path)
-    - test: npm run build && node --test dist/**/*.js
-    - test:coverage: npm run build && c8 --check-coverage ... node --test dist/**/*.js
+    - test: npm run build && node --test dist/\*_/_.js
+    - test:coverage: npm run build && c8 --check-coverage ... node --test dist/\*_/_.js
   - Dependencies: add "pg": "^8.12.0" to the first object; add test deps if you plan to add tests now (pg-mem, supertest, testcontainers).
 - tsconfig.json
-  - Replace references file with a single NodeNext project (module: NodeNext, moduleResolution: NodeNext, target: ES2022, outDir: dist, include: src/**/*.ts, mcp-tools.d.ts).
+  - Replace references file with a single NodeNext project (module: NodeNext, moduleResolution: NodeNext, target: ES2022, outDir: dist, include: src/\*_/_.ts, mcp-tools.d.ts).
 - .github/workflows/ci.yml
   - Use npm ci; build before test; then test:coverage; then lint.
 
 Batch B — Wire resources to SQLite
+
 - src/mcp/resources.ts
   - import { queryLogs } from "../../utils.js";
   - Change registerResources(logDb: any, logSecret?: string); persist refs for handlers.
@@ -90,6 +96,7 @@ Batch B — Wire resources to SQLite
   - registerResources(logDb, logSecret) instead of registerResources().
 
 Batch C — Tools: safety and filters
+
 - src/mcp/schemas/tools.ts
   - who_said: add participants (string[]) and lang (string) to properties.
 - src/mcp/tools/whoSaid.ts
@@ -102,20 +109,23 @@ Batch C — Tools: safety and filters
   - Replace client-side binning with SQL width_bucket(sentiment_score, -1, 1, $bins); add same filters as trends; compute summary (count, mean) via SQL.
 - src/mcp/tools/activity.ts
   - Add filters: input.target?.participant, input.types (same media_types logic), optional lang.
-  - Compute my_share_pct via 100.0 * AVG(CASE WHEN sender = $me THEN 1 ELSE 0 END); push config.matrix.userId as param.
+  - Compute my_share_pct via 100.0 \* AVG(CASE WHEN sender = $me THEN 1 ELSE 0 END); push config.matrix.userId as param.
 
 Batch D — Send gating and delivery
+
 - src/mcp/tools/sendMessage.ts
   - Before send: rateLimiter("mcp_tools_send", config.mcp.rateLimits.send); const guard = checkGuardrails(...); if !ok return blocked reason.
   - Request approval via requestApproval; if !approval.send return approval_required with form.
   - Sanitize text via sanitizeText; send via sendMessage(room_id, text) from src/matrix/client.ts.
 
 Batch E — Ingest
+
 - src/ingest/matrix.ts
   - Remove import of node-fetch (Node >=18 has global fetch).
   - Future: implement sync loop, normalize events, compute tz keys (toLocalKeys), tsv, words, attachments, and persist to messages.
 
 Batch F — Tests and quality gates (TDD)
+
 - Unit tests
   - security/sanitize: strips HTML and clamps length.
   - security/guardrails: blocked keywords; do_not_impersonate behavior.
@@ -132,6 +142,7 @@ Batch F — Tests and quality gates (TDD)
   - MCP HTTP well-known and auth: /.well-known/mcp.json ok; resources/list and resources/read error without API key, success with API key.
 
 Batch G — Cloud readiness (next phase)
+
 - Containerization
   - Dockerfile and docker-compose for Postgres and the app; build dist/ then run node dist/server.js.
 - Migrations and indexes
@@ -142,6 +153,7 @@ Batch G — Cloud readiness (next phase)
   - Add owner_id column and Postgres RLS policies; set current_setting('app.user') on connection from API key scope; instrument the code to set it per request if multi-tenant.
 
 Quick gaps list by file (for fast triage)
+
 - package.json: duplicate 2nd object; scripts not building before test; start path wrong; missing pg in first object.
 - tsconfig.json: references, not single NodeNext project.
 - .github/workflows/ci.yml: uses npm install; not building before tests.
@@ -156,6 +168,7 @@ Quick gaps list by file (for fast triage)
 - src/ingest/matrix.ts: imports node-fetch; not implemented.
 
 Acceptance criteria (Minimum viable release)
+
 - Build/CI: npm ci; npm run build; npm test passes on a clean clone; CI builds then runs tests.
 - MCP HTTP: well-known endpoint works; resources/list and resources/read gated by API key; history/context/media return actual data when SQLite DB has rows.
 - Analytics tools over Postgres:
@@ -169,15 +182,17 @@ Acceptance criteria (Minimum viable release)
   - README updated with setup, environment variables, build/run, and test instructions.
 
 Next steps (recommended order)
-1) Apply Batch A (packaging/CI) to get stable builds.
-2) Apply Batch B (resources wiring) to make resources useful.
-3) Apply Batch C (tools fixes) for analytics correctness and safety.
-4) Apply Batch D (send gating) for safe send capability.
-5) Add tests (Batch F) and stabilize CI.
-6) Plan and implement ingest loop (Batch E).
-7) Add containerization and migrations (Batch G) for cloud‑readiness.
+
+1. Apply Batch A (packaging/CI) to get stable builds.
+2. Apply Batch B (resources wiring) to make resources useful.
+3. Apply Batch C (tools fixes) for analytics correctness and safety.
+4. Apply Batch D (send gating) for safe send capability.
+5. Add tests (Batch F) and stabilize CI.
+6. Plan and implement ingest loop (Batch E).
+7. Add containerization and migrations (Batch G) for cloud‑readiness.
 
 Notes for contributors
+
 - Prefer SQL‑pushed filters and aggregates (avoid client‑side loops on large datasets).
 - Keep API key gating consistent across MCP surfaces (tools and resources).
 - Use prepared statements and pooling (one Pool per process) for Postgres.

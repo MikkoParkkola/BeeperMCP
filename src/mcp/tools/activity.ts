@@ -1,18 +1,23 @@
-import { Pool } from "pg";
-import { config } from "../../config.js";
-import { JSONSchema7 } from "json-schema";
-import { toolsSchemas } from "../schemas/tools.js";
+import { Pool } from 'pg';
+import { config } from '../../config.js';
+import { JSONSchema7 } from 'json-schema';
+import { toolsSchemas } from '../schemas/tools.js';
 
 let pool: Pool | null = null;
 export function __setTestPool(p: any) {
   pool = p as any;
 }
 function getPool() {
-  if (!pool) pool = new Pool({ connectionString: config.db.url, ssl: config.db.ssl as any, max: config.db.pool.max });
+  if (!pool)
+    pool = new Pool({
+      connectionString: config.db.url,
+      ssl: config.db.ssl as any,
+      max: config.db.pool.max,
+    });
   return pool!;
 }
 
-export const id = "stats_activity";
+export const id = 'stats_activity';
 export const inputSchema = toolsSchemas.stats_activity as JSONSchema7;
 
 export async function handler(input: any) {
@@ -41,9 +46,11 @@ export async function handler(input: any) {
     args.push(input.lang);
   }
   if (input.types?.length) {
-    const nonText = input.types.filter((t: string) => t !== "text");
-    if (nonText.length && input.types.includes("text")) {
-      where.push(`((media_types && $${i}) OR (media_types IS NULL OR array_length(media_types,1)=0))`);
+    const nonText = input.types.filter((t: string) => t !== 'text');
+    if (nonText.length && input.types.includes('text')) {
+      where.push(
+        `((media_types && $${i}) OR (media_types IS NULL OR array_length(media_types,1)=0))`,
+      );
       args.push(nonText);
       i += 1;
     } else if (nonText.length) {
@@ -53,15 +60,15 @@ export async function handler(input: any) {
       where.push(`media_types IS NULL OR array_length(media_types,1)=0`);
     }
   }
-  const bucket = input.bucket ?? "day";
+  const bucket = input.bucket ?? 'day';
   const bucketKey =
-    bucket === "day"
-      ? "tz_day::text"
-      : bucket === "week"
-      ? "tz_year||'-W'||lpad(tz_week::text,2,'0')"
-      : bucket === "month"
-      ? "tz_month::text"
-      : "tz_year::text";
+    bucket === 'day'
+      ? 'tz_day::text'
+      : bucket === 'week'
+        ? "tz_year||'-W'||lpad(tz_week::text,2,'0')"
+        : bucket === 'month'
+          ? 'tz_month::text'
+          : 'tz_year::text';
   const sql = `
     SELECT ${bucketKey} AS bucket_key,
            COUNT(*) AS messages,
@@ -74,14 +81,19 @@ export async function handler(input: any) {
            MIN(ts_utc) AS start_utc,
            MAX(ts_utc) AS end_utc
     FROM messages
-    ${where.length ? "WHERE " + where.join(" AND ") : ""}
+    ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
     GROUP BY bucket_key
     ORDER BY MIN(ts_utc)
   `;
   const res = await p.query(sql, [...args, config.matrix.userId]);
   return {
     filters: { ...input },
-    bucket_def: { kind: bucket, tz: "local", disambiguation: "prefer_earlier_offset", k_min: 5 },
-    buckets: res.rows
+    bucket_def: {
+      kind: bucket,
+      tz: 'local',
+      disambiguation: 'prefer_earlier_offset',
+      k_min: 5,
+    },
+    buckets: res.rows,
   };
 }
