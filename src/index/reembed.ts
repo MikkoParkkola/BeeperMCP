@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { config } from '../config/analytics.js';
+import { config } from '../config.js';
 
 /*
   Suggested additional files to add to the chat/repo for full wiring and testing:

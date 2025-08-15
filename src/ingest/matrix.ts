@@ -1,12 +1,5 @@
-// import { Pool } from "pg";
-import { config } from '../config/analytics.js';
-// import { NormalizedEventT } from "./schemas.js";
-
-// let pool: Pool | null = null;
-// function getPool() {
-//   if (!pool) pool = new Pool({ connectionString: config.db.url, ssl: config.db.ssl as any, max: config.db.pool.max });
-//   return pool;
-// }
+import { config } from '../config.js';
+ 
 
 export async function startMatrixIngestLoop(): Promise<void> {
   // Minimal skeleton; implement full sync later

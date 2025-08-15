@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { Pool } from 'pg';
-import { config } from '../config/analytics.js';
+import { config } from '../config.js';
 
 let pool: Pool | null = null;
 function getPool() {

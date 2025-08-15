@@ -18,6 +18,6 @@ jobs:
       - name: Auto-approve
         uses: hmarr/auto-approve-action@v4
         with:
-          review-message: 'Auto-approving trusted author PR'
+          review-message: "Auto-approving trusted author PR"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

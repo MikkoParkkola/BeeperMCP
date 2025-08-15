@@ -3,7 +3,7 @@ import { toolsSchemas } from '../schemas/tools.js';
 import { rateLimiter } from '../../security/rateLimit.js';
 import { checkGuardrails } from '../../security/guardrails.js';
 import { sanitizeText } from '../../security/sanitize.js';
-import { config } from '../../config/analytics.js';
+import { config } from '../../config.js';
 import { sendMessage as matrixSend } from '../../matrix/client.js';
 
 export const id = 'send_message';

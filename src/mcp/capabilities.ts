@@ -1,6 +1,6 @@
 import { JSONSchema7 } from 'json-schema';
 import { toolsSchemas } from './schemas/tools.js';
-import { config } from '../config/analytics.js';
+import { config } from '../config.js';
 
 export interface Capabilities {
   resources: string[];

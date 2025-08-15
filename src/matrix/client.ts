@@ -1,4 +1,4 @@
-import { config } from '../config/analytics.js';
+import { config } from '../config.js';
 
 export async function sendMessage(roomId: string, text: string) {
   const url = `${config.matrix.homeserverUrl}/_matrix/client/v3/rooms/${encodeURIComponent(

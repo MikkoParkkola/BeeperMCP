@@ -10,6 +10,12 @@
     "skipLibCheck": true,
     "sourceMap": true
   },
-  "include": ["src/**/*.ts", "beeper-mcp-server.ts", "mcp-tools.d.ts"],
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts",
+    "beeper-mcp-server.ts",
+    "phased-setup.ts",
+    "mcp-tools.d.ts"
+  ],
   "exclude": ["dist", "node_modules"]
 }

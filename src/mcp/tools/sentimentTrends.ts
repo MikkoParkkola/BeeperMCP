@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { config } from '../../config/analytics.js';
+import { config } from '../../config.js';
 import { JSONSchema7 } from 'json-schema';
 import { toolsSchemas } from '../schemas/tools.js';
 import { applyCommonFilters } from './filters.js';

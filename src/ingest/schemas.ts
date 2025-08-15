@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const NormalizedEvent = z.object({
+export const NormalizedEventSchema = z.object({
   event_id: z.string(),
   room_id: z.string(),
   sender: z.string(),
@@ -28,4 +28,4 @@ export const NormalizedEvent = z.object({
     .optional(),
 });
 
-export type NormalizedEventT = z.infer<typeof NormalizedEvent>;
+export type NormalizedEvent = z.infer<typeof NormalizedEventSchema>;
