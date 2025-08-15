@@ -18,11 +18,12 @@ export default [
     },
   },
   {
-    files: ['**/*.ts'],
+    files: ['src/**/*.ts'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
         project: ['./tsconfig.json'],
+        tsconfigRootDir: new URL('.', import.meta.url),
         sourceType: 'module',
       },
       globals: globals.node,

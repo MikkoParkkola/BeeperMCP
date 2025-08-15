@@ -1,4 +1,5 @@
 import http from 'http';
+import { snapshot as metricsSnapshot } from './obs/metrics.js';
 import { randomUUID } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { buildMcpServer } from '../mcp-tools.js';
@@ -51,6 +52,27 @@ export async function initMcpServer(
     if (req.method === 'GET' && req.url === '/.well-known/mcp.json') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ transport: 'streamable-http' }));
+    } else if (req.method === 'GET' && req.url?.startsWith('/metrics')) {
+      const key = req.headers['x-api-key'];
+      if (key !== apiKey) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'unauthorized' }));
+      } else {
+        const url = new URL(req.url, 'http://localhost');
+        const format = url.searchParams.get('format');
+        const counters = metricsSnapshot();
+        if (format === 'prom') {
+          const body =
+            Object.entries(counters)
+              .map(([k, v]) => `${k} ${v}`)
+              .join('\n') + '\n';
+          res.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4' });
+          res.end(body);
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ counters }));
+        }
+      }
     } else {
       void transport.handleRequest(req, res);
     }

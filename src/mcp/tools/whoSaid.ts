@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { config } from '../../config.js';
 import { toolsSchemas } from '../schemas/tools.js';
+import { applyCommonFilters } from './filters.js';
 import { JSONSchema7 } from 'json-schema';
 
 let pool: Pool | null = null;
@@ -25,27 +26,7 @@ export async function handler(input: any) {
   const p = getPool();
   const where: string[] = [];
   const args: any[] = [];
-  let i = 1;
-  if (input.rooms?.length) {
-    where.push(`room_id = ANY($${i++})`);
-    args.push(input.rooms);
-  }
-  if (input.participants?.length) {
-    where.push(`sender = ANY($${i++})`);
-    args.push(input.participants);
-  }
-  if (input.lang) {
-    where.push(`lang = $${i++}`);
-    args.push(input.lang);
-  }
-  if (input.from) {
-    where.push(`ts_utc >= $${i++}`);
-    args.push(new Date(input.from).toISOString());
-  }
-  if (input.to) {
-    where.push(`ts_utc <= $${i++}`);
-    args.push(new Date(input.to).toISOString());
-  }
+  applyCommonFilters(where, args, 1, input);
   const cond = where.length ? 'WHERE ' + where.join(' AND ') : '';
   const sql = `
     SELECT event_id, room_id, sender, ts_utc, text
