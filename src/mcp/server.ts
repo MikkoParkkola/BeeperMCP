@@ -82,11 +82,14 @@ export const requiredFiles = [
   "src/matrix/client.ts"
 ];
 
-// Placeholder HTTP-SSE transport wiring
+ // Placeholder HTTP-SSE transport wiring
 import http from "node:http";
 import { URL } from "node:url";
 
-registerResources(undefined, undefined);
+// Register resources. If you have a SQLite log DB, pass it as the first arg.
+// The second argument is the optional log decryption secret (config.logSecret).
+// Leaving the DB undefined keeps the lightweight stub behavior.
+registerResources(undefined, config.logSecret);
 
 const tools = new Map<string, (input: any) => Promise<any>>([
   [searchTool.id, searchTool.handler],
