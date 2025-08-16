@@ -11,7 +11,7 @@ import {
   handler as recapHandler,
 } from '../../src/mcp/tools/recap.js';
 
-const ajv = new Ajv({ allErrors: true });
+const ajv = new (Ajv as any)({ allErrors: true });
 
 function hasCitation(obj: any) {
   return (

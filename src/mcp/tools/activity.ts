@@ -63,7 +63,7 @@ export async function handler(input: any, owner = 'local') {
            COUNT(DISTINCT sender) AS unique_senders,
            COALESCE(SUM(words),0) AS words,
            COALESCE(SUM(attachments),0) AS attachments,
-           AVG(CASE WHEN sender = $${i++} THEN 1 ELSE 0 END)::float AS my_share_pct,
+           AVG(CASE WHEN sender = $${i++} THEN 1 ELSE 0 END)::float * 100 AS my_share_pct,
            AVG(NULLIF(words,0)) AS avg_len,
            STDDEV_POP(NULLIF(words,0)) AS stdev_len,
            MIN(ts_utc) AS start_utc,
