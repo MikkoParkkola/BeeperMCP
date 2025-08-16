@@ -8,3 +8,5 @@ room-logs
 mx-cache
 .aider*
 .test-resources*.db
+docker-images/*
+!docker-images/.gitkeep

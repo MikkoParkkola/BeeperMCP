@@ -1,6 +1,7 @@
 {
   "name": "beeper-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "releaseDate": "2025-08-16",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json && cp mcp-tools.js utils.js dist/",
@@ -9,6 +10,7 @@
     "start": "node dist/beeper-mcp-server.js",
     "test": "npm run build && node --test dist/tests/**/*.js",
     "test:coverage": "npm run build && c8 --check-coverage --lines 80 --branches 80 --functions 80 --exclude setup.js node --test dist/tests/**/*.js",
+    "build:docker": "bash scripts/build_docker.sh",
     "prepare": "husky"
   },
   "devDependencies": {
