@@ -1,4 +1,4 @@
-name: Node CI
+name: CI
 
 on:
   push:
@@ -7,7 +7,6 @@ on:
 
 jobs:
   build:
-    name: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,64 +16,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-
-  # Always-passing placeholder to satisfy required "tests" check
-  tests:
-    name: tests
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo compat_tests_placeholder
-
-  # Real tests run separately and are non-blocking
-  ci-tests:
-    name: ci-tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm run test:coverage
-        continue-on-error: true
-
-  lint:
-    name: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
+      - name: Test with coverage
+        run: |
+          NODE_V8_COVERAGE=coverage npm test
+          npx c8 report --reporter=text --reporter=lcov --temp-directory=coverage --report-dir=coverage
       - run: npm run lint
-
-  format:
-    name: format
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm run format
-
-  # Legacy commit status context to satisfy protections expecting "tests"
-  compat-tests-status:
-    name: compat status (tests)
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      statuses: write
-    steps:
-      - name: Mark legacy required status as success (tests)
-        uses: peter-evans/create-commit-status@v4
-        with:
-          sha: ${{ github.event.pull_request.head.sha }}
-          context: tests
-          state: success
-          description: 'Compatibility status to unblock merges'
+          name: coverage
+          path: coverage
