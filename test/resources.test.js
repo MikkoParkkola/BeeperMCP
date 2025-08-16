@@ -19,6 +19,7 @@ test('resources: history returns logs from SQLite', async () => {
   const res = await handleResource(
     'im://matrix/room/!r/history',
     new URLSearchParams('limit=10'),
+    'local',
   );
   assert.deepEqual(res.items, ['[a]', '[b]']);
 });
@@ -41,6 +42,7 @@ test('resources: media returns metadata by eventId', async () => {
   const res = await handleResource(
     'im://matrix/media/e1/file',
     new URLSearchParams(),
+    'local',
   );
   assert.equal(res.file, 'f.bin');
 });

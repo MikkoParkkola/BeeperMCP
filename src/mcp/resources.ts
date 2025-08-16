@@ -4,6 +4,7 @@ import { queryLogs } from '../../utils.js';
 export type ResourceHandler = (
   pathParams: Record<string, string>,
   query: URLSearchParams,
+  owner: string,
 ) => Promise<any>;
 
 const routes: {
@@ -112,8 +113,8 @@ export function registerResources(logDb?: any, logSecret?: string) {
     return row ?? { eventId: params.eventId, kind: params['kind'] };
   });
 
-  addResource('im://matrix/index/status', async () => {
-    return indexStatus();
+  addResource('im://matrix/index/status', async (_params, _query, owner) => {
+    return indexStatus(owner);
   });
 }
 
@@ -121,13 +122,17 @@ export function listResources(): string[] {
   return routes.map((r) => r.template);
 }
 
-export async function handleResource(uri: string, query: URLSearchParams) {
+export async function handleResource(
+  uri: string,
+  query: URLSearchParams,
+  owner: string,
+) {
   for (const r of routes) {
     const m = uri.match(r.pattern);
     if (m) {
       const params: Record<string, string> = {};
       r.keys.forEach((k, i) => (params[k] = decodeURIComponent(m[i + 1])));
-      return r.handler(params, query);
+      return r.handler(params, query, owner);
     }
   }
   throw new Error(`Resource not found: ${uri}`);

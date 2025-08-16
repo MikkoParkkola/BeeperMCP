@@ -43,7 +43,11 @@ export async function initMcpServer(
       if (!uri || typeof uri !== 'string') throw new Error('Missing uri');
       const [base, qs = ''] = uri.split('?');
       const query = new URLSearchParams(qs);
-      const data = await handleResource(base, query);
+      const data = await handleResource(
+        base,
+        query,
+        extra?._meta?.apiKey ?? 'local',
+      );
       return { contents: [{ type: 'json', json: data }] };
     },
   );
