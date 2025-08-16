@@ -23,6 +23,7 @@ function parseAttachments(ev: any): {
   const types: string[] = [];
   const msgtype = ev.content?.msgtype;
   const url = ev.content?.url || ev.content?.file?.url;
+  const mime = ev.content?.info?.mimetype;
   if (url) {
     switch (msgtype) {
       case 'm.image':
@@ -39,7 +40,14 @@ function parseAttachments(ev: any): {
         types.push('file');
         break;
       default:
-        types.push('file');
+        if (typeof mime === 'string') {
+          if (mime.startsWith('image/')) types.push('image');
+          else if (mime.startsWith('video/')) types.push('video');
+          else if (mime.startsWith('audio/')) types.push('audio');
+          else types.push('file');
+        } else {
+          types.push('file');
+        }
     }
   }
   return {
@@ -53,6 +61,7 @@ async function persistEvent(ev: any, roomId: string) {
   const { has_media, media_types, attachments } = parseAttachments(ev);
   const text = typeof ev.content?.body === 'string' ? ev.content.body : null;
   const tsUtc = new Date(ev.origin_server_ts);
+  const tokens = text ? text.trim().split(/\s+/).length : 0;
   const stats = computeBasicStats(text ?? '', attachments);
   const normalized = NormalizedEventSchema.parse({
     event_id: ev.event_id,
@@ -68,6 +77,7 @@ async function persistEvent(ev: any, roomId: string) {
       ev.content?.['m.relates_to']?.['m.in_reply_to']?.['event_id'],
     has_media,
     media_types,
+    tokens,
     words: stats.words,
     chars: stats.chars,
     attachments: stats.attachments,
