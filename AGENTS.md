@@ -27,6 +27,25 @@ How We Work (Agent Guide)
   - Keep API key enforcement consistent across MCP tools and resources.
   - Tests first where feasible; add minimal injection points instead of heavyweight mocks.
 
+Definition of Done
+
+- Implement features using test-driven development (write failing tests first).
+- Update unit, integration, and end-to-end test automation.
+- Maintain test automation coverage above 80% with a 95% target.
+- Ensure all CI tests pass and local test automation succeeds.
+- Update AGENTS.md with feature descriptions, architecture notes, style guides, and coding conventions.
+- Keep troubleshooting instructions and debug logging current.
+- Document code and remove dead code.
+- Ensure dashboards and statistics are up to date.
+- Complete security review and implement recommendations.
+- Complete architecture review and implement recommendations.
+- Complete performance review and implement recommendations.
+- Complete UX review and implement recommendations.
+- Complete legal review (IPRs/GDPR/License) and implement recommendations.
+- Catch and log errors, handle recovery, and implement failbacks.
+- Obtain explicit user approval for breaking changes or dropped functionality.
+- For each PR that alters the functionality, bump the version number. For smaller changes, at least the minor version number; for really big changes, the major number.
+
 Architecture snapshot
 
 - Surfaces
