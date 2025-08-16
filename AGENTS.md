@@ -9,6 +9,9 @@ How We Work (Agent Guide)
 - Build and test flow:
   - Use `npm ci && npm run build` before running tests.
   - Run all tests via `npm test` or `npm run test:coverage` (compiles TS to `dist/` and runs Node test runner).
+- Versioning:
+  - Bump at least the minor `package.json` version for any behavioral change; major versions for breaking changes.
+  - Update the `releaseDate` field (YYYY-MM-DD) whenever the version changes.
 - MCP surface:
   - Prefer the Streamable HTTP MCP server initialized in `src/mcp.ts`. Avoid duplicating tool/resource wiring elsewhere.
   - Resources are registered via `registerResources(logDb, logSecret)` and backed by SQLite (`utils.js`).
