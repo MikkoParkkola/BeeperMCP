@@ -73,32 +73,42 @@ export function registerResources(logDb?: any, logSecret?: string) {
           after,
           items: [],
         };
+      let since: string | undefined;
+      let until: string | undefined;
+      if (before > 0) {
+        const br = logDbRef
+          .prepare(
+            'SELECT ts FROM logs WHERE room_id = ? AND ts < ? ORDER BY ts DESC LIMIT 1 OFFSET ?',
+          )
+          .get(params.roomId, anchor, before - 1);
+        since = br?.ts;
+      } else {
+        since = anchor;
+      }
+      if (after > 0) {
+        const ar = logDbRef
+          .prepare(
+            'SELECT ts FROM logs WHERE room_id = ? AND ts > ? ORDER BY ts ASC LIMIT 1 OFFSET ?',
+          )
+          .get(params.roomId, anchor, after - 1);
+        until = ar?.ts;
+      } else {
+        until = anchor;
+      }
       const items = queryLogs(
         logDbRef,
         params.roomId,
         before + after + 1,
-        undefined,
-        undefined,
+        since,
+        until,
         logSecretRef,
       );
-      // If we fetched broad logs, slice a window around anchor
-      const idx = items.findIndex((l: string) => l.includes(params.eventId));
-      if (idx === -1)
-        return {
-          roomId: params.roomId,
-          eventId: params.eventId,
-          before,
-          after,
-          items: [],
-        };
-      const start = Math.max(0, idx - before);
-      const end = Math.min(items.length, idx + after + 1);
       return {
         roomId: params.roomId,
         eventId: params.eventId,
         before,
         after,
-        items: items.slice(start, end),
+        items,
       };
     },
   );

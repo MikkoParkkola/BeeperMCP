@@ -46,3 +46,23 @@ test('resources: media returns metadata by eventId', async () => {
   );
   assert.equal(res.file, 'f.bin');
 });
+
+test('resources: context retrieves logs around old events', async () => {
+  const dbPath = `.test-resources-context-${Date.now()}-${Math.random().toString(36).slice(2)}.db`;
+  try {
+    fs.unlinkSync(dbPath);
+  } catch {}
+  const db = openLogDb(dbPath);
+  const base = Date.UTC(2025, 0, 1, 0, 0, 0);
+  for (let i = 0; i < 20; i++) {
+    const ts = new Date(base + i * 60_000).toISOString();
+    insertLog(db, '!r', ts, `[${i}]`, undefined, `e${i}`);
+  }
+  registerResources(db);
+  const res = await handleResource(
+    'im://matrix/room/!r/message/e5/context',
+    new URLSearchParams('before=1&after=1'),
+    'local',
+  );
+  assert.deepEqual(res.items, ['[4]', '[5]', '[6]']);
+});
