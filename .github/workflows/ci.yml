@@ -17,9 +17,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Test with coverage
-        run: |
-          NODE_V8_COVERAGE=coverage npm test
-          npx c8 report --reporter=text --reporter=lcov --temp-directory=coverage --report-dir=coverage
+        run: npx c8 --reporter=text --reporter=lcov --check-coverage --lines 80 --branches 80 --functions 80 --report-dir=coverage npm test
       - run: npm run lint
       - uses: actions/upload-artifact@v4
         if: always()
