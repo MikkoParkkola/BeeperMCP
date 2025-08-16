@@ -98,7 +98,7 @@ import { URL } from 'node:url';
 // Leaving the DB undefined keeps the lightweight stub behavior.
 registerResources(undefined, undefined);
 
-const tools = new Map<string, (input: any) => Promise<any>>([
+const tools = new Map<string, (input: any, owner: string) => Promise<any>>([
   [searchTool.id, searchTool.handler],
   [whoSaidTool.id, whoSaidTool.handler],
   [recapTool.id, recapTool.handler],
@@ -110,6 +110,18 @@ const tools = new Map<string, (input: any) => Promise<any>>([
   [draftReplyTool.id, draftReplyTool.handler],
   [sendMessageTool.id, sendMessageTool.handler],
 ]);
+
+const allowedKeys = (process.env.MCP_API_KEYS || process.env.MCP_API_KEY || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+function getOwner(req: http.IncomingMessage): string | null {
+  const key = req.headers['x-api-key'] as string | undefined;
+  if (!key) return allowedKeys.length ? null : 'local';
+  if (allowedKeys.length && !allowedKeys.includes(key)) return null;
+  return key;
+}
 
 const server = http.createServer(async (req, res) => {
   try {
@@ -123,12 +135,17 @@ const server = http.createServer(async (req, res) => {
       return res.end(JSON.stringify(capabilities()));
     }
     if (u.pathname === '/resource') {
+      const owner = getOwner(req);
+      if (!owner) {
+        res.statusCode = 401;
+        return res.end('unauthorized');
+      }
       const uri = u.searchParams.get('uri');
       if (!uri) {
         res.statusCode = 400;
         return res.end('missing uri');
       }
-      const data = await handleResource(uri, u.searchParams);
+      const data = await handleResource(uri, u.searchParams, owner);
       res.setHeader('Content-Type', 'application/json');
       return res.end(JSON.stringify(data));
     }
@@ -136,6 +153,11 @@ const server = http.createServer(async (req, res) => {
       if (req.method !== 'POST') {
         res.statusCode = 405;
         return res.end('method not allowed');
+      }
+      const owner = getOwner(req);
+      if (!owner) {
+        res.statusCode = 401;
+        return res.end('unauthorized');
       }
       let body = '';
       for await (const chunk of req) body += chunk.toString('utf8');
@@ -145,7 +167,7 @@ const server = http.createServer(async (req, res) => {
         res.statusCode = 404;
         return res.end('tool not found');
       }
-      const out = await fn(payload.input ?? {});
+      const out = await fn(payload.input ?? {}, owner);
       res.setHeader('Content-Type', 'application/json');
       return res.end(JSON.stringify(out));
     }

@@ -21,8 +21,10 @@ function getPool() {
 export const id = 'stats_activity';
 export const inputSchema = toolsSchemas.stats_activity as JSONSchema7;
 
-export async function handler(input: any) {
+export async function handler(input: any, owner = 'local') {
   const p = getPool();
+  const client = await (p as any).connect();
+  await client.query('SET app.user = $1', [owner]);
   const where: string[] = [];
   const args: any[] = [];
   let i = 1;
@@ -71,7 +73,8 @@ export async function handler(input: any) {
     GROUP BY bucket_key
     ORDER BY MIN(ts_utc)
   `;
-  const res = await p.query(sql, [...args, config.matrix.userId]);
+  const res = await client.query(sql, [...args, config.matrix.userId]);
+  client.release();
   return {
     filters: { ...input },
     bucket_def: {

@@ -77,4 +77,4 @@ jobs:
           sha: ${{ github.event.pull_request.head.sha }}
           context: tests
           state: success
-          description: "Compatibility status to unblock merges"
+          description: 'Compatibility status to unblock merges'

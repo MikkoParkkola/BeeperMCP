@@ -22,8 +22,10 @@ function getPool() {
 export const id = 'who_said';
 export const inputSchema = toolsSchemas.who_said as JSONSchema7;
 
-export async function handler(input: any) {
+export async function handler(input: any, owner = 'local') {
   const p = getPool();
+  const client = await (p as any).connect();
+  await client.query('SET app.user = $1', [owner]);
   const where: string[] = [];
   const args: any[] = [];
   applyCommonFilters(where, args, 1, input);
@@ -35,7 +37,7 @@ export async function handler(input: any) {
     ORDER BY ts_utc ASC
     LIMIT 1000
   `;
-  const rows = (await p.query(sql, args)).rows as any[];
+  const rows = (await client.query(sql, args)).rows as any[];
   // Guard regex usage
   let useRegex = Boolean(input.isRegex);
   let regex: RegExp | null = null;
@@ -52,5 +54,6 @@ export async function handler(input: any) {
     const t = r.text ?? '';
     return useRegex ? regex!.test(t) : t === text;
   });
+  client.release();
   return { hits: results.slice(0, 200) };
 }

@@ -21,8 +21,10 @@ function getPool() {
 export const id = 'sentiment_distribution';
 export const inputSchema = toolsSchemas.sentiment_distribution as JSONSchema7;
 
-export async function handler(input: any) {
+export async function handler(input: any, owner = 'local') {
   const p = getPool();
+  const client = await (p as any).connect();
+  await client.query('SET app.user = $1', [owner]);
   const bins = Math.min(Math.max(input.bins ?? 20, 5), 200);
   const where: string[] = ['sentiment_score IS NOT NULL'];
   const args: any[] = [bins];
@@ -52,7 +54,7 @@ export async function handler(input: any) {
     GROUP BY bucket
     ORDER BY bucket
   `;
-  const res = await p.query(sql, args);
+  const res = await client.query(sql, args);
   const counts = Array(bins).fill(0);
   let total = 0;
   let sum = 0;
@@ -65,5 +67,6 @@ export async function handler(input: any) {
   const step = 2 / bins;
   const edges = Array.from({ length: bins + 1 }, (_, j) => -1 + j * step);
   const mean = total ? sum / total : 0;
+  client.release();
   return { edges, counts, summary: { count: total, mean } };
 }

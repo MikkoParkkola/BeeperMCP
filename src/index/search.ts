@@ -9,7 +9,7 @@ function getPool() {
       ssl: config.db.ssl as any,
       max: config.db.pool.max,
     });
-  return pool;
+  return pool!;
 }
 
 export interface SearchFilters {
@@ -31,9 +31,12 @@ export async function searchHybrid(
   query: string,
   filters: SearchFilters,
   limit = 50,
+  owner = 'local',
 ): Promise<SearchHit[]> {
   // Minimal stub: BM25 via ts_rank only
   const p = getPool();
+  const client = await (p as any).connect();
+  await client.query('SET app.user = $1', [owner]);
   const parts: string[] = ['tsv @@ plainto_tsquery($1)'];
   const args: any[] = [query];
   let arg = 2;
@@ -86,6 +89,7 @@ export async function searchHybrid(
     ORDER BY score DESC, ts_utc DESC
     LIMIT ${limit}
   `;
-  const res = await p.query(sql, args);
+  const res = await client.query(sql, args);
+  client.release();
   return res.rows as SearchHit[];
 }

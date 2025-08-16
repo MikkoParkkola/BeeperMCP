@@ -9,17 +9,20 @@ function getPool() {
       ssl: config.db.ssl as any,
       max: config.db.pool.max,
     });
-  return pool;
+  return pool!;
 }
 
-export async function indexStatus() {
+export async function indexStatus(owner = 'local') {
   const p = getPool();
-  const pendingReembedRes = await p
+  const client = await (p as any).connect();
+  await client.query('SET app.user = $1', [owner]);
+  const pendingReembedRes = await client
     .query(
       'SELECT COUNT(*)::int AS c FROM messages WHERE embedding_model_ver IS DISTINCT FROM $1',
       [config.embeddings.modelVer],
     )
     .catch(() => ({ rows: [{ c: 0 }] }));
+  client.release();
   return {
     bm25_ready: true,
     ann_ready: true,

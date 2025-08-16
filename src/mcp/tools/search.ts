@@ -5,7 +5,7 @@ import { toolsSchemas } from '../schemas/tools.js';
 export const id = 'search_messages';
 export const inputSchema = toolsSchemas.search_messages as JSONSchema7;
 
-export async function handler(input: any) {
+export async function handler(input: any, owner = 'local') {
   const hits = await searchHybrid(
     input.query,
     {
@@ -17,6 +17,7 @@ export async function handler(input: any) {
       types: input.types,
     },
     input.limit ?? 50,
+    owner,
   );
   return { hits };
 }

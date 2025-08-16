@@ -21,8 +21,10 @@ function getPool() {
 export const id = 'sentiment_trends';
 export const inputSchema = toolsSchemas.sentiment_trends as JSONSchema7;
 
-export async function handler(input: any) {
+export async function handler(input: any, owner = 'local') {
   const p = getPool();
+  const client = await (p as any).connect();
+  await client.query('SET app.user = $1', [owner]);
   const where: string[] = ['sentiment_score IS NOT NULL'];
   const args: any[] = [];
   let i = 1;
@@ -65,8 +67,9 @@ export async function handler(input: any) {
     GROUP BY bucket_key
     ORDER BY MIN(ts_utc)
   `;
-  const res = await p.query(sql, args);
+  const res = await client.query(sql, args);
   // No smoothing / change point detection in stub
+  client.release();
   return {
     filters: { ...input },
     bucket_def: {
