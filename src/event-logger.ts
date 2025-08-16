@@ -1,7 +1,12 @@
 import path from 'path';
 import Pino from 'pino';
 import type { MatrixClient, MatrixEvent } from 'matrix-js-sdk';
-import { createFileAppender, getRoomDir, safeFilename } from '../utils.js';
+import {
+  createFileAppender,
+  getRoomDir,
+  safeFilename,
+  TimezoneTimeline,
+} from '../utils.js';
 import { DecryptionManager } from './decryption-manager.js';
 import type { createMediaDownloader } from '../utils.js';
 
@@ -43,6 +48,7 @@ export function setupEventLogging(
 
   const seen = new Set<string>();
   let testCount = 0;
+  const tzTimeline = new TimezoneTimeline();
   client.on('event' as any, async (ev: MatrixEvent) => {
     if (await decryption.maybeHandleRoomKeyEvent(ev)) return;
     await decryption.decryptEvent(ev);
@@ -55,7 +61,17 @@ export function setupEventLogging(
     if (testRoomId && rid !== testRoomId) return;
     const type = (ev as any).getClearType?.() || ev.getType();
     const content = (ev as any).getClearContent?.() || ev.getContent();
-    const ts = new Date(ev.getTs() || Date.now()).toISOString();
+    const tsDate = new Date(ev.getTs() || Date.now());
+    const ts = tsDate.toISOString();
+    if (typeof content?.client_tz === 'string') {
+      const since = content.client_tz_since || ts;
+      try {
+        tzTimeline.set(content.client_tz, since);
+      } catch {
+        // ignore invalid time zones
+      }
+    }
+    const tzKeys = tzTimeline.localKeys(tsDate);
     const dir = getRoomDir(logDir, rid);
     const logf = path.join(dir, `${safeFilename(rid)}.log`);
     let line: string;
@@ -94,8 +110,13 @@ export function setupEventLogging(
       writer = createFileAppender(logf, logMaxBytes, logSecret);
       fileWriters.set(logf, writer);
     }
+    const payload = {
+      line,
+      tz: tzTimeline.get(tsDate),
+      tz_keys: tzKeys,
+    };
     writer.queue(line);
-    queueLog(rid, ts, line, id);
+    queueLog(rid, ts, JSON.stringify(payload), id);
     if (testLimit > 0) {
       testCount++;
       if (testCount >= testLimit) {
