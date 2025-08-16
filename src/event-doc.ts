@@ -7,6 +7,11 @@ export interface TzKeys {
   dow_local: number;
 }
 
+export interface TzSegment {
+  tz: string;
+  since: string; // ISO timestamp when this timezone became effective
+}
+
 export interface Stats {
   tokens?: number;
   words?: number;
@@ -44,6 +49,8 @@ export interface EventDoc {
   sender: string;
   text?: string;
   ts_utc: string;
+  tz?: string; // IANA timezone of the event
+  tz_since?: string; // when the timezone became effective
   lang?: string;
   participants: string[];
   is_me: boolean;
@@ -51,6 +58,7 @@ export interface EventDoc {
   has_media: boolean;
   media_types: string[];
   tz_keys: TzKeys;
+  tz_timeline?: TzSegment[];
   stats: Stats;
   sentiment: Sentiment;
   derived_from?: DerivedFrom;

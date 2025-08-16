@@ -33,6 +33,14 @@ test('DST fold handled deterministically', () => {
 test('Timezone timeline selects correct zone', () => {
   const tl = new TimezoneTimeline();
   tl.set('America/New_York', '2024-01-01T00:00:00Z');
-  assert.equal(tl.get(Date.UTC(2023, 11, 31, 23, 0)), AMSTERDAM);
-  assert.equal(tl.get(Date.UTC(2024, 0, 1, 1, 0)), 'America/New_York');
+  const before = Date.UTC(2023, 11, 31, 23, 0);
+  const after = Date.UTC(2024, 0, 1, 1, 0);
+  assert.equal(tl.get(before), AMSTERDAM);
+  assert.equal(tl.get(after), 'America/New_York');
+  const keysBefore = tl.localKeys(before);
+  const keysAfter = tl.localKeys(after);
+  assert.equal(keysBefore.day_local, '2023-12-31');
+  // 01:00 UTC on Jan 1 2024 is 20:00 local (previous day) in New York
+  assert.equal(keysAfter.day_local, '2023-12-31');
+  assert.equal(keysAfter.hour_local, '20');
 });
