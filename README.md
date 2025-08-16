@@ -35,6 +35,27 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
 
    The script attempts to detect your Matrix homeserver, user ID and access token from Beeper/Element configuration. Prompts are validated to ensure a proper homeserver URL, user ID, and either an access token or password before saving to `.beeper-mcp-server.env`. It also offers to encrypt the session cache and room logs, configure log rotation size, and optionally enable the `send_message` tool.
 
+## Docker deployment
+
+The repository includes a multi-stage Dockerfile suitable for local or multi-tenant hosting. The runtime image runs as an unprivileged user and stores state under `/app/mx-cache` and `/app/room-logs`.
+
+Build the image (override `USER_ID`/`GROUP_ID` to match the host or tenant IDs):
+
+```bash
+docker build -t beeper-mcp .
+# docker build -t beeper-mcp --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) .
+```
+
+Run the container with isolated volumes and your environment file:
+
+```bash
+docker run -p 8757:8757 -p 3000:3000 \
+  -v mcp-cache:/app/mx-cache -v mcp-logs:/app/room-logs \
+  --env-file .beeper-mcp-server.env beeper-mcp
+```
+
+For multi-tenant deployments, start a separate container per user with distinct volumes and environment files.
+
 ## Usage
 
 Create a `.beeper-mcp-server.env` file containing at least `MCP_API_KEY`, `MATRIX_USERID`, and `MATRIX_TOKEN` (or `MATRIX_PASSWORD`). You can copy `.beeper-mcp-server.env.example` and edit it, or let the `setup.js` script generate one. If you provide only a password, the generated access token is saved to `mx-cache/session.json` and used automatically on future runs. The server is written in TypeScript so you'll need `ts-node` (installed by `setup.js`) to run it:
