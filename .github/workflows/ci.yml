@@ -19,11 +19,7 @@ jobs:
       - name: Test with coverage
         run: npx c8 --reporter=text --reporter=lcov --check-coverage --lines 80 --branches 80 --functions 80 --report-dir=coverage npm test
       - run: npm run lint
-      - name: Extract version
-        shell: bash
-        run: |
-          VERSION=$(node -p 'require("./package.json").version')
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - run: echo "VERSION=$(jq -r .version package.json)" >> "$GITHUB_ENV"
       - run: npm run build:docker
       - uses: actions/upload-artifact@v4
         if: always()
