@@ -1,6 +1,16 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { queryLogs } from './utils.js';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+let pkg;
+try {
+  pkg = require('../package.json');
+} catch {
+  pkg = require('./package.json');
+}
+const { version } = pkg;
 
 const logger = console;
 
@@ -26,7 +36,7 @@ export function buildMcpServer(
   if (!apiKey) throw new Error('MCP_API_KEY is required');
   const srv = new McpServer({
     name: 'Beeper',
-    version: '2.2.0',
+    version,
     description: 'Matrix↔MCP logger',
   });
 

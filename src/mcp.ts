@@ -4,6 +4,16 @@ import { randomUUID } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { buildMcpServer } from '../mcp-tools.js';
 import type { MatrixClient } from 'matrix-js-sdk';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+let pkg: any;
+try {
+  pkg = require('../../package.json');
+} catch {
+  pkg = require('../package.json');
+}
+const { version } = pkg;
 import {
   registerResources,
   listResources,
@@ -19,6 +29,7 @@ export async function initMcpServer(
   port = 3000,
 ) {
   const srv = buildMcpServer(client, logDb, enableSend, apiKey, logSecret);
+  srv.server.registerCapabilities({ resources: { listChanged: true } });
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
     enableJsonResponse: true,
@@ -55,7 +66,13 @@ export async function initMcpServer(
   const httpServer = http.createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/.well-known/mcp.json') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ transport: 'streamable-http' }));
+      res.end(
+        JSON.stringify({
+          name: 'Beeper',
+          version,
+          transport: 'streamable-http',
+        }),
+      );
     } else if (req.method === 'GET' && req.url?.startsWith('/metrics')) {
       const key = req.headers['x-api-key'];
       if (key !== apiKey) {
