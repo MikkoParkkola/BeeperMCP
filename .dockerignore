@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+coverage/
+
+# Local development
+docker-images/
+room-logs/
+mx-cache/
+bench/
+test/
+tests/
+
+# Git & metadata
+.git/
+.gitignore
+.github/
+.husky/
+
+# Misc
+*.log
+npm-debug.log*
+.DS_Store
+.aider*
+.test-resources*.db
+.beeper-mcp-server.env
