@@ -5,7 +5,7 @@ COPY package*.json ./
 RUN apt-get update \
     && apt-get install -y python3 make g++ \
     && rm -rf /var/lib/apt/lists/* \
-    && npm ci --ignore-scripts
+    && HUSKY=0 npm ci
 COPY . .
 RUN npm run build
 
@@ -23,7 +23,7 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/mcp-tools.js ./
 COPY --from=build /app/utils.js ./
-RUN npm ci --omit=dev --ignore-scripts && \
+RUN HUSKY=0 npm ci --omit=dev && \
     mkdir -p mx-cache room-logs && \
     chown -R appuser:app ./
 
