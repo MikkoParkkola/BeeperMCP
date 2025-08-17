@@ -18,8 +18,10 @@ jobs:
         with:
           node-version: 22
       - name: Extract version
+        shell: bash
         run: |
-          echo "VERSION=$(node -p 'require("./package.json").version')" >> "$GITHUB_ENV"
+          VERSION=$(jq -r .version package.json 2>/dev/null || npm pkg get version | tr -d '"')
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
       - name: Set image name
         run: |
           echo "IMAGE_NAME=ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
