@@ -3,7 +3,7 @@ FROM node:22-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN apt-get update \
-    && apt-get install -y python3 make g++ \
+    && apt-get install -y python3 make g++ curl pkg-config libssl-dev rustc cargo \
     && rm -rf /var/lib/apt/lists/* \
     && HUSKY=0 npm ci
 COPY . .
