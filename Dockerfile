@@ -31,4 +31,4 @@ VOLUME ["/app/mx-cache", "/app/room-logs"]
 USER appuser
 
 EXPOSE 3000 8757
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/beeper-mcp-server.js"]
