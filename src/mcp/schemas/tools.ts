@@ -135,6 +135,8 @@ const sentiment_trends: JSONSchema7 = {
       type: 'array',
       items: { enum: ['text', 'audio', 'image', 'video'] },
     },
+    alpha: { type: 'number', minimum: 0, maximum: 1, default: 0.3 },
+    sensitivity: { type: 'number', minimum: 0, default: 0.5 },
   },
   required: ['target'],
 };

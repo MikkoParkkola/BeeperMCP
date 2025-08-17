@@ -68,7 +68,38 @@ export async function handler(input: any, owner = 'local') {
     ORDER BY MIN(ts_utc)
   `;
   const res = await client.query(sql, args);
-  // No smoothing / change point detection in stub
+  const alpha =
+    typeof input.alpha === 'number' && input.alpha >= 0 && input.alpha <= 1
+      ? input.alpha
+      : 0.3;
+  const sensitivity =
+    typeof input.sensitivity === 'number' && input.sensitivity >= 0
+      ? input.sensitivity
+      : 0.5;
+
+  const buckets = res.rows as any[];
+  if (buckets.length > 0) {
+    let ema = buckets[0].mean;
+    let gPos = 0;
+    let gNeg = 0;
+    buckets[0].ema = ema;
+    buckets[0].change_point = false;
+    for (let idx = 1; idx < buckets.length; idx++) {
+      const row = buckets[idx];
+      ema = alpha * row.mean + (1 - alpha) * ema;
+      const residual = row.mean - ema;
+      gPos = Math.max(0, gPos + residual);
+      gNeg = Math.min(0, gNeg + residual);
+      let change = false;
+      if (gPos > sensitivity || gNeg < -sensitivity) {
+        change = true;
+        gPos = 0;
+        gNeg = 0;
+      }
+      row.ema = ema;
+      row.change_point = change;
+    }
+  }
   client.release();
   return {
     filters: { ...input },
@@ -78,6 +109,6 @@ export async function handler(input: any, owner = 'local') {
       disambiguation: 'prefer_earlier_offset',
       k_min: 5,
     },
-    buckets: res.rows,
+    buckets,
   };
 }
