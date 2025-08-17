@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# build_docker.sh v1.1.0 (2025-08-16)
+# build_docker.sh v1.1.1 (2025-08-16)
 set -euo pipefail
 
-VERSION=$(jq -r '.version' package.json)
-DATE=$(jq -r '.releaseDate' package.json)
+VERSION=$(node -p "require('./package.json').version")
+DATE=$(node -p "require('./package.json').releaseDate")
 IMAGE_NAME="beeper-mcp:${VERSION}"
 OUTPUT_DIR="docker-images"
 
