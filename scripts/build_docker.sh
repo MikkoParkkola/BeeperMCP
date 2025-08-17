@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build_docker.sh v1.1.1 (2025-08-16)
+# build_docker.sh v1.1.2 (2025-08-17)
 set -euo pipefail
 
 VERSION=$(node -p "require('./package.json').version")
@@ -10,6 +10,7 @@ OUTPUT_DIR="docker-images"
 mkdir -p "$OUTPUT_DIR"
 
 docker build -t "$IMAGE_NAME" .
+docker run --rm "$IMAGE_NAME" node dist/beeper-mcp-server.js --help
 docker save "$IMAGE_NAME" -o "$OUTPUT_DIR/beeper-mcp-${VERSION}-${DATE}.tar"
 
 echo "Docker image saved to $OUTPUT_DIR/beeper-mcp-${VERSION}-${DATE}.tar"
