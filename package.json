@@ -8,8 +8,8 @@
     "lint": "eslint .",
     "format": "prettier --check .",
     "start": "node dist/beeper-mcp-server.js",
-    "test": "npm run build && node --test dist/tests/**/*.js",
-    "test:coverage": "npm run build && c8 --check-coverage --lines 80 --branches 80 --functions 80 --exclude setup.js node --test dist/tests/**/*.js",
+    "test": "npm run build && node --test dist/tests test/analytics.test.js",
+    "test:coverage": "npm run build && c8 --check-coverage --lines 80 --branches 80 --functions 80 --exclude setup.js node --test dist/tests test/analytics.test.js",
     "build:docker": "bash scripts/build_docker.sh",
     "prepare": "husky"
   },
@@ -26,6 +26,7 @@
     "eslint": "^9.33.0",
     "globals": "^16.3.0",
     "husky": "^9.0.0",
+    "pg-mem": "^3.0.5",
     "prettier": "^3.2.5",
     "typescript": "^5.9.2"
   },
