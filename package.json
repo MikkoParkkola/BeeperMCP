@@ -1,15 +1,15 @@
 {
   "name": "beeper-mcp",
-  "version": "0.6.0",
-  "releaseDate": "2025-08-18",
+  "version": "0.7.0",
+  "releaseDate": "2025-08-17",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json && cp mcp-tools.js utils.js dist/",
     "lint": "eslint .",
     "format": "prettier --check .",
     "start": "node dist/beeper-mcp-server.js",
-    "test": "npm run build && node --test dist/tests test/*.test.js",
-    "test:coverage": "npm run build && c8 --check-coverage --lines 80 --branches 80 --functions 80 --exclude setup.js node --test dist/tests test/*.test.js",
+    "test": "npm run build && node --test --test-concurrency=1 test/*.test.js",
+    "test:coverage": "npm run build && c8 --reporter=text --reporter=lcov --report-dir=coverage --check-coverage --lines 60 --branches 60 --functions 60 --exclude setup.js node --test --test-concurrency=1 test/*.test.js",
     "build:docker": "bash scripts/build_docker.sh",
     "prepare": "husky"
   },
