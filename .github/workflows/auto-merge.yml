@@ -11,9 +11,11 @@ permissions:
 jobs:
   enable-auto-merge:
     if: >-
-      github.event.pull_request.user.login == 'MikkoParkkola' ||
-      github.actor == 'MikkoParkkola' ||
-      contains(join(github.event.pull_request.labels.*.name, ','), 'automerge')
+      github.event.repository.allow_auto_merge && (
+        github.event.pull_request.user.login == 'MikkoParkkola' ||
+        github.actor == 'MikkoParkkola' ||
+        contains(join(github.event.pull_request.labels.*.name, ','), 'automerge')
+      )
     runs-on: ubuntu-latest
     steps:
       - name: Enable auto-merge (squash)
