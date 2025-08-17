@@ -1,21 +1,23 @@
 # syntax=docker/dockerfile:1
-FROM node:20-alpine AS build
+FROM node:22-slim AS build
 WORKDIR /app
 COPY package*.json ./
-RUN apk add --no-cache python3 make g++ \
+RUN apt-get update \
+    && apt-get install -y python3 make g++ \
+    && rm -rf /var/lib/apt/lists/* \
     && npm ci --ignore-scripts
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine AS runtime
+FROM node:22-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
 # create unprivileged user for tenant isolation
 ARG USER_ID=1000
 ARG GROUP_ID=1000
-RUN addgroup -g $GROUP_ID app && \
-    adduser -u $USER_ID -G app -s /bin/sh -D appuser
+RUN groupadd -g $GROUP_ID app && \
+    useradd -u $USER_ID -g app -s /bin/sh -m appuser
 
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/package*.json ./
