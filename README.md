@@ -46,6 +46,16 @@ docker build -t beeper-mcp .
 # docker build -t beeper-mcp --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) .
 ```
 
+Pre-built images are published to GitHub Container Registry on each push to
+`main` and for version tags. Replace `<owner>` with the repository owner and
+pull the image directly:
+
+```bash
+docker pull ghcr.io/<owner>/beepermcp:latest
+# or a specific version
+docker pull ghcr.io/<owner>/beepermcp:v1.2.3
+```
+
 Run the container with isolated volumes and your environment file:
 
 ```bash
