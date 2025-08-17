@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 22
       - run: |
-          VERSION=$(grep '"version":' package.json | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          VERSION=$(node -p "require('./package.json').version")
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
       - name: Set image name
         run: |
