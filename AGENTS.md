@@ -68,6 +68,7 @@ Current state (as of this repo snapshot)
   - package.json consolidated; test scripts build first; `pg` is a dependency for analytics tools.
   - tsconfig.json is a single NodeNext project emitting to `dist/`.
   - CI uses `npm ci`, builds, then runs tests and lint.
+  - `.github/workflows/docker-publish.yml` builds and pushes Docker images to GHCR on every push to `main`, tagging each image with the package version, commit SHA, and `latest`.
 - Resources (src/mcp/resources.ts)
   - registerResources(logDb, logSecret) wires history/context/media to SQLite logs/media.
   - src/mcp.ts passes logDb/logSecret to registerResources.
