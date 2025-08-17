@@ -3,7 +3,7 @@ FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN apk add --no-cache python3 make g++ \
-    && npm ci
+    && npm ci --ignore-scripts
 COPY . .
 RUN npm run build
 
@@ -21,7 +21,7 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/mcp-tools.js ./
 COPY --from=build /app/utils.js ./
-RUN npm ci --omit=dev && \
+RUN npm ci --omit=dev --ignore-scripts && \
     mkdir -p mx-cache room-logs && \
     chown -R appuser:app ./
 
