@@ -18,6 +18,12 @@ tests/
 .gitignore
 .github/
 .husky/
+.vscode/
+.idea/
+
+# Environment
+*.env
+.beeper-mcp-server.env
 
 # Misc
 *.log
@@ -25,4 +31,3 @@ npm-debug.log*
 .DS_Store
 .aider*
 .test-resources*.db
-.beeper-mcp-server.env
