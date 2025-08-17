@@ -21,7 +21,7 @@ jobs:
         run: npx c8 --reporter=text --reporter=lcov --check-coverage --lines 80 --branches 80 --functions 80 --report-dir=coverage npm test
       - run: npm run lint
       - run: |
-          VERSION=$(grep '"version":' package.json | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          VERSION=$(node -p "require('./package.json').version")
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
       - run: docker version
       - run: npm run build:docker
