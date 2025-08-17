@@ -20,7 +20,7 @@ jobs:
       - name: Extract version
         shell: bash
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION=$(node -p 'require("./package.json").version')
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
       - name: Set image name
         run: |
