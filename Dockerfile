@@ -3,7 +3,7 @@ FROM node:22-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 make g++ curl pkg-config libssl-dev rustc cargo \
+    && apt-get install -y --no-install-recommends python3 make g++ curl ca-certificates pkg-config libssl-dev rustc cargo \
     && rm -rf /var/lib/apt/lists/* \
     && HUSKY=0 npm ci
 
@@ -29,7 +29,7 @@ COPY --from=build --chown=node:node /app/node_modules ./node_modules
 RUN mkdir -p mx-cache room-logs \
     && chown -R node:node mx-cache room-logs
 RUN apt-get update \
-    && apt-get install -y gosu \
+    && apt-get install -y gosu ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build --chown=node:node /app .
