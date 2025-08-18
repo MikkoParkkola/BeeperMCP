@@ -1,6 +1,10 @@
 {
   "name": "beeper-mcp",
+<<<<<<< HEAD
   "version": "0.14.0",
+=======
+  "version": "0.14.0",
+>>>>>>> 2ff2231 (chore: ensure cache dirs writable)
   "releaseDate": "2025-08-18",
   "type": "module",
   "engines": {
