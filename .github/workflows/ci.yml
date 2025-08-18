@@ -12,16 +12,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run build
       - name: Test with coverage
-        run: npx c8 --reporter=text --reporter=lcov --check-coverage --lines 80 --branches 80 --functions 80 --report-dir=coverage npm test
+        run: npm run test:coverage
       - run: npm run lint
-      - run: |
-          VERSION=$(grep '"version":' package.json | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: Export package version
+        run: |
+          node - <<'NODE' >> "$GITHUB_ENV"
+          const { version } = require('./package.json');
+          console.log(`VERSION=${version}`);
+          NODE
       - run: npm run build:docker
       - uses: actions/upload-artifact@v4
         if: always()
