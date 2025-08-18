@@ -1,6 +1,6 @@
 {
   "name": "beeper-mcp",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "releaseDate": "2025-08-18",
   "type": "module",
   "engines": {

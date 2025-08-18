@@ -1,5 +1,5 @@
 const allowlist = new Set<string>([
-  'search_messages',
+  'search',
   'who_said',
   'recap',
   'extract_open_loops',
