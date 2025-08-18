@@ -26,7 +26,10 @@ function resolveUrl(raw: string): string {
 export async function handler(input: any) {
   const maxBytes = input.maxBytes ?? 1_000_000;
   const url = resolveUrl(String(input.url));
-  const method = input.method || 'GET';
+  const method = String(input.method || 'GET').toUpperCase();
+  if (method !== 'GET' && method !== 'HEAD') {
+    throw new Error('unsupported method');
+  }
   const headers = input.headers || {};
 
   const res = await fetch(url, { method, headers });

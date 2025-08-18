@@ -110,7 +110,7 @@ The server will begin syncing your rooms and expose an MCP server over STDIO. AI
 
 ### Fetch tool
 
-The `fetch` tool retrieves remote content over HTTP(S) or Matrix MXC URLs.
+The `fetch` tool retrieves remote content over HTTP(S) or Matrix MXC URLs. It only allows `GET` (default) and `HEAD` requests; other methods will be rejected.
 
 ```json
 {
