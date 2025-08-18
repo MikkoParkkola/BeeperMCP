@@ -3,6 +3,9 @@
   "version": "0.7.0",
   "releaseDate": "2025-08-18",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && cp mcp-tools.js utils.js dist/",
     "lint": "eslint .",
