@@ -9,6 +9,7 @@ const allowlist = new Set<string>([
   'sentiment_distribution',
   'draft_reply',
   'send_message',
+  'fetch',
 ]);
 
 export function isAllowed(toolName: string): boolean {
