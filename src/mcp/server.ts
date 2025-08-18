@@ -55,6 +55,7 @@ import * as sentimentTrendsTool from './tools/sentimentTrends.js';
 import * as sentimentDistributionTool from './tools/sentimentDistribution.js';
 import * as draftReplyTool from './tools/draftReply.js';
 import * as sendMessageTool from './tools/sendMessage.js';
+import * as fetchTool from './tools/fetch.js';
 
 /*
   Helper: list files that are typically required to build & run the MCP server.
@@ -77,6 +78,7 @@ export const requiredFiles = [
   'src/mcp/tools/responseTime.ts',
   'src/mcp/tools/draftReply.ts',
   'src/mcp/tools/sendMessage.ts',
+  'src/mcp/tools/fetch.ts',
   'src/ingest/matrix.ts',
   'Postgres: messages schema (CREATE TABLE messages ...)',
   'Optional: scripts/migrate.ts',
@@ -109,6 +111,7 @@ const tools = new Map<string, (input: any, owner: string) => Promise<any>>([
   [sentimentDistributionTool.id, sentimentDistributionTool.handler],
   [draftReplyTool.id, draftReplyTool.handler],
   [sendMessageTool.id, sendMessageTool.handler],
+  [fetchTool.id, fetchTool.handler],
 ]);
 
 const allowedKeys = (process.env.MCP_API_KEYS || process.env.MCP_API_KEY || '')

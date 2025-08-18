@@ -108,6 +108,26 @@ The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v
 
 The server will begin syncing your rooms and expose an MCP server over STDIO. AI clients can connect using the Model Context Protocol and invoke the provided tools to read or send messages on your behalf.
 
+### Fetch tool
+
+The `fetch` tool retrieves remote content over HTTP(S) or Matrix MXC URLs.
+
+```json
+{
+  "id": "fetch",
+  "input": { "url": "https://example.com/data.json" }
+}
+```
+
+MXC URLs resolve through the configured homeserver and include your access token when needed:
+
+```json
+{
+  "id": "fetch",
+  "input": { "url": "mxc://server/id" }
+}
+```
+
 ### Metrics endpoint
 
 When running the HTTP MCP server (via `src/mcp.ts`), a read-only metrics endpoint is exposed:
