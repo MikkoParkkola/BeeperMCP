@@ -26,9 +26,8 @@ COPY --from=build --chown=node:node /app/package*.json ./
 COPY --from=build --chown=node:node /app/mcp-tools.js ./
 COPY --from=build --chown=node:node /app/utils.js ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
-
-USER node
-RUN mkdir -p mx-cache room-logs
+RUN mkdir -p mx-cache room-logs \
+    && chown -R node:node mx-cache room-logs
 RUN apt-get update \
     && apt-get install -y gosu \
     && rm -rf /var/lib/apt/lists/*
@@ -37,8 +36,9 @@ COPY --from=build --chown=node:node /app .
 
 RUN mv docker-entrypoint.sh /docker-entrypoint.sh \
     && chown root:root /docker-entrypoint.sh \
-    && chmod +x /docker-entrypoint.sh \
-    && chown node:node mx-cache room-logs
+    && chmod +x /docker-entrypoint.sh
+
+USER node
 
 VOLUME ["/app/mx-cache", "/app/room-logs"]
 
