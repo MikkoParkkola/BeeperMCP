@@ -29,7 +29,7 @@ COPY --from=build --chown=node:node /app/node_modules ./node_modules
 RUN mkdir -p mx-cache room-logs \
     && chown -R node:node mx-cache room-logs
 RUN apt-get update \
-    && apt-get install -y gosu ca-certificates \
+    && apt-get install -y --no-install-recommends gosu=1.17* ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build --chown=node:node /app .
