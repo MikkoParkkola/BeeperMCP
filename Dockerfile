@@ -37,9 +37,6 @@ COPY --from=build --chown=node:node /app .
 RUN mv docker-entrypoint.sh /docker-entrypoint.sh \
     && chown root:root /docker-entrypoint.sh \
     && chmod +x /docker-entrypoint.sh
-
-USER node
-
 VOLUME ["/app/mx-cache", "/app/room-logs"]
 
 EXPOSE 3000 8757
