@@ -146,10 +146,12 @@ test('analytics tools filters, buckets, and RLS', async (t) => {
     });
     assert.equal(res.hits.length, 1);
     assert.equal(res.hits[0].sender, 'bob');
+    assert.equal(res.hits[0].uri, 'im://matrix/room/r1/message/e2/context');
     const none = await whoSaid({ pattern: 'ciao' });
     assert.equal(none.hits.length, 0);
     const other = await whoSaid({ pattern: 'ciao' }, 'other');
     assert.equal(other.hits.length, 1);
+    assert.equal(other.hits[0].uri, 'im://matrix/room/r1/message/e4/context');
   });
 
   await t.test('sentiment_distribution bins and filters', async () => {

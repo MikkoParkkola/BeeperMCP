@@ -55,5 +55,9 @@ export async function handler(input: any, owner = 'local') {
     return useRegex ? regex!.test(t) : t === text;
   });
   client.release();
-  return { hits: results.slice(0, 200) };
+  const hits = results.slice(0, 200).map((r) => ({
+    ...r,
+    uri: `im://matrix/room/${r.room_id}/message/${r.event_id}/context`,
+  }));
+  return { hits };
 }

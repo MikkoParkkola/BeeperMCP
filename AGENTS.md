@@ -73,7 +73,7 @@ Current state (as of this repo snapshot)
   - registerResources(logDb, logSecret) wires history/context/media to SQLite logs/media.
   - src/mcp.ts passes logDb/logSecret to registerResources.
 - Tools (Postgres)
-  - who_said: participants/lang filters added; regex guarded.
+  - who_said: participants/lang filters added; regex guarded; hits include Matrix URIs.
   - sentiment_trends: uses AVG(subjectivity) with filters for target/lang/types.
   - sentiment_distribution: SQL width_bucket with filters; returns edges/counts/summary.
   - stats_activity: my_share_pct computed from sender match; types/lang filters added.
