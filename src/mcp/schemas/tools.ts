@@ -1,6 +1,6 @@
 import { JSONSchema7 } from 'json-schema';
 
-const search_messages: JSONSchema7 = {
+const search: JSONSchema7 = {
   type: 'object',
   additionalProperties: false,
   properties: {
@@ -202,7 +202,7 @@ const send_message: JSONSchema7 = {
 };
 
 export const toolsSchemas = {
-  search_messages,
+  search,
   who_said,
   recap,
   extract_open_loops,

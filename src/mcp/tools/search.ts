@@ -2,8 +2,8 @@ import { searchHybrid } from '../../index/search.js';
 import { JSONSchema7 } from 'json-schema';
 import { toolsSchemas } from '../schemas/tools.js';
 
-export const id = 'search_messages';
-export const inputSchema = toolsSchemas.search_messages as JSONSchema7;
+export const id = 'search';
+export const inputSchema = toolsSchemas.search as JSONSchema7;
 
 export async function handler(input: any, owner = 'local') {
   const hits = await searchHybrid(
