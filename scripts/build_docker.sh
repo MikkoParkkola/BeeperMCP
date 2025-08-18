@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# build_docker.sh v1.1.4 (2025-08-18)
+# build_docker.sh v1.1.5 (2025-08-18)
 # Builds the Docker image using the built-in 'node' user; no USER_ID/GROUP_ID args needed.
 set -euo pipefail
 
-VERSION=$(node -p "require('./package.json').version")
-DATE=$(node -p "require('./package.json').releaseDate")
+if ! command -v jq >/dev/null 2>&1; then
+  echo "jq is required to parse package.json" >&2
+  exit 1
+fi
+
+VERSION=$(jq -r '.version' package.json)
+DATE=$(jq -r '.releaseDate' package.json)
 IMAGE_NAME="beeper-mcp:${VERSION}"
 OUTPUT_DIR="docker-images"
 
