@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-exec gosu node "$@"
+if [ "$(id -u)" = '0' ]; then
+  exec gosu node "$@"
+fi
+
+exec "$@"
