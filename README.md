@@ -37,13 +37,12 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
 
 ## Docker deployment
 
-The repository includes a multi-stage Dockerfile suitable for local or multi-tenant hosting. The runtime image runs as an unprivileged user and stores state under `/app/mx-cache` and `/app/room-logs`.
+The repository includes a multi-stage Dockerfile suitable for local or multi-tenant hosting. The runtime image runs as the built-in `node` user and stores state under `/app/mx-cache` and `/app/room-logs`.
 
-Build the image (override `USER_ID`/`GROUP_ID` to match the host or tenant IDs):
+Build the image:
 
 ```bash
 docker build -t beeper-mcp .
-# docker build -t beeper-mcp --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) .
 ```
 
 Pre-built images are published to GitHub Container Registry on each push to
