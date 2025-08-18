@@ -8,8 +8,8 @@
     "lint": "eslint .",
     "format": "prettier --check .",
     "start": "node dist/beeper-mcp-server.js",
-    "test": "npm run build && node --test dist/tests test/*.test.js",
-    "test:coverage": "npm run build && c8 --check-coverage --lines 80 --branches 80 --functions 80 --exclude setup.js --exclude 'dist/**' node --test dist/tests test/*.test.js",
+    "test": "npm run build && node --test dist/tests/**/*.js test/*.test.js",
+    "test:coverage": "npm run build && c8 --check-coverage --lines 80 --branches 80 --functions 80 --exclude setup.js --exclude 'dist/**' node --test dist/tests/**/*.js test/*.test.js",
     "build:docker": "bash scripts/build_docker.sh",
     "prepare": "husky"
   },
