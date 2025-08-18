@@ -1,4 +1,4 @@
-import { searchHybrid } from '../../index/search.js';
+import { searchHybrid, SearchHit } from '../../index/search.js';
 import { JSONSchema7 } from 'json-schema';
 import { toolsSchemas } from '../schemas/tools.js';
 
@@ -6,7 +6,7 @@ export const id = 'search';
 export const inputSchema = toolsSchemas.search as JSONSchema7;
 
 export async function handler(input: any, owner = 'local') {
-  const hits = await searchHybrid(
+  const hits: SearchHit[] = await searchHybrid(
     input.query,
     {
       from: input.from ? new Date(input.from) : undefined,
