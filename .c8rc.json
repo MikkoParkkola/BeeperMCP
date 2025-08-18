@@ -1,0 +1,10 @@
+{
+  "exclude": [
+    "dist/**",
+    "setup.js",
+    "src/config.ts",
+    "src/index/**",
+    "src/matrix/**",
+    "src/obs/**"
+  ]
+}
