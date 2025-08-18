@@ -16,6 +16,7 @@ OUTPUT_DIR="docker-images"
 mkdir -p "$OUTPUT_DIR"
 
 docker build -t "$IMAGE_NAME" .
+# Run a simple command to verify the image builds correctly.
 docker run --rm "$IMAGE_NAME" node --version
 docker save "$IMAGE_NAME" -o "$OUTPUT_DIR/beeper-mcp-${VERSION}-${DATE}.tar"
 
