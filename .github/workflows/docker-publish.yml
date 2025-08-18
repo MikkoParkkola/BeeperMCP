@@ -32,6 +32,7 @@ jobs:
       - uses: docker/build-push-action@v5
         with:
           context: .
+          # Image uses built-in 'node' user; no UID/GID build args required
           push: true
           tags: |
             ${{ env.IMAGE_NAME }}:${{ env.VERSION }}

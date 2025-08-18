@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build_docker.sh v1.1.3 (2025-08-17)
+# build_docker.sh v1.1.4 (2025-08-18)
 # Builds the Docker image using the built-in 'node' user; no USER_ID/GROUP_ID args needed.
 set -euo pipefail
 
