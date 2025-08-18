@@ -17,11 +17,15 @@ COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/package*.json ./
 COPY --from=build --chown=node:node /app/mcp-tools.js ./
 COPY --from=build --chown=node:node /app/utils.js ./
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 USER node
 RUN HUSKY=0 npm ci --omit=dev && mkdir -p mx-cache room-logs
+USER root
 
 VOLUME ["/app/mx-cache", "/app/room-logs"]
 
 EXPOSE 3000 8757
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["node", "dist/beeper-mcp-server.js"]
