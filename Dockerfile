@@ -8,6 +8,7 @@ RUN apt-get update \
     && HUSKY=0 npm ci
 COPY . .
 RUN npm run build
+RUN npm prune --omit=dev
 
 FROM node:22-slim AS runtime
 WORKDIR /app
@@ -21,8 +22,8 @@ COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/package*.json ./
 COPY --from=build --chown=node:node /app/mcp-tools.js ./
 COPY --from=build --chown=node:node /app/utils.js ./
-
-RUN HUSKY=0 npm ci --omit=dev && mkdir -p mx-cache room-logs && chown -R node:node /app
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+RUN mkdir -p mx-cache room-logs
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
