@@ -43,6 +43,24 @@ test('enforces maxBytes', async () => {
   await close();
 });
 
+test('allows HEAD method', async () => {
+  const { url, close } = await createServer((req, res) => {
+    assert.equal(req.method, 'HEAD');
+    res.statusCode = 200;
+    res.end();
+  });
+  const res = await fetchHandler({ url, method: 'HEAD' });
+  assert.equal(res.status, 200);
+  assert.equal(res.bytes, 0);
+  await close();
+});
+
+test('rejects disallowed methods', async () => {
+  await assert.rejects(() =>
+    fetchHandler({ url: 'http://example.com', method: 'POST' }),
+  );
+});
+
 test('handles mxc URLs with access token', async () => {
   const { url, close } = await createServer((req, res) => {
     assert.ok(req.url?.includes('/_matrix/media/v3/download/m.server/id'));
