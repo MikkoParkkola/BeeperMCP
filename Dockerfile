@@ -13,16 +13,15 @@ FROM node:22-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/package*.json ./
-COPY --from=build /app/mcp-tools.js ./
-COPY --from=build /app/utils.js ./
-RUN HUSKY=0 npm ci --omit=dev \
-    && mkdir -p mx-cache room-logs \
-    && chown -R node:node .
+COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build --chown=node:node /app/package*.json ./
+COPY --from=build --chown=node:node /app/mcp-tools.js ./
+COPY --from=build --chown=node:node /app/utils.js ./
+
+USER node
+RUN HUSKY=0 npm ci --omit=dev && mkdir -p mx-cache room-logs
 
 VOLUME ["/app/mx-cache", "/app/room-logs"]
-USER node
 
 EXPOSE 3000 8757
 CMD ["node", "dist/beeper-mcp-server.js"]
