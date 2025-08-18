@@ -13,22 +13,16 @@ FROM node:22-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-# create unprivileged user for tenant isolation
-ARG USER_ID=1000
-ARG GROUP_ID=1000
-RUN groupadd -g $GROUP_ID app && \
-    useradd -u $USER_ID -g app -s /bin/sh -m appuser
-
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/mcp-tools.js ./
 COPY --from=build /app/utils.js ./
-RUN HUSKY=0 npm ci --omit=dev && \
-    mkdir -p mx-cache room-logs && \
-    chown -R appuser:app ./
+RUN HUSKY=0 npm ci --omit=dev \
+    && mkdir -p mx-cache room-logs \
+    && chown -R node:node .
 
 VOLUME ["/app/mx-cache", "/app/room-logs"]
-USER appuser
+USER node
 
 EXPOSE 3000 8757
 CMD ["node", "dist/beeper-mcp-server.js"]
