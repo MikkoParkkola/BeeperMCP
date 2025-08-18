@@ -10,7 +10,7 @@ OUTPUT_DIR="docker-images"
 mkdir -p "$OUTPUT_DIR"
 
 docker build -t "$IMAGE_NAME" .
-docker run --rm "$IMAGE_NAME" node dist/beeper-mcp-server.js --help
+docker run --rm "$IMAGE_NAME" node --version
 docker save "$IMAGE_NAME" -o "$OUTPUT_DIR/beeper-mcp-${VERSION}-${DATE}.tar"
 
 echo "Docker image saved to $OUTPUT_DIR/beeper-mcp-${VERSION}-${DATE}.tar"
