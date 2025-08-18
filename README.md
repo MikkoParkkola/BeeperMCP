@@ -45,6 +45,13 @@ Build the image:
 docker build -t beeper-mcp .
 ```
 
+Alternatively, use the helper script to tag the image with the package
+version and release date (requires `jq`):
+
+```bash
+bash scripts/build_docker.sh
+```
+
 Pre-built images are published to GitHub Container Registry on each push to
 `main` and for version tags. Replace `<owner>` with the repository owner and
 pull the image directly:
