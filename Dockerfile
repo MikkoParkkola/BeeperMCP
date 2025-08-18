@@ -14,8 +14,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # create unprivileged user for tenant isolation
-ARG USER_ID=1000
-ARG GROUP_ID=1000
+ARG USER_ID=1001
+ARG GROUP_ID=1001
 RUN groupadd -g $GROUP_ID app && \
     useradd -u $USER_ID -g app -s /bin/sh -m appuser
 
@@ -23,7 +23,7 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/mcp-tools.js ./
 COPY --from=build /app/utils.js ./
-RUN HUSKY=0 npm ci --omit=dev && \
+RUN npm ci --omit=dev --ignore-scripts && \
     mkdir -p mx-cache room-logs && \
     chown -R appuser:app ./
 

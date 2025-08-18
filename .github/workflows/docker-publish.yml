@@ -17,9 +17,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: |
-          VERSION=$(grep '"version":' package.json | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: Export package version
+        run: |
+          node - <<'NODE' >> "$GITHUB_ENV"
+          const { version } = require('./package.json');
+          console.log(`VERSION=${version}`);
+          NODE
       - name: Set image name
         run: |
           echo "IMAGE_NAME=ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
