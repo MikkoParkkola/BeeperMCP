@@ -1,5 +1,8 @@
 import { Pool } from 'pg';
 import { config } from '../config.js';
+const START_MS = Date.now();
+const VERSION =
+  process.env.npm_package_version || process.env.BEEPER_MCP_VERSION || 'dev';
 
 let pool: Pool | null = null;
 function getPool() {
@@ -31,5 +34,8 @@ export async function indexStatus(owner = 'local') {
     pending_reembed: pendingReembedRes.rows[0].c,
     last_embed_ts: null,
     last_sentiment_ts: null,
+    version: VERSION,
+    started_at: new Date(START_MS).toISOString(),
+    uptime_ms: Date.now() - START_MS,
   };
 }
