@@ -1,63 +1,60 @@
 name: Publish Docker image
 
 on:
-push:
-  branches: [main]
-  tags: ['v*']
-workflow_dispatch:
-  inputs:
-    version:
-      description: 'Version tag to publish (e.g., v1.1.0). Leave empty to use tag ref or package.json.'
-      required: false
-      type: string
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to publish (e.g., v1.1.0). Leave empty to use tag ref or package.json.'
+        required: false
+        type: string
 
 jobs:
-docker:
-  runs-on: ubuntu-latest
-  permissions:
-    contents: read
-    packages: write
-  steps:
-    - uses: actions/checkout@v4
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Extract version and image name
-      shell: bash
-      run: |
-        # Compute VERSION
-        if [[ -n "${{ github.event.inputs.version }}" ]]; then
-          VERSION="${{ github.event.inputs.version }}"
-        else
-          REF_NAME="${GITHUB_REF##*/}"
-          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${REF_NAME}" == v* ]]; then
-            VERSION="${REF_NAME}"
+      - name: Extract version and image name
+        shell: bash
+        run: |
+          if [[ -n "${{ github.event.inputs.version }}" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
           else
-            VERSION="$(node -p "require('./package.json').version")"
-            [[ "$VERSION" != v* ]] && VERSION="v$VERSION"
+            REF_NAME="${GITHUB_REF##*/}"
+            if [[ "${GITHUB_REF_TYPE}" == "tag" && "${REF_NAME}" == v* ]]; then
+              VERSION="${REF_NAME}"
+            else
+              VERSION="$(node -p "require('./package.json').version")"
+              [[ "$VERSION" != v* ]] && VERSION="v$VERSION"
+            fi
           fi
-        fi
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-        # Compute IMAGE_NAME (lowercase owner/repo)
-        IMAGE_NAME="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
-        echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+          IMAGE_NAME="ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
 
-        echo "Computed IMAGE_NAME=$IMAGE_NAME"
-        echo "Computed VERSION=$VERSION"
+      - uses: docker/setup-buildx-action@v3
 
-    - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Build and push
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        tags: |
-          ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
-          ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          ${{ env.IMAGE_NAME }}:latest
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
