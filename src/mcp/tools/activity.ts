@@ -15,6 +15,12 @@ function getPool() {
       ssl: config.db.ssl as any,
       max: config.db.pool.max,
     });
+  const timeoutMs = Number(process.env.PG_STMT_TIMEOUT ?? 0);
+  if (timeoutMs > 0) {
+    pool
+      .query(`SET statement_timeout TO ${timeoutMs}`)
+      .catch(() => void 0);
+  }
   return pool!;
 }
 

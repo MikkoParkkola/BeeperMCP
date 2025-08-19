@@ -29,10 +29,21 @@ export function buildMcpServer(
     version: '2.2.0',
     description: 'Matrix↔MCP logger',
   });
+  const apiKeys = new Set(
+    String(apiKey)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+  const assertApiKey = (extra) => {
+    const key = extra?._meta?.apiKey;
+    const k = Array.isArray(key) ? key[0] : key;
+    if (!k || !apiKeys.has(k)) throw new Error('Invalid API key');
+  };
 
   const authWrapper = (cb) => {
     return (args, extra) => {
-      if (extra?._meta?.apiKey !== apiKey) throw new Error('Invalid API key');
+      assertApiKey(extra);
       return cb(args, extra);
     };
   };
@@ -108,7 +119,7 @@ export function buildMcpServer(
   const wrapHandler = (method) => {
     const orig = srv.server._requestHandlers.get(method);
     srv.server._requestHandlers.set(method, (req, extra) => {
-      if (extra?._meta?.apiKey !== apiKey) throw new Error('Invalid API key');
+      assertApiKey(extra);
       return orig(req, extra);
     });
   };

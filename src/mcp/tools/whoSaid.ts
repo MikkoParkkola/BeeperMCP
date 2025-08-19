@@ -16,6 +16,13 @@ function getPool() {
       ssl: config.db.ssl as any,
       max: config.db.pool.max,
     });
+  // optional per-connection statement timeout
+  const timeoutMs = Number(process.env.PG_STMT_TIMEOUT ?? 0);
+  if (timeoutMs > 0) {
+    pool
+      .query(`SET statement_timeout TO ${timeoutMs}`)
+      .catch(() => void 0);
+  }
   return pool!;
 }
 
@@ -52,5 +59,6 @@ export async function handler(input: any) {
     const t = r.text ?? '';
     return useRegex ? regex!.test(t) : t === text;
   });
-  return { hits: results.slice(0, 200) };
+  const limit = Math.min(Math.max(Number(input.limit ?? 200), 1), 1000);
+  return { hits: results.slice(0, limit) };
 }

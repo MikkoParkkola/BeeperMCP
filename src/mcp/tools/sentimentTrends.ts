@@ -15,6 +15,12 @@ function getPool() {
       ssl: config.db.ssl as any,
       max: config.db.pool.max,
     });
+  const timeoutMs = Number(process.env.PG_STMT_TIMEOUT ?? 0);
+  if (timeoutMs > 0) {
+    pool
+      .query(`SET statement_timeout TO ${timeoutMs}`)
+      .catch(() => void 0);
+  }
   return pool!;
 }
 
@@ -59,7 +65,7 @@ export async function handler(input: any) {
            PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY sentiment_score) AS p90,
            AVG((sentiment_score > 0.2)::int)::float AS pos_rate,
            AVG((sentiment_score < -0.2)::int)::float AS neg_rate,
-           AVG(subjectivity) AS subjectivity_mean
+           AVG(sentiment_subjectivity) AS subjectivity_mean
     FROM messages
     WHERE ${where.join(' AND ')}
     GROUP BY bucket_key

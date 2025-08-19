@@ -74,10 +74,19 @@ The server will begin syncing your rooms and expose an MCP server over STDIO. AI
 When running the HTTP MCP server (via `src/mcp.ts`), a read-only metrics endpoint is exposed:
 
 ```
-GET /metrics  ->  { counters: { decrypt_ok: N, decrypt_missing_session: M, ... } }
+GET /metrics  ->  {
+  counters: { decrypt_ok: N, decrypt_missing_session: M, ... },
+  rates: { decrypt_ok: Rpm, ... } // EWMA per minute
+}
 ```
 
 These counters provide basic observability for E2EE decryption and key request activity.
+
+Probe with curl (requires API key header):
+
+```
+curl -H "x-api-key: $MCP_API_KEY" http://127.0.0.1:8757/metrics?format=prom
+```
 
 ### Phased setup
 
@@ -160,16 +169,57 @@ sqlite3 room-logs/messages.db 'PRAGMA journal_mode=DELETE;' # disable WAL
 
 ## Development
 
-Install dependencies with `npm ci` and use the provided scripts to build, run tests (compiled), or lint the code:
+Install dependencies with `npm ci` and use the provided scripts to build, run tests (Node's built-in test runner under `test/`), or lint the code:
 
 ```bash
 npm run build
 npm test
 npm run test:coverage
 npm run lint
+
+### Resource pagination: context
+
+The context resource supports windows and cursors for navigation around an anchor event:
+
+- Endpoint: `im://matrix/room/:roomId/message/:eventId/context`
+- Query params:
+  - `before` (default 5): number of items before anchor
+  - `after` (default 5): number of items after anchor
+  - `cursor` (optional): event_id to re-anchor (used with pagination)
+  - `dir` (optional): `prev` or `next` to shift cursor before building the window
+- Response adds `prev_cursor` and `next_cursor` which can be fed into subsequent calls with `cursor` and `dir`.
 ```
 
 Pre-commit hooks run these checks automatically. The test suite currently exercises the utility helpers and runs with Node's built-in test runner. Coverage reports exclude the interactive `setup.js` script and enforce an 80% threshold on the remaining code.
+
+## Schema (Postgres)
+
+Core table: `messages`
+
+- event_id: primary key
+- room_id, sender, text, ts_utc timestamptz
+- lang: text
+- participants: text[]
+- has_media: boolean; media_types: text[] (GIN)
+- tz_day date, tz_week int, tz_month int, tz_year int, tz_hour int, tz_dow int
+- tokens, words, chars, attachments
+- tsv: tsvector (GIN)
+- embedding: vector (pgvector), embedding_model_ver: text
+- sentiment_score: real
+- sentiment_subjectivity: real
+- sentiment_emotions: jsonb, sentiment_toxicity: real, sentiment_politeness: real
+- sentiment_model_ver: text, sentiment_provenance: text
+- derived_from: jsonb
+
+Indexes
+
+- btree: (ts_utc), (room_id, ts_utc), (sender, ts_utc), (lang)
+- GIN: (media_types), (participants), (tsv)
+- Vector: ivfflat on (embedding) WITH (lists = 100)
+
+Optional
+
+- Partial index for histograms: `CREATE INDEX IF NOT EXISTS idx_messages_sent ON messages (ts_utc) WHERE sentiment_score IS NOT NULL;`
 
 ## Synapse configuration for self-key requests
 

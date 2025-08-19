@@ -30,6 +30,7 @@ const who_said: JSONSchema7 = {
     lang: { type: 'string' },
     from: { type: 'string', format: 'date-time' },
     to: { type: 'string', format: 'date-time' },
+    limit: { type: 'integer', minimum: 1, maximum: 1000, default: 200 },
   },
   required: ['pattern'],
 };

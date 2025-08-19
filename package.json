@@ -1,15 +1,17 @@
 {
   "name": "beeper-mcp",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json && cp mcp-tools.js utils.js dist/",
     "lint": "eslint .",
     "format": "prettier --check .",
     "start": "node dist/beeper-mcp-server.js",
-    "test": "npm run build && node --test dist/tests/**/*.js",
-    "test:coverage": "npm run build && c8 --check-coverage --lines 80 --branches 80 --functions 80 --exclude setup.js node --test dist/tests/**/*.js",
-    "prepare": "husky"
+    "test": "npm run build && node --test test/**/*.js",
+    "test:coverage": "npm run build && c8 --check-coverage --lines 80 --branches 80 --functions 80 --exclude setup.js node --test test/**/*.js",
+    "prepare": "husky",
+    "docker:build": "docker build -t beeper-mcp:$(node -p \"require('./package.json').version\") .",
+    "docker:run": "docker run --rm -p 8757:8757 -p 3000:3000 beeper-mcp:$(node -p \"require('./package.json').version\")"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",

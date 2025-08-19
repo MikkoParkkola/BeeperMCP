@@ -3,7 +3,9 @@ name: Node CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,16 +20,8 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-  # Always-passing placeholder to satisfy required "tests" check
-  tests:
-    name: tests
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo compat_tests_placeholder
-
-  # Real tests run separately and are non-blocking
-  ci-tests:
-    name: ci-tests
+  test:
+    name: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +31,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:coverage
-        continue-on-error: true
 
   lint:
     name: lint
@@ -63,18 +56,34 @@ jobs:
       - run: npm ci
       - run: npm run format
 
-  # Legacy commit status context to satisfy protections expecting "tests"
-  compat-tests-status:
-    name: compat status (tests)
-    if: github.event_name == 'pull_request'
+  docker:
+    name: docker image
     runs-on: ubuntu-latest
     permissions:
-      statuses: write
+      contents: read
+      packages: write
     steps:
-      - name: Mark legacy required status as success (tests)
-        uses: peter-evans/create-commit-status@v4
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          sha: ${{ github.event.pull_request.head.sha }}
-          context: tests
-          state: success
-          description: "Compatibility status to unblock merges"
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract version
+        id: vars
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.version }}
+            ghcr.io/${{ github.repository }}:latest

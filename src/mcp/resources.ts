@@ -1,5 +1,5 @@
 import { indexStatus } from '../index/status.js';
-import { queryLogs } from '../../utils.js';
+import * as U from '../../utils.js';
 
 export type ResourceHandler = (
   pathParams: Record<string, string>,
@@ -42,7 +42,7 @@ export function registerResources(logDb?: any, logSecret?: string) {
     const limit = Number(query.get('limit') ?? 100);
     const lang = query.get('lang') ?? undefined;
     if (!logDbRef) return { roomId, from, to, limit, lang, items: [] };
-    const items = queryLogs(logDbRef, roomId, limit, from, to, logSecretRef);
+    const items = U.queryLogs(logDbRef, roomId, limit, from, to, logSecretRef);
     return { roomId, from, to, limit, lang, items };
   });
 
@@ -51,6 +51,8 @@ export function registerResources(logDb?: any, logSecret?: string) {
     async (params, query) => {
       const before = Number(query.get('before') ?? 5);
       const after = Number(query.get('after') ?? 5);
+      const cursor = query.get('cursor') ?? undefined; // optional eventId cursor
+      const dir = query.get('dir') ?? undefined; // 'prev' | 'next'
       if (!logDbRef)
         return {
           roomId: params.roomId,
@@ -59,11 +61,25 @@ export function registerResources(logDb?: any, logSecret?: string) {
           after,
           items: [],
         };
-      // Look up anchor timestamp by event_id
-      const row = logDbRef
-        .prepare('SELECT ts FROM logs WHERE event_id = ? LIMIT 1')
-        .get(params.eventId);
-      const anchor = row?.ts as string | undefined;
+      // Determine anchor event: either the requested eventId or a cursor +/- one entry
+      let anchor = logDbRef
+        .prepare('SELECT ts, event_id, line, room_id FROM logs WHERE event_id = ? LIMIT 1')
+        .get(cursor || params.eventId);
+      if (anchor && dir === 'prev') {
+        const prev = logDbRef
+          .prepare(
+            'SELECT ts, event_id, line, room_id FROM logs WHERE room_id = ? AND ts < ? ORDER BY ts DESC LIMIT 1',
+          )
+          .get(params.roomId, anchor.ts);
+        if (prev) anchor = prev;
+      } else if (anchor && dir === 'next') {
+        const nxt = logDbRef
+          .prepare(
+            'SELECT ts, event_id, line, room_id FROM logs WHERE room_id = ? AND ts > ? ORDER BY ts ASC LIMIT 1',
+          )
+          .get(params.roomId, anchor.ts);
+        if (nxt) anchor = nxt;
+      }
       if (!anchor)
         return {
           roomId: params.roomId,
@@ -72,32 +88,41 @@ export function registerResources(logDb?: any, logSecret?: string) {
           after,
           items: [],
         };
-      const items = queryLogs(
-        logDbRef,
-        params.roomId,
-        before + after + 1,
-        undefined,
-        undefined,
-        logSecretRef,
-      );
-      // If we fetched broad logs, slice a window around anchor
-      const idx = items.findIndex((l: string) => l.includes(params.eventId));
-      if (idx === -1)
-        return {
-          roomId: params.roomId,
-          eventId: params.eventId,
-          before,
-          after,
-          items: [],
-        };
-      const start = Math.max(0, idx - before);
-      const end = Math.min(items.length, idx + after + 1);
+      // Fetch rows before and after based on timestamp
+      const prevRows = logDbRef
+        .prepare(
+          'SELECT ts, event_id, line FROM logs WHERE room_id = ? AND ts < ? ORDER BY ts DESC LIMIT ?',
+        )
+        .all(params.roomId, anchor.ts, before)
+        .reverse();
+      const nextRows = logDbRef
+        .prepare(
+          'SELECT ts, event_id, line FROM logs WHERE room_id = ? AND ts > ? ORDER BY ts ASC LIMIT ?',
+        )
+        .all(params.roomId, anchor.ts, after);
+      const maybeDec = (l: string) => {
+        if (!logSecretRef) return l;
+        try {
+          return (U as any).decryptLine ? (U as any).decryptLine(l, logSecretRef) : l;
+        } catch {
+          return l; // on failure, return as-is rather than dropping context
+        }
+      };
+      const items = [
+        ...prevRows.map((r: any) => ({ ts: r.ts, eventId: r.event_id, line: maybeDec(r.line) })),
+        { ts: anchor.ts, eventId: anchor.event_id, line: maybeDec(anchor.line) },
+        ...nextRows.map((r: any) => ({ ts: r.ts, eventId: r.event_id, line: maybeDec(r.line) })),
+      ];
+      const prev_cursor = prevRows.length ? prevRows[prevRows.length - 1].event_id : null;
+      const next_cursor = nextRows.length ? nextRows[0].event_id : null;
       return {
         roomId: params.roomId,
         eventId: params.eventId,
         before,
         after,
-        items: items.slice(start, end),
+        items,
+        prev_cursor,
+        next_cursor,
       };
     },
   );
@@ -131,4 +156,11 @@ export async function handleResource(uri: string, query: URLSearchParams) {
     }
   }
   throw new Error(`Resource not found: ${uri}`);
+}
+
+export function matchResourceTemplate(uri: string): string | null {
+  for (const r of routes) {
+    if (r.pattern.test(uri)) return r.template;
+  }
+  return null;
 }

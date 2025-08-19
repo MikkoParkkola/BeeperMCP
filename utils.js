@@ -59,6 +59,11 @@ function decrypt(data, secret, asBuffer = false) {
   return asBuffer ? dec : dec.toString('utf8');
 }
 
+// Exported helper for decrypting a single encrypted log line with LOG_SECRET.
+export function decryptLine(line, secret) {
+  return decrypt(line, secret);
+}
+
 export async function encryptFileStream(src, dest, secret) {
   const iv = crypto.randomBytes(16);
   const key = keyFromSecret(secret);
