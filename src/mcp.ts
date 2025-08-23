@@ -144,7 +144,7 @@ export async function initMcpServer(
       const format = url.searchParams.get('format');
       const verbose = url.searchParams.get('verbose') === '1';
       const all = verbose ? metricsSnapshotVerbose() : metricsSnapshotAll();
-        if (format === 'prom') {
+      if (format === 'prom') {
           const lines: string[] = [];
           const counters = (all as any).counters || metricsSnapshot();
           const rates = (all as any).rates || {};
