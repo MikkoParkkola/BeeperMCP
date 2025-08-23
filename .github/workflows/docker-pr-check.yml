@@ -21,6 +21,6 @@ jobs:
         with:
           context: .
           push: false
-          tags: ghcr.io/${{ github.repository }}:pr-${{ github.event.number }}
+          tags: ghcr.io/${{ tolower(github.repository) }}:pr-${{ github.event.number }}
           load: false
           provenance: false
