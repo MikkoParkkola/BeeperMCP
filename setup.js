@@ -67,7 +67,7 @@ function ensureDeps() {
   } catch (err) {
     logger.warn('Installing Node dependencies...', err);
     execSync(
-      'npm install ts-node matrix-js-sdk pino dotenv zod @modelcontextprotocol/sdk @matrix-org/olm',
+      'npm install ts-node matrix-js-sdk pino dotenv zod @modelcontextprotocol/sdk @matrix-org/olm better-sqlite3',
       { stdio: 'inherit' },
     );
   }
