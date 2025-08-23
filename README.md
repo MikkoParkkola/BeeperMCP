@@ -76,7 +76,7 @@ For multi-tenant deployments, start a separate container per user with distinct 
 
 ## Usage
 
-Create a `.beeper-mcp-server.env` file containing at least `MCP_API_KEY`, `MATRIX_USERID`, and `MATRIX_TOKEN` (or `MATRIX_PASSWORD`). You can copy `.beeper-mcp-server.env.example` and edit it, or let the `setup.js` script generate one. If you provide only a password, the generated access token is saved to `mx-cache/session.json` and used automatically on future runs. The server is written in TypeScript so you'll need `ts-node` (installed by `setup.js`) to run it:
+Create a `.beeper-mcp-server.env` file containing at least `MATRIX_USERID` and `MATRIX_TOKEN` (or `MATRIX_PASSWORD`). You can copy `.beeper-mcp-server.env.example` and edit it, or let the `setup.js` script generate one. If you provide only a password, the generated access token is saved to `~/.BeeperMCP/mx-cache/session.json` and used automatically on future runs. The server is written in TypeScript so you'll need `ts-node` (installed by `setup.js`) to run it:
 
 ```bash
 npx ts-node beeper-mcp-server.ts
@@ -102,11 +102,54 @@ Common optional variables are shown below (defaults in parentheses):
 - `TEST_ROOM_ID` – sync only a specific room (empty)
 - `TEST_LIMIT` – stop after decrypting N events (`0`)
 
-The server checks `_meta.apiKey` against `MCP_API_KEY` on every MCP request. Calls without the correct key are rejected.
+HTTP mode checks `_meta.apiKey` against `MCP_API_KEY` on every MCP request. STDIO mode does not require an API key.
 
 The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v3/account/whoami` endpoint before any data is downloaded. If the token does not match the provided `MATRIX_USERID`, the process exits with an error.
 
 The server will begin syncing your rooms and expose an MCP server over STDIO. AI clients can connect using the Model Context Protocol and invoke the provided tools to read or send messages on your behalf.
+
+## Binary downloads
+
+Prebuilt, single-file binaries are published on every tagged release (x64 only):
+
+Replace `owner/repo` with your repository path. Example URLs:
+
+- macOS (x64): https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-macos-x64
+- Linux (x64): https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-linux-x64
+- Windows (x64): https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-win-x64.exe
+
+The binaries are self-contained and persist all state under `~/.BeeperMCP` by default.
+
+Verify checksum (optional):
+
+```
+curl -sSLO https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/checksums.txt
+shasum -a 256 -c checksums.txt | grep beepermcp-macos-x64
+```
+
+### Running the binary
+
+- Chat UI: `./beepermcp` or `./beepermcp chat`
+- MCP STDIO server: `./beepermcp server`
+
+First run prompts for provider configuration and persists it to `~/.BeeperMCP/config.json`. Subsequent runs are instant.
+
+### Auto‑update
+
+The binary periodically checks for updates and can self-update:
+
+- Force update now: `./beepermcp update`
+- Auto-check runs once per day at startup. On macOS/Linux, the binary is replaced atomically. On Windows, a new file `beepermcp.exe.new` is staged and swapped on next start.
+
+To enable update checks, set the update source to your GitHub repo:
+
+```
+export BEEPERMCP_UPDATE_REPO=MikkoParkkola/BeeperMCP
+```
+
+If this variable is not set but the `repository` field in `package.json` points to a GitHub URL, it will be used automatically.
+
+Pre‑releases attached on each push to `main` are available under the Releases page (marked as prerelease). They include the same assets plus a `manifest.json` and `checksums.txt` for verification. The auto‑updater prefers the `manifest.json` asset to validate downloads.
 
 ### Fetch tool
 
