@@ -25,7 +25,8 @@ How We Work (Agent Guide)
 - Principles:
   - Push filters/aggregations to SQL. Avoid client-side loops over large sets.
   - Keep API key enforcement consistent across MCP tools and resources.
-  - Tests first where feasible; add minimal injection points instead of heavyweight mocks.
+- Tests first where feasible; add minimal injection points instead of heavyweight mocks.
+- Setup script's phased run uses `initClientCrypto` which falls back to `client.getCrypto().init()` when `client.initCrypto` is unavailable.
 
 Definition of Done
 
