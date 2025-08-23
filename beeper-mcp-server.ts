@@ -28,5 +28,5 @@
  * files run `npm ci && npm run build` before `npm test`.
  */
 
-import { startServer } from './src/server.js';
+import { startServer } from './src/server.ts';
 startServer();
