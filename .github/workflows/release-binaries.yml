@@ -1,0 +1,83 @@
+name: release-binaries
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: |
+          npm ci
+      - name: Build dist
+        run: |
+          npm run build
+      - name: Package binaries (x64)
+        run: |
+          npx pkg -t node22-macos-x64,node22-linux-x64,node22-win-x64 --compress Brotli \
+            --output build/beepermcp dist/src/bin.js
+          # pkg writes single output when one target; for multiple, it appends platform suffixes
+          ls -l build
+      - name: Rename artifacts and compute checksums/manifest
+        run: |
+          mkdir -p artifacts
+          # pkg outputs build/beepermcp-{platform}
+          mv build/beepermcp-macos-x64 artifacts/beepermcp-macos-x64
+          mv build/beepermcp-linux-x64 artifacts/beepermcp-linux-x64
+          mv build/beepermcp-win-x64.exe artifacts/beepermcp-win-x64.exe || true
+          cd artifacts
+          sha256sum beepermcp-* > checksums.txt || shasum -a 256 beepermcp-* > checksums.txt
+          node -e '
+            const fs=require("fs");
+            const cp=(n)=>fs.existsSync(n)?fs.statSync(n).size:0;
+            const txt=fs.readFileSync("checksums.txt","utf8");
+            const getSha=(n)=> (txt.split(/\n/).find(l=>l.includes(n))||"").split(/[\s]+/)[0];
+            // Prefer GITHUB_REF_NAME (e.g., v1.2.3), fallback to short SHA
+            const ref=process.env.GITHUB_REF_NAME||"";
+            const version=(ref.startsWith("v")?ref.slice(1):ref)|| (process.env.GITHUB_SHA||"").slice(0,7);
+            const assets=[
+              {name:"beepermcp-macos-x64", platform:"macos-x64"},
+              {name:"beepermcp-linux-x64", platform:"linux-x64"},
+              {name:"beepermcp-win-x64.exe", platform:"win-x64"}
+            ].filter(a=>fs.existsSync(a.name)).map(a=>({name:a.name, platform:a.platform, size:cp(a.name), sha256:getSha(a.name)}));
+            fs.writeFileSync("manifest.json", JSON.stringify({version, assets}, null, 2));
+          '
+          cd -
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: beepermcp-binaries
+          path: artifacts/*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: beepermcp-binaries
+          path: artifacts
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/beepermcp-macos-x64
+            artifacts/beepermcp-linux-x64
+            artifacts/beepermcp-win-x64.exe
+            artifacts/checksums.txt
+            artifacts/manifest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

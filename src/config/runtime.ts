@@ -1,4 +1,5 @@
 import path from 'path';
+import os from 'os';
 import dotenv from 'dotenv';
 import { z } from 'zod';
 import { envFlag } from '../../utils.js';
@@ -33,10 +34,17 @@ export interface RuntimeConfig {
 }
 
 export function loadConfig(): RuntimeConfig {
+  const HOME_BASE =
+    process.env.BEEPERMCP_HOME || path.join(os.homedir(), '.BeeperMCP');
+  const HOME_ENV = path.join(HOME_BASE, '.beeper-mcp-server.env');
+  try {
+    if (process.env.BEEPERMCP_HOME && HOME_ENV)
+      dotenv.config({ path: HOME_ENV });
+  } catch {}
   dotenv.config({ path: '.beeper-mcp-server.env' });
   const schema = z.object({
-    MATRIX_CACHE_DIR: z.string().default('./mx-cache'),
-    MESSAGE_LOG_DIR: z.string().default('./room-logs'),
+    MATRIX_CACHE_DIR: z.string().optional(),
+    MESSAGE_LOG_DIR: z.string().optional(),
     LOG_MAX_BYTES: z.coerce.number().default(5_000_000),
     LOG_SECRET: z.string().optional(),
     MEDIA_SECRET: z.string().optional(),
@@ -68,9 +76,11 @@ export function loadConfig(): RuntimeConfig {
     process.exit(1);
   }
   const env = result.data;
+  const cacheDir = env.MATRIX_CACHE_DIR || path.join(HOME_BASE, 'mx-cache');
+  const logDir = env.MESSAGE_LOG_DIR || path.join(HOME_BASE, 'room-logs');
   return {
-    cacheDir: env.MATRIX_CACHE_DIR,
-    logDir: env.MESSAGE_LOG_DIR,
+    cacheDir,
+    logDir,
     logMaxBytes: env.LOG_MAX_BYTES,
     logSecret: env.LOG_SECRET,
     mediaSecret: env.MEDIA_SECRET,
@@ -84,7 +94,7 @@ export function loadConfig(): RuntimeConfig {
     msc4190: env.MSC4190 !== 'false',
     msc3202: env.MSC3202 !== 'false',
     enableSendMessage: envFlag('ENABLE_SEND_MESSAGE'),
-    logDbPath: env.LOG_DB_PATH ?? path.join(env.MESSAGE_LOG_DIR, 'messages.db'),
+    logDbPath: env.LOG_DB_PATH ?? path.join(logDir, 'messages.db'),
     testRoomId: env.TEST_ROOM_ID,
     testLimit: env.TEST_LIMIT,
     sessionSecret: env.SESSION_SECRET,

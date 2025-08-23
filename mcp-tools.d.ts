@@ -35,7 +35,7 @@ export function buildMcpServer(
   client: any,
   logDb: any,
   enableSend: boolean,
-  apiKey: string,
+  apiKey?: string, // undefined disables API key enforcement (e.g., STDIO mode)
   logSecret?: string,
   queryFn?: (
     db: any,
