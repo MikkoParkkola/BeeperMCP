@@ -1,0 +1,23 @@
+0 verbose cli /Users/mikko/.nvm/versions/node/v23.9.0/bin/node /Users/mikko/.nvm/versions/node/v23.9.0/lib/node_modules/npm/bin/npm-cli.js
+1 info using npm@11.4.2
+2 info using node@v23.9.0
+3 silly config load:file:/Users/mikko/.nvm/versions/node/v23.9.0/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/mikko/github/BeeperMCP/.npmrc
+5 silly config load:file:/Users/mikko/.npmrc
+6 silly config load:file:/Users/mikko/.nvm/versions/node/v23.9.0/etc/npmrc
+7 verbose title npm exec pkg@5.8.1 -t node18-macos-arm64 --compress Brotli --output build/beepermcp_arm64 dist/src/bin.js
+8 verbose argv "exec" "--yes" "--" "pkg@5.8.1" "-t" "node18-macos-arm64" "--compress" "Brotli" "--output" "build/beepermcp_arm64" "dist/src/bin.js"
+9 verbose logfile logs-max:10 dir:/Users/mikko/github/BeeperMCP/.npm-cache/_logs/2025-08-23T23_29_27_400Z-
+10 verbose logfile /Users/mikko/github/BeeperMCP/.npm-cache/_logs/2025-08-23T23_29_27_400Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+13 verbose shrinkwrap failed to load node_modules/.package-lock.json out of date, updated: node_modules
+14 http fetch GET 200 https://registry.npmjs.org/pkg 195ms (cache revalidated)
+15 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+16 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+17 verbose cwd /Users/mikko/github/BeeperMCP
+18 verbose os Darwin 24.6.0
+19 verbose node v23.9.0
+20 verbose npm  v11.4.2
+21 verbose exit 2
+22 verbose code 2

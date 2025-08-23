@@ -38,6 +38,7 @@
     "@types/luxon": "^3.7.1",
     "@types/node": "^22.5.2",
     "@types/pg": "^8.15.5",
+    "@types/better-sqlite3": "^7.6.10",
     "@typescript-eslint/eslint-plugin": "^8.39.1",
     "@typescript-eslint/parser": "^8.39.1",
     "ajv": "^8.17.1",

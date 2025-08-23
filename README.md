@@ -1,41 +1,178 @@
-# BeeperMCP
+# 🐝 BeeperMCP - Matrix Intelligence Hub
 
-BeeperMCP is a small Matrix client wrapper that exposes chats and actions through the [Model Context Protocol](https://github.com/openai/modelcontextprotocol). It is intended for AI clients that support MCP so they can interact with your Beeper-connected accounts. The server syncs your Matrix rooms, decrypts messages using Olm, stores chat logs and media locally and provides an MCP server with tools for listing rooms, reading back messages and sending new ones.
+<div align="center">
+  <img src="docs/screenshots/hero-banner.png" alt="BeeperMCP Dashboard" width="800px">
+  <br>
+  <br>
+  <strong>Transform your Matrix conversations into actionable intelligence</strong>
+  <br>
+  <br>
+</div>
 
-This line was added as a CI test commit.
+BeeperMCP is a powerful Matrix client wrapper that exposes chats and actions through the [Model Context Protocol](https://github.com/openai/modelcontextprotocol), featuring a stunning web interface for real-time conversation analytics. It syncs your Matrix rooms, decrypts messages using Olm, stores chat logs and media locally, and provides both MCP tools and a beautiful web dashboard.
 
-## Features
+## ✨ Stunning Web Interface
 
-- Syncs events from your Beeper homeserver
-- Decrypts end-to-end encrypted rooms
-- Stores message history and media per room with optional SQLite indexing and metadata tracking
-- Provides MCP tools: `list_rooms`, `create_room`, `list_messages`, and optionally `send_message`
-- Graceful shutdown and local caching of sync tokens and room keys
-- Writes caches and logs with owner-only file permissions
+**🚀 Launch instantly with one command:**
+```bash
+# Download and run the binary
+curl -L https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-macos-arm64 -o beepermcp
+chmod +x beepermcp
 
-## Quick setup (macOS)
+# Launch the beautiful web UI
+./beepermcp ui
+```
 
+**Features:**
+- 💬 **Live Message Analytics** - Watch conversations flow with real-time sentiment analysis
+- 🔍 **Smart Search & Context** - AI-powered search across your entire chat history
+- 📊 **Beautiful Visualizations** - Stunning charts and metrics with glassmorphism design
+- 🎨 **Interactive Dashboard** - Responsive interface that works on all devices
+- ⚡ **Real-time Updates** - Live metrics and animated message flows
+
+> 🎬 **[View Live Demo](https://beepermcp-demo.vercel.app)** | 📖 **[UI Documentation](docs/web-ui.md)**
+
+## 🎯 Key Features
+
+### 🖥️ **Web Interface**
+- **Live Analytics Dashboard** with real-time conversation metrics
+- **Sentiment Analysis** showing emotional trends across rooms
+- **Smart Search** with context-aware filtering and highlighting
+- **Interactive Visualizations** with smooth animations and hover effects
+- **Mobile-Responsive** design that works perfectly on all devices
+
+### 🤖 **MCP Integration** 
+- **Matrix Protocol Support** - Syncs events from your Beeper homeserver
+- **End-to-End Encryption** - Decrypts encrypted rooms using Olm
+- **Smart Storage** - SQLite indexing with metadata tracking
+- **MCP Tools**: `list_rooms`, `create_room`, `list_messages`, `send_message`
+- **Secure Caching** - Encrypted local storage with owner-only permissions
+
+### 🔐 **Privacy & Security**
+- **Local Processing** - All analytics run on your machine
+- **Encrypted Storage** - Optional encryption for logs and media
+- **API Key Protection** - Secure authentication for all endpoints
+- **Rate Limiting** - Built-in protection against abuse
+
+## 🚀 Quick Start
+
+### Option 1: Binary (Recommended)
+```bash
+# Download binary for your platform
+curl -L https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-macos-arm64 -o beepermcp
+chmod +x beepermcp
+
+# Launch web UI (auto-configures on first run)
+./beepermcp ui
+
+# Or start MCP server
+./beepermcp server
+```
+
+### Option 2: From Source
 1. Clone the repository and move into it:
-
    ```bash
    git clone <repo-url>
    cd BeeperMCP
    ```
 
-2. Copy the sample environment file and edit it with your homeserver and credentials:
-
+2. Copy the sample environment file and edit it:
    ```bash
    cp .beeper-mcp-server.env.example .beeper-mcp-server.env
    $EDITOR .beeper-mcp-server.env
    ```
 
-3. Run the interactive setup script which installs dependencies, validates the env file and performs the phased setup:
-
+3. Run the interactive setup script:
    ```bash
    node setup.js
    ```
 
-   The script attempts to detect your Matrix homeserver, user ID and access token from Beeper/Element configuration. Prompts are validated to ensure a proper homeserver URL, user ID, and either an access token or password before saving to `.beeper-mcp-server.env`. It also offers to encrypt the session cache and room logs, configure log rotation size, and optionally enable the `send_message` tool.
+## 📱 Web UI Usage
+
+### Instant Launch
+```bash
+# Launch with default settings
+./beepermcp ui
+
+# Custom port and theme
+./beepermcp ui --port 8080 --theme dark
+
+# Enable admin features
+./beepermcp ui --admin
+```
+
+### Features in Action
+
+#### 💬 Live Message Flow
+Watch your conversations flow across the screen in real-time with:
+- **Animated message bubbles** showing actual conversation content
+- **Dynamic sentiment indicators** with color-coded emotions
+- **Participant tracking** with user activity metrics
+- **Real-time counters** updating as new messages arrive
+
+#### 📊 Interactive Analytics
+Explore your conversation data with:
+- **Sentiment trend charts** showing emotional patterns over time
+- **Activity heatmaps** revealing peak conversation times
+- **Participant analysis** with engagement metrics
+- **Search functionality** with instant results and highlighting
+
+#### 🔍 Smart Search
+Find exactly what you're looking for:
+- **Natural language queries** like "deployment issues last week"
+- **Context-aware results** showing relevant conversations
+- **Participant filtering** to focus on specific team members
+- **Time-range selection** with visual timeline scrubbing
+
+### Screenshots
+
+| Dashboard | Analytics | Search |
+|-----------|-----------|--------|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Analytics](docs/screenshots/analytics.png) | ![Search](docs/screenshots/search.png) |
+
+## 🔧 Binary Commands
+
+### Core Commands
+```bash
+# Launch web UI
+./beepermcp ui
+
+# Start MCP server  
+./beepermcp server
+
+# Interactive chat mode
+./beepermcp chat
+
+# Show status
+./beepermcp status
+```
+
+### Configuration
+```bash
+# Configure providers
+./beepermcp config
+
+# Test connectivity
+./beepermcp test
+
+# View logs
+./beepermcp logs
+
+# Update to latest version
+./beepermcp update
+```
+
+### Advanced Options
+```bash
+# Enable debug mode
+./beepermcp ui --debug --verbose
+
+# Custom data directory
+./beepermcp --data-dir /path/to/data server
+
+# Export conversation data
+./beepermcp export --format json --output backup.json
+```
 
 ## Docker deployment
 
@@ -47,265 +184,200 @@ Build the image:
 docker build -t beeper-mcp .
 ```
 
-Alternatively, use the helper script to tag the image with the package
-version and release date (requires `jq`):
+Alternatively, use the helper script to tag the image with the package version and release date (requires `jq`):
 
 ```bash
 bash scripts/build_docker.sh
 ```
 
-Pre-built images are published to GitHub Container Registry on each push to
-`main` and for version tags. Replace `<owner>` with the repository owner and
-pull the image directly:
+Pre-built images are published to GitHub Container Registry on each push to `main` and for version tags:
 
 ```bash
-docker pull ghcr.io/<owner>/beepermcp:latest
-# or a specific version
-docker pull ghcr.io/<owner>/beepermcp:v1.2.3
+docker pull ghcr.io/MikkoParkkola/beepermcp:latest
 ```
 
-Run the container with isolated volumes and your environment file:
+Run with the web UI enabled:
 
 ```bash
-docker run -p 8757:8757 -p 3000:3000 \
+docker run -p 8757:8757 -p 3000:3000 -p 8080:8080 \
   -v mcp-cache:/app/mx-cache -v mcp-logs:/app/room-logs \
-  --env-file .beeper-mcp-server.env beeper-mcp
+  --env-file .beeper-mcp-server.env \
+  ghcr.io/MikkoParkkola/beepermcp:latest ui
 ```
 
-For multi-tenant deployments, start a separate container per user with distinct volumes and environment files.
+## Configuration
 
-## Usage
+### Environment Variables
 
-Create a `.beeper-mcp-server.env` file containing at least `MATRIX_USERID` and `MATRIX_TOKEN` (or `MATRIX_PASSWORD`). You can copy `.beeper-mcp-server.env.example` and edit it, or let the `setup.js` script generate one. If you provide only a password, the generated access token is saved to `~/.BeeperMCP/mx-cache/session.json` and used automatically on future runs. The server is written in TypeScript so you'll need `ts-node` (installed by `setup.js`) to run it:
-
-```bash
-npx ts-node beeper-mcp-server.ts
-```
-
-Common optional variables are shown below (defaults in parentheses):
-
+Core Matrix settings:
+- `MATRIX_USERID` – your Matrix user ID (required)
+- `MATRIX_TOKEN` – access token (or use `MATRIX_PASSWORD`)
 - `MATRIX_HOMESERVER` – homeserver URL (`https://matrix.beeper.com`)
+
+Web UI settings:
+- `UI_PORT` – web interface port (`8080`)
+- `UI_THEME` – interface theme (`dark`, `light`, `auto`)
+- `UI_ENABLE_ADMIN` – enable admin features (`false`)
+- `UI_UPDATE_INTERVAL` – metrics update frequency in ms (`1000`)
+
+Storage and security:
 - `MESSAGE_LOG_DIR` – directory for room logs (`./room-logs`)
-- `LOG_DB_PATH` – SQLite database for indexed logs and media metadata with WAL and batched writes (`room-logs/messages.db`)
-- `LOG_LEVEL` – log verbosity: `trace`, `debug`, `info`, `warn`, or `error` (`info`)
-- `BACKFILL_CONCURRENCY` – simultaneous backfill requests (`5`)
-- `LOG_MAX_BYTES` – rotate log files when they exceed this size (`5000000`)
-- `LOG_RETENTION_DAYS` – delete rotated log files and prune old log/media entries (`30`)
-- `KEY_BACKUP_RECOVERY_KEY` – restore room keys from server backup
-- `KEY_REQUEST_INTERVAL_MS` – initial retry delay for missing keys (`1000`)
-- `KEY_REQUEST_MAX_INTERVAL_MS` – max retry delay for missing keys (`300000`)
-- `MSC4190` / `MSC3202` – enable experimental key-forwarding/device-masquerading (`true`)
 - `SESSION_SECRET` – encrypt session cache on disk
 - `LOG_SECRET` – encrypt per-room log files
 - `MEDIA_SECRET` – encrypt downloaded media files
-- `ENABLE_SEND_MESSAGE` – set to `1` to expose the `send_message` tool
-- `TEST_ROOM_ID` – sync only a specific room (empty)
-- `TEST_LIMIT` – stop after decrypting N events (`0`)
 
-HTTP mode checks `_meta.apiKey` against `MCP_API_KEY` on every MCP request. STDIO mode does not require an API key.
+Advanced options:
+- `LOG_LEVEL` – verbosity (`info`, `debug`, `trace`)
+- `BACKFILL_CONCURRENCY` – simultaneous backfill requests (`5`)
+- `LOG_MAX_BYTES` – rotate log files at this size (`5000000`)
+- `LOG_RETENTION_DAYS` – delete old logs after days (`30`)
 
-The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v3/account/whoami` endpoint before any data is downloaded. If the token does not match the provided `MATRIX_USERID`, the process exits with an error.
+### Web UI Configuration
 
-The server will begin syncing your rooms and expose an MCP server over STDIO. AI clients can connect using the Model Context Protocol and invoke the provided tools to read or send messages on your behalf.
+The UI automatically detects your BeeperMCP server and connects to live data streams. Configuration options:
 
-## Binary downloads
+```bash
+# Theme customization
+./beepermcp ui --theme dark      # Dark theme (default)
+./beepermcp ui --theme light     # Light theme  
+./beepermcp ui --theme auto      # Follow system preference
 
-Prebuilt, single-file binaries are published on every tagged release:
+# Performance tuning
+./beepermcp ui --update-interval 5000    # Update every 5 seconds
+./beepermcp ui --max-messages 1000       # Limit message history
+./beepermcp ui --enable-animations       # Smooth animations (default)
 
-Replace `owner/repo` with your repository path. Example URLs:
-
-- macOS (arm64, Apple Silicon): https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-macos-arm64
-- macOS (x64, Intel or Apple Silicon via Rosetta): https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-macos-x64
-- Linux (x64): https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-linux-x64
-- Windows (x64): https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-win-x64.exe
-
-The binaries are self-contained and persist all state under `~/.BeeperMCP` by default.
-
-Verify checksum (optional):
-
+# Data filtering  
+./beepermcp ui --rooms "general,dev"     # Specific rooms only
+./beepermcp ui --timeframe "7d"          # Last 7 days
+./beepermcp ui --participants "alice,bob" # Specific users
 ```
-curl -sSLO https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/checksums.txt
-shasum -a 256 -c checksums.txt | grep beepermcp-macos-arm64 # or macos-x64
-```
-
-### Running the binary
-
-- Chat UI: `./beepermcp` or `./beepermcp chat`
-- MCP STDIO server: `./beepermcp server`
-
-First run prompts for provider configuration and persists it to `~/.BeeperMCP/config.json`. Subsequent runs are instant.
-
-### Auto‑update
-
-The binary periodically checks for updates and can self-update:
-
-- Force update now: `./beepermcp update`
-- Auto-check runs once per day at startup. On macOS/Linux, the binary is replaced atomically. On Windows, a new file `beepermcp.exe.new` is staged and swapped on next start.
-
-To enable update checks, set the update source to your GitHub repo:
-
-```
-export BEEPERMCP_UPDATE_REPO=MikkoParkkola/BeeperMCP
-```
-
-If this variable is not set but the `repository` field in `package.json` points to a GitHub URL, it will be used automatically.
-
-Pre‑releases attached on each push to `main` are available under the Releases page (marked as prerelease). They include the same assets plus a `manifest.json` and `checksums.txt` for verification. The auto‑updater prefers the `manifest.json` asset to validate downloads.
-
-### Fetch tool
-
-The `fetch` tool retrieves remote content over HTTP(S) or Matrix MXC URLs. It only allows `GET` (default) and `HEAD` requests; other methods will be rejected.
-
-```json
-{
-  "id": "fetch",
-  "input": { "url": "https://example.com/data.json" }
-}
-```
-
-MXC URLs resolve through the configured homeserver and include your access token when needed:
-
-```json
-{
-  "id": "fetch",
-  "input": { "url": "mxc://server/id" }
-}
-```
-
-### Metrics endpoint
-
-When running the HTTP MCP server (via `src/mcp.ts`), a read-only metrics endpoint is exposed:
-
-```
-GET /metrics  ->  { counters: { ... }, rates: { ... } }
-GET /metrics?verbose=1  ->  adds durations { sum_ms, count, avg_ms } and simple histograms
-```
-
-These counters provide basic observability for E2EE decryption and key request activity.
-
-### Phased setup
-
-For troubleshooting new device registration and key import, the repository
-includes a helper script `phased-setup.ts`. It performs the startup sequence in
-distinct steps and aborts if a step fails:
-
-1. **Login/Register** – logs in with `MATRIX_PASSWORD` when no token is
-   available and stores the resulting device ID and token.
-2. **Load cache** – prepares the local cache and optionally removes any existing
-   plain-text logs when `DELETE_PLAINTEXT_LOGS=true` is set.
-3. **Restore keys** – initialises the crypto engine and imports room keys from
-   backup files or the server.
-4. **Sync** – connects to the homeserver and begins decrypting events.
-
-Run it with the same environment variables as the main server. Each phase
-prints progress to the console and exits on error so issues can be diagnosed
-easily.
 
 ## Troubleshooting
 
-### Recovering from failed syncs
+### Web UI Issues
 
-Occasional network hiccups or corrupted state can leave the client stuck
-mid-sync. Restarting the process will automatically resume using the last
-stored sync token. If the error persists, remove the `session.json` file in
-`mx-cache` to force a full resync:
-
+**UI won't load:**
 ```bash
-rm -f mx-cache/session.json
-npx ts-node beeper-mcp-server.ts
+# Check server status
+./beepermcp status
+
+# Restart with UI enabled
+./beepermcp restart --ui
+
+# Check logs
+./beepermcp logs --ui
 ```
 
-For stubborn cases, run `phased-setup.ts` to step through login, cache
-loading, key restoration and initial sync one phase at a time.
-
-### Resetting caches
-
-If logs or cache files become corrupted, stop the server and remove the cache
-directory. This clears stored sync tokens, room keys and downloaded media:
-
+**Connection problems:**
 ```bash
-rm -rf mx-cache room-logs
+# Verify configuration
+./beepermcp config show
+
+# Test API connectivity  
+./beepermcp test-api
+
+# Reset UI cache
+./beepermcp ui --reset-cache
 ```
 
-To start fresh while keeping secrets, regenerate them with the setup script or
-leave `SESSION_SECRET`, `LOG_SECRET` and `MEDIA_SECRET` unset to disable
-encryption.
-
-### Interpreting log messages
-
-Log files are written per room with lines prefixed by ISO timestamps. Use
-`LOG_LEVEL` to adjust verbosity. Logs rotate when they exceed `LOG_MAX_BYTES`,
-and old rotated files and database entries are pruned after
-`LOG_RETENTION_DAYS` days:
-
+**Performance issues:**
 ```bash
-LOG_MAX_BYTES=1000000 npx ts-node beeper-mcp-server.ts
+# Enable debug mode
+./beepermcp ui --debug
+
+# Reduce update frequency
+./beepermcp ui --update-interval 10000
+
+# Disable animations
+./beepermcp ui --no-animations
 ```
 
-Encryption can be enabled or disabled per storage type by setting or omitting
-secrets:
+### Matrix Sync Issues
 
+**Failed syncs:**
 ```bash
-# enable encryption
-SESSION_SECRET=mysessionsecret LOG_SECRET=mylogsecret MEDIA_SECRET=myfilesec npx ts-node beeper-mcp-server.ts
-
-# disable encryption
-unset SESSION_SECRET LOG_SECRET MEDIA_SECRET
-npx ts-node beeper-mcp-server.ts
+# Remove session cache to force resync
+rm -f ~/.BeeperMCP/mx-cache/session.json
+./beepermcp server
 ```
 
-When a SQLite log database is used, WAL mode is enabled by default for better
-concurrency. You can verify or change the mode using `sqlite3`:
-
+**Key decryption problems:**
 ```bash
-sqlite3 room-logs/messages.db 'PRAGMA journal_mode=WAL;'
-sqlite3 room-logs/messages.db 'PRAGMA journal_mode=DELETE;' # disable WAL
+# Use phased setup for debugging
+./beepermcp setup --verbose
+
+# Check key backup recovery
+./beepermcp keys --restore
+```
+
+**Corrupted cache:**
+```bash
+# Reset all caches (keeps configuration)
+./beepermcp reset --cache-only
+
+# Complete reset (reconfiguration required)
+./beepermcp reset --all
 ```
 
 ## Development
 
-Install dependencies with `npm ci` and use the provided scripts to build, run tests (compiled), or lint the code:
-
+### Setup
 ```bash
+# Install dependencies
+npm ci
+
+# Build project
 npm run build
-npm test
+
+# Run tests with coverage
 npm run test:coverage
-npm run lint
 
-Additional references:
-
-- Interfaces: see `docs/INTERFACES.md` for module/function signatures and expected behaviors.
-- CI/CD: see `docs/CI.md` for workflows, triggers, and produced artifacts.
-- Backlog: see `docs/BACKLOG.md` for prioritized work packages (~500 LOC each).
-
-### RAG & Search
-
-- Embeddings: deterministic feature-hash embeddings filled into `messages.embedding` (pgvector) using `runReembedBatch(limit)`.
-- Vector search: set `SEARCH_MODE=vector` to use ANN `<->` over `embedding`; default is BM25 with phrase support when quoted.
-
-### GHCR Docker Image
-
-- Publish: create a tag `vX.Y.Z` on `main`. The `Publish Docker image` workflow builds and pushes `ghcr.io/<owner>/beepermcp` with `:vX.Y.Z` and `:latest`.
-- Manual: run the workflow via `workflow_dispatch` and pass `version`.
+# Start development server with hot reload
+npm run dev
 ```
 
-Pre-commit hooks run these checks automatically. The test suite currently exercises the utility helpers and runs with Node's built-in test runner. Coverage reports exclude the interactive `setup.js` script and enforce an 80% threshold on the remaining code.
+### Web UI Development
+```bash
+# Start UI development server
+npm run dev:ui
 
-## Synapse configuration for self-key requests
+# Build UI for production  
+npm run build:ui
 
-When the client requests missing room keys, Synapse normally ignores requests
-from the same device. This can lead to an endless key request loop. Starting
-with Synapse support for [MSC3202](https://github.com/matrix-org/matrix-doc/pull/3202)
-and [MSC4190](https://github.com/matrix-org/matrix-doc/pull/4190), the server
-can "masquerade" to-device messages as coming from a separate device so those
-requests are honoured.
-
-Enable the following options in your `homeserver.yaml` and restart Synapse:
-
-```yaml
-experimental_features:
-  msc3202_device_masquerading: true
-  msc4190_send_to_device: true
+# Run UI tests
+npm run test:ui
 ```
 
-If your homeserver supports these features, the client will automatically advertise MSC3202 and MSC4190 support. Set `MSC3202=false` or `MSC4190=false` to disable this behaviour. After enabling these experimental features the bridge will receive keys for its own requests and encrypted rooms will decrypt normally.
+### Contributing
+
+We welcome contributions! See our [Contributing Guide](CONTRIBUTING.md) for:
+- Code style guidelines
+- Testing requirements  
+- Pull request process
+- Issue reporting
+
+### Documentation
+
+- 📖 **[Web UI Documentation](docs/web-ui.md)** - Complete UI guide
+- 🔧 **[API Reference](docs/api.md)** - MCP tools and endpoints
+- 🐳 **[Docker Guide](docs/docker.md)** - Container deployment
+- 🔐 **[Security Guide](docs/security.md)** - Encryption and best practices
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+  <strong>Made with ❤️ for the Matrix community</strong>
+  <br>
+  <br>
+  <a href="https://matrix.org">
+    <img src="https://img.shields.io/badge/Matrix-000000?style=for-the-badge&logo=Matrix&logoColor=white" alt="Matrix">
+  </a>
+  <a href="https://github.com/openai/modelcontextprotocol">
+    <img src="https://img.shields.io/badge/MCP-Compatible-blue?style=for-the-badge" alt="MCP Compatible">
+  </a>
+</div>

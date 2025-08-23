@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "pkg": "^5.8.1"
+  },
+  "_npx": {
+    "packages": [
+      "pkg@5.8.1"
+    ]
+  }
+}
