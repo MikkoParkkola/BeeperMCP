@@ -130,6 +130,22 @@ async function restoreRoomKeys(client: MatrixClient, logger: Pino.Logger) {
   }
 }
 
+export async function initClientCrypto(
+  client: MatrixClient,
+  logger: Pino.Logger,
+) {
+  const cryptoApi = (client as any).getCrypto?.();
+  if (typeof (client as any).initCrypto === 'function') {
+    await (client as any).initCrypto();
+  } else if (cryptoApi && typeof (cryptoApi as any).init === 'function') {
+    await (cryptoApi as any).init();
+  } else {
+    logger.warn(
+      'Crypto initialization skipped: no initCrypto() or getCrypto().init()',
+    );
+  }
+}
+
 async function phaseGetKeys(client: MatrixClient, logger: Pino.Logger) {
   logger.info('Phase 3: load encryption keys');
   try {
@@ -142,7 +158,7 @@ async function phaseGetKeys(client: MatrixClient, logger: Pino.Logger) {
     logger.error(`Olm init failed: ${e.message}`);
     throw e;
   }
-  await (client as any).initCrypto();
+  await initClientCrypto(client, logger);
   await restoreRoomKeys(client, logger);
 }
 
