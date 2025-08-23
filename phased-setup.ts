@@ -65,6 +65,7 @@ async function phaseLogin(
     session.setItem('deviceId', res.device_id);
     logger.info(`Logged in as ${UID}, device ${res.device_id}`);
     client.setAccessToken(TOKEN!);
+    process.env.MATRIX_TOKEN = TOKEN!;
     return { client, token: TOKEN! };
   } catch (e: any) {
     logger.error(`Login failed: ${e.message}`);
