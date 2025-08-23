@@ -271,6 +271,12 @@ npm test
 npm run test:coverage
 npm run lint
 
+Additional references:
+
+- Interfaces: see `docs/INTERFACES.md` for module/function signatures and expected behaviors.
+- CI/CD: see `docs/CI.md` for workflows, triggers, and produced artifacts.
+- Backlog: see `docs/BACKLOG.md` for prioritized work packages (~500 LOC each).
+
 ### RAG & Search
 
 - Embeddings: deterministic feature-hash embeddings filled into `messages.embedding` (pgvector) using `runReembedBatch(limit)`.
