@@ -1,8 +1,11 @@
 {
   "name": "beeper-mcp",
-  "version": "1.3.0",
-  "releaseDate": "2025-08-17",
+  "version": "0.15.1",
+  "releaseDate": "2025-08-24",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && cp mcp-tools.js utils.js dist/",
     "lint": "eslint .",

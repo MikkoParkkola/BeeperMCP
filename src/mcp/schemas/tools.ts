@@ -1,6 +1,6 @@
 import { JSONSchema7 } from 'json-schema';
 
-const search_messages: JSONSchema7 = {
+const search: JSONSchema7 = {
   type: 'object',
   additionalProperties: false,
   properties: {
@@ -201,8 +201,23 @@ const send_message: JSONSchema7 = {
   required: ['room_id', 'draft_preview'],
 };
 
+const fetch: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    url: { type: 'string' },
+    method: { type: 'string' },
+    headers: {
+      type: 'object',
+      additionalProperties: { type: 'string' },
+    },
+    maxBytes: { type: 'integer', minimum: 1 },
+  },
+  required: ['url'],
+};
+
 export const toolsSchemas = {
-  search_messages,
+  search,
   who_said,
   recap,
   extract_open_loops,
@@ -212,4 +227,5 @@ export const toolsSchemas = {
   sentiment_distribution,
   draft_reply,
   send_message,
+  fetch,
 };

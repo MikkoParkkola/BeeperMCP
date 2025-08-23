@@ -23,8 +23,12 @@ export interface SearchFilters {
 
 export interface SearchHit {
   event_id: string;
+  room_id: string;
+  sender: string;
+  text: string | null;
   ts_utc: string;
   score: number;
+  uri: string;
 }
 
 export async function searchHybrid(
@@ -83,7 +87,13 @@ export async function searchHybrid(
 
   const where = parts.length ? `WHERE ${parts.join(' AND ')}` : '';
   const sql = `
-    SELECT event_id, ts_utc, ts_rank(tsv, plainto_tsquery($1)) AS score
+    SELECT
+      event_id,
+      room_id,
+      sender,
+      substring(text for 200) AS text,
+      ts_utc,
+      ts_rank(tsv, plainto_tsquery($1)) AS score
     FROM messages
     ${where}
     ORDER BY score DESC, ts_utc DESC
@@ -91,5 +101,12 @@ export async function searchHybrid(
   `;
   const res = await client.query(sql, args);
   client.release();
-  return res.rows as SearchHit[];
+  return res.rows.map((r: any) => ({
+    ...r,
+    uri: `im://matrix/room/${r.room_id}/message/${r.event_id}/context`,
+  }));
+}
+
+export function __setTestPool(p: any) {
+  pool = p;
 }

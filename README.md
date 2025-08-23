@@ -2,6 +2,8 @@
 
 BeeperMCP is a small Matrix client wrapper that exposes chats and actions through the [Model Context Protocol](https://github.com/openai/modelcontextprotocol). It is intended for AI clients that support MCP so they can interact with your Beeper-connected accounts. The server syncs your Matrix rooms, decrypts messages using Olm, stores chat logs and media locally and provides an MCP server with tools for listing rooms, reading back messages and sending new ones.
 
+This line was added as a CI test commit.
+
 ## Features
 
 - Syncs events from your Beeper homeserver
@@ -37,13 +39,19 @@ BeeperMCP is a small Matrix client wrapper that exposes chats and actions throug
 
 ## Docker deployment
 
-The repository includes a multi-stage Dockerfile suitable for local or multi-tenant hosting. The runtime image runs as an unprivileged user and stores state under `/app/mx-cache` and `/app/room-logs`.
+The repository includes a multi-stage Dockerfile suitable for local or multi-tenant hosting. The runtime image runs as the built-in `node` user and stores state under `/app/mx-cache` and `/app/room-logs`.
 
-Build the image (override `USER_ID`/`GROUP_ID` to match the host or tenant IDs):
+Build the image:
 
 ```bash
 docker build -t beeper-mcp .
-# docker build -t beeper-mcp --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) .
+```
+
+Alternatively, use the helper script to tag the image with the package
+version and release date (requires `jq`):
+
+```bash
+bash scripts/build_docker.sh
 ```
 
 Pre-built images are published to GitHub Container Registry on each push to
@@ -99,6 +107,26 @@ The server checks `_meta.apiKey` against `MCP_API_KEY` on every MCP request. Cal
 The server will validate your `MATRIX_TOKEN` using the Matrix `/_matrix/client/v3/account/whoami` endpoint before any data is downloaded. If the token does not match the provided `MATRIX_USERID`, the process exits with an error.
 
 The server will begin syncing your rooms and expose an MCP server over STDIO. AI clients can connect using the Model Context Protocol and invoke the provided tools to read or send messages on your behalf.
+
+### Fetch tool
+
+The `fetch` tool retrieves remote content over HTTP(S) or Matrix MXC URLs. It only allows `GET` (default) and `HEAD` requests; other methods will be rejected.
+
+```json
+{
+  "id": "fetch",
+  "input": { "url": "https://example.com/data.json" }
+}
+```
+
+MXC URLs resolve through the configured homeserver and include your access token when needed:
+
+```json
+{
+  "id": "fetch",
+  "input": { "url": "mxc://server/id" }
+}
+```
 
 ### Metrics endpoint
 
