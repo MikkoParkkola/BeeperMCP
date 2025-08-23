@@ -132,15 +132,18 @@ export async function initMcpServer(
         }),
       );
     } else if (req.method === 'GET' && req.url?.startsWith('/metrics')) {
-      const key = req.headers['x-api-key'];
-      if (key !== apiKey) {
+      const keyHeader = req.headers['x-api-key'];
+      const provided = Array.isArray(keyHeader) ? keyHeader[0] : keyHeader;
+      const ok = provided && scopesMap.has(String(provided));
+      if (!ok) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'unauthorized' }));
-      } else {
-        const url = new URL(req.url, 'http://localhost');
-        const format = url.searchParams.get('format');
-        const verbose = url.searchParams.get('verbose') === '1';
-        const all = verbose ? metricsSnapshotVerbose() : metricsSnapshotAll();
+        return;
+      }
+      const url = new URL(req.url, 'http://localhost');
+      const format = url.searchParams.get('format');
+      const verbose = url.searchParams.get('verbose') === '1';
+      const all = verbose ? metricsSnapshotVerbose() : metricsSnapshotAll();
         if (format === 'prom') {
           const lines: string[] = [];
           const counters = (all as any).counters || metricsSnapshot();
@@ -165,7 +168,6 @@ export async function initMcpServer(
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify(all));
         }
-      }
     } else {
       void transport.handleRequest(req, res);
     }
