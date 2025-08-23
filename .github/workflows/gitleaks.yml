@@ -1,6 +1,7 @@
+---
 name: Gitleaks
 
-on:
+'on':
   push:
     branches: [main]
   pull_request:

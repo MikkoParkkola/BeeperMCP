@@ -1,13 +1,16 @@
+---
 name: Publish Docker image
 
-on:
+'on':
   push:
     tags:
       - 'v*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag to publish (e.g., v1.1.0). Leave empty to use tag ref or package.json.'
+        description: >-
+          Version tag to publish (e.g., v1.1.0). Leave empty to use tag ref or
+          package.json.
         required: false
         type: string
 

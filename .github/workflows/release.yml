@@ -1,6 +1,7 @@
+---
 name: Create GitHub Release on tag
 
-on:
+'on':
   push:
     tags:
       - 'v*'

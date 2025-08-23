@@ -1,6 +1,7 @@
+---
 name: Docker build (PR check)
 
-on:
+'on':
   pull_request:
     paths:
       - 'Dockerfile'

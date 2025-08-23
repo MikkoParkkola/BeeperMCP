@@ -1,3 +1,4 @@
+---
 name: AI Review
 
 on:
@@ -5,20 +6,29 @@ on:
 
 jobs:
   ai_review:
-    if: ${{ vars.AI_REVIEW_ENABLED == 'true' }}
+    if: "${{ vars.AI_REVIEW_ENABLED == 'true' }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v7
         with:
           script: |
-            const body = `AI Review requested. Please provide structured verdict:\n\n\
-            {\n\
-              \"verdict\": \"approve | changes_requested\",\n\
-              \"blockers\": [],\n\
-              \"major\": [],\n\
-              \"minor\": [],\n\
-              \"risk\": {\"security\":\"low|med|high\",\"perf\":\"ok|regression\",\"ux\":\"ok|issues\"}\n\
-            }`;
+            const body = `
+              AI Review requested. Please provide structured verdict:
+
+              ```json
+              {
+                "verdict": "approve | changes_requested",
+                "blockers": [],
+                "major": [],
+                "minor": [],
+                "risk": {
+                  "security": "low|med|high",
+                  "perf": "ok|regression",
+                  "ux": "ok|issues"
+                }
+              }
+              ```
+            `;
             github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
