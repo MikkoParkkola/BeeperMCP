@@ -64,6 +64,7 @@ function ensureDeps() {
   }
   try {
     require.resolve('ts-node');
+    require.resolve('better-sqlite3');
   } catch (err) {
     logger.warn('Installing Node dependencies...', err);
     execSync(
