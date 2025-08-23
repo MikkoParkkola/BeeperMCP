@@ -13,6 +13,7 @@ chmod +x install.sh
 ```
 
 This will:
+
 - Check Node.js version (requires v22+)
 - Install dependencies
 - Build the project
@@ -23,6 +24,7 @@ This will:
 ### 2. Configure Your Matrix Credentials
 
 Edit `.beeper-mcp-server.env`:
+
 ```bash
 MATRIX_HOMESERVER=https://matrix.beeper.com
 MATRIX_USERID=@your-username:beeper.com
@@ -91,6 +93,7 @@ Configuration goes in `claude_desktop_config.json`:
 ### Other Clients
 
 Most MCP clients support similar configuration. Use:
+
 - **Command**: `node`
 - **Args**: `["./dist/beeper-mcp-server.js"]`
 - **Environment**: `MCP_STDIO_MODE=1`
@@ -99,16 +102,19 @@ Most MCP clients support similar configuration. Use:
 ## 🔄 Running the Server
 
 ### STDIO Mode (for local clients like BoltAI)
+
 ```bash
 ./start-stdio.sh
 ```
 
 ### HTTP Mode (for remote clients)
+
 ```bash
 ./start-http.sh
 ```
 
 ### Manual Start
+
 ```bash
 # STDIO mode
 MCP_STDIO_MODE=1 node dist/beeper-mcp-server.js
@@ -120,11 +126,13 @@ MCP_HTTP_MODE=1 MCP_SERVER_PORT=3000 node dist/beeper-mcp-server.js
 ## 💾 Configuration Backup & Restore
 
 ### Save your configuration for reuse on other machines:
+
 ```bash
 node config-backup.js save
 ```
 
 ### Restore configuration:
+
 ```bash
 node config-backup.js restore
 ```

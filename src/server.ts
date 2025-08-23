@@ -11,7 +11,8 @@ const UID = process.env.MATRIX_USERID;
 const TOKEN = process.env.MATRIX_TOKEN;
 const CACHE_DIR = process.env.MATRIX_CACHE_DIR ?? './mx-cache';
 const ENABLE_SEND = process.env.ENABLE_SEND_MESSAGE === '1';
-const API_KEY = process.env.MCP_API_KEY || (isStdioMode() ? 'local-stdio-mode' : undefined);
+const API_KEY =
+  process.env.MCP_API_KEY || (isStdioMode() ? 'local-stdio-mode' : undefined);
 const PORT = parseInt(process.env.MCP_SERVER_PORT || '3000');
 
 export async function startServer() {
@@ -67,7 +68,14 @@ export async function startServer() {
       if (!API_KEY) {
         throw new Error('MCP_API_KEY is required for HTTP mode');
       }
-      return await startHttpServer(client, logDb, ENABLE_SEND, API_KEY, undefined, PORT);
+      return await startHttpServer(
+        client,
+        logDb,
+        ENABLE_SEND,
+        API_KEY,
+        undefined,
+        PORT,
+      );
     }
   } catch (e) {
     console.error('Failed to start server:', e);

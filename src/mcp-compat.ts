@@ -1,6 +1,6 @@
 /**
  * MCP Protocol Version Compatibility Layer
- * 
+ *
  * Provides backward compatibility with older MCP protocol versions
  * while supporting the latest features when available.
  */
@@ -22,7 +22,7 @@ export const MCP_VERSIONS: Record<string, MCPVersionInfo> = {
     requiresApiKey: false, // Local STDIO mode doesn't need API key
   },
   '2025-03-26': {
-    version: '2025-03-26', 
+    version: '2025-03-26',
     supportsBatching: true,
     supportsStreamableHttp: true,
     supportsOAuth: true,
@@ -34,24 +34,29 @@ export const MCP_VERSIONS: Record<string, MCPVersionInfo> = {
     supportsStreamableHttp: true,
     supportsOAuth: true,
     requiresApiKey: true,
-  }
+  },
 };
 
 export function getVersionInfo(version?: string): MCPVersionInfo {
   // Default to oldest compatible version for maximum compatibility
   const defaultVersion = '2024-11-05';
-  return MCP_VERSIONS[version || defaultVersion] || MCP_VERSIONS[defaultVersion];
+  return (
+    MCP_VERSIONS[version || defaultVersion] || MCP_VERSIONS[defaultVersion]
+  );
 }
 
-export function negotiateVersion(clientVersion?: string, serverVersion?: string): MCPVersionInfo {
+export function negotiateVersion(
+  clientVersion?: string,
+  serverVersion?: string,
+): MCPVersionInfo {
   const client = getVersionInfo(clientVersion);
   const server = getVersionInfo(serverVersion);
-  
+
   // Use the older version to ensure compatibility
   const versions = Object.keys(MCP_VERSIONS).sort();
   const clientIndex = versions.indexOf(client.version);
   const serverIndex = versions.indexOf(server.version);
-  
+
   const compatibleVersion = versions[Math.min(clientIndex, serverIndex)];
   return MCP_VERSIONS[compatibleVersion];
 }
@@ -64,7 +69,7 @@ export function isStdioMode(): boolean {
 export function shouldRequireApiKey(versionInfo: MCPVersionInfo): boolean {
   // Never require API key for local STDIO mode
   if (isStdioMode()) return false;
-  
+
   // For HTTP mode, respect version requirements
   return versionInfo.requiresApiKey;
 }
