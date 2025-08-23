@@ -45,7 +45,8 @@ export function initPackBootstrap() {
   const isPkg = (process as any).pkg;
   if (!isPkg) return;
   const versionTag = process.version.replace(/^v/, 'v');
-  const base = path.join(homeBase(), 'native', versionTag);
+  const archTag = `${process.platform}-${process.arch}`;
+  const base = path.join(homeBase(), 'native', `${versionTag}-${archTag}`);
   const nodeModules = path.join(base, 'node_modules');
   ensureDir(nodeModules);
 

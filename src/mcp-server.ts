@@ -3,6 +3,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { randomUUID } from 'node:crypto';
 import http from 'http';
 import { buildMcpServer } from '../mcp-tools.js';
+import { registerResources } from './mcp/resources.js';
 import { negotiateVersion, isStdioMode } from './mcp-compat.js';
 import type { MatrixClient } from 'matrix-js-sdk';
 
@@ -23,7 +24,17 @@ export async function createMcpServer(
     throw new Error('MCP_API_KEY is required for HTTP mode');
   }
 
-  return buildMcpServer(client, logDb, enableSend, effectiveApiKey, logSecret);
+  // Build server and ensure resources are registered (history/context/media)
+  const srv = buildMcpServer(
+    client,
+    logDb,
+    enableSend,
+    effectiveApiKey,
+    logSecret,
+  );
+  // Register MCP resources handlers with current DB/secret
+  registerResources(logDb, logSecret);
+  return srv;
 }
 
 export async function startStdioServer(

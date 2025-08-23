@@ -30,3 +30,11 @@ Upgrading
 
 - Download the latest binary from Releases and make it executable.
 - Optional: set `BEEPERMCP_UPDATE_REPO=MikkoParkkola/BeeperMCP` to enable auto‑update.
+## 1.3.2 – Native Apple Silicon (macOS arm64)
+
+Highlights
+
+- Added native macOS arm64 binary for Apple Silicon alongside macOS x64.
+- Release workflows updated to build and publish `beepermcp-macos-arm64`.
+- Updater detects `macos-arm64` platform tag and fetches native binary.
+- Bootstrap uses an arch‑scoped native cache to avoid cross‑arch conflicts.

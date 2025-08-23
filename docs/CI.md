@@ -9,7 +9,7 @@ Workflows (enabled):
 - `ci.yml` – Build, test (coverage), lint, and produce Docker image tarballs as artifacts on pushes to `main` and PRs.
 - `docker-publish.yml` – Build and push Docker images to GHCR on tags `v*` (and optionally manual `workflow_dispatch`).
 - `release.yml` – Create a GitHub Release with auto-generated notes on tags `v*`.
-- `release-binaries.yml` – Build x64 single-file binaries (macOS/Linux/Windows), generate checksums and manifest, attach to Release on tags `v*.*.*`.
+- `release-binaries.yml` – Build single-file binaries (macOS x64 + arm64, Linux x64, Windows x64), generate checksums and manifest, attach to Release on tags `v*.*.*`.
 - `prerelease-binaries.yml` – Build the same binaries and attach them to a prerelease on each push to `main`.
 - `gitleaks.yml` – Scan for secrets on `main` and PRs.
 - `sbom.yml` – Generate CycloneDX SBOM `sbom.json` for the source tree on `main`/PRs.
@@ -55,6 +55,7 @@ Workflows (disabled examples): `codeql.yml.disabled`, `semgrep.yml.disabled`, `a
   - `npm ci`, `npm run build`
   - `npx pkg` to produce:
     - `build/beepermcp-macos-x64`
+    - `build/beepermcp-macos-arm64`
     - `build/beepermcp-linux-x64`
     - `build/beepermcp-win-x64.exe`
   - Move to `artifacts/`, compute `checksums.txt` (SHA-256), and generate `manifest.json`:
@@ -105,4 +106,3 @@ Internal notes:
 - Binaries retrieve updates from GitHub Releases using `manifest.json` and `checksums.txt` published by the workflows above.
 - Set `BEEPERMCP_UPDATE_REPO=owner/repo` or ensure `package.json.repository` is a GitHub URL.
 - On macOS/Linux, the running binary is atomically replaced; on Windows a `*.new.exe` is staged and swapped on next start.
-

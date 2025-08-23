@@ -43,9 +43,10 @@ function isPackaged(): boolean {
   return !!(process as any).pkg;
 }
 
-function platformTag(): 'macos-x64' | 'linux-x64' | 'win-x64' | null {
+function platformTag(): 'macos-x64' | 'macos-arm64' | 'linux-x64' | 'win-x64' | null {
   const p = process.platform;
-  if (p === 'darwin') return 'macos-x64';
+  const a = process.arch;
+  if (p === 'darwin') return a === 'arm64' ? 'macos-arm64' : 'macos-x64';
   if (p === 'linux') return 'linux-x64';
   if (p === 'win32') return 'win-x64';
   return null;

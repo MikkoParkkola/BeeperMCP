@@ -110,11 +110,12 @@ The server will begin syncing your rooms and expose an MCP server over STDIO. AI
 
 ## Binary downloads
 
-Prebuilt, single-file binaries are published on every tagged release (x64 only):
+Prebuilt, single-file binaries are published on every tagged release:
 
 Replace `owner/repo` with your repository path. Example URLs:
 
-- macOS (x64): https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-macos-x64
+- macOS (arm64, Apple Silicon): https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-macos-arm64
+- macOS (x64, Intel or Apple Silicon via Rosetta): https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-macos-x64
 - Linux (x64): https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-linux-x64
 - Windows (x64): https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-win-x64.exe
 
@@ -124,7 +125,7 @@ Verify checksum (optional):
 
 ```
 curl -sSLO https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/checksums.txt
-shasum -a 256 -c checksums.txt | grep beepermcp-macos-x64
+shasum -a 256 -c checksums.txt | grep beepermcp-macos-arm64 # or macos-x64
 ```
 
 ### Running the binary
