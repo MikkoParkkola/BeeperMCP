@@ -145,34 +145,34 @@ export async function initMcpServer(
       const verbose = url.searchParams.get('verbose') === '1';
       const all = verbose ? metricsSnapshotVerbose() : metricsSnapshotAll();
       if (format === 'prom') {
-          const lines: string[] = [];
-          const counters = (all as any).counters || metricsSnapshot();
-          const rates = (all as any).rates || {};
-          for (const [k, v] of Object.entries(counters)) {
-            lines.push(`${k}_total ${v}`);
-          }
-          for (const [k, v] of Object.entries(rates)) {
-            lines.push(`${k}_rate ${v}`);
-          }
-          if (verbose && (all as any).durations) {
-            const d = (all as any).durations;
-            for (const [k, v] of Object.entries(d.sum_ms || {})) {
-              lines.push(`${k}_sum ${v}`);
-            }
-            for (const [k, v] of Object.entries(d.count || {})) {
-              lines.push(`${k}_count ${v}`);
-            }
-            for (const [k, v] of Object.entries(d.avg_ms || {})) {
-              lines.push(`${k}_avg ${v}`);
-            }
-          }
-          const body = lines.join('\n') + '\n';
-          res.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4' });
-          res.end(body);
-        } else {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify(all));
+        const lines: string[] = [];
+        const counters = (all as any).counters || metricsSnapshot();
+        const rates = (all as any).rates || {};
+        for (const [k, v] of Object.entries(counters)) {
+          lines.push(`${k}_total ${v}`);
         }
+        for (const [k, v] of Object.entries(rates)) {
+          lines.push(`${k}_rate ${v}`);
+        }
+        if (verbose && (all as any).durations) {
+          const d = (all as any).durations;
+          for (const [k, v] of Object.entries(d.sum_ms || {})) {
+            lines.push(`${k}_sum ${v}`);
+          }
+          for (const [k, v] of Object.entries(d.count || {})) {
+            lines.push(`${k}_count ${v}`);
+          }
+          for (const [k, v] of Object.entries(d.avg_ms || {})) {
+            lines.push(`${k}_avg ${v}`);
+          }
+        }
+        const body = lines.join('\n') + '\n';
+        res.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4' });
+        res.end(body);
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(all));
+      }
     } else {
       void transport.handleRequest(req, res);
     }
