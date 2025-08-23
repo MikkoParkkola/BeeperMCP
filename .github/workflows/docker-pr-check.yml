@@ -1,0 +1,26 @@
+---
+name: Docker build (PR check)
+
+'on':
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - '.github/workflows/docker*'
+      - 'package.json'
+      - 'src/**'
+      - 'utils.js'
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: ghcr.io/${{ tolower(github.repository) }}:pr-${{ github.event.number }}
+          load: false
+          provenance: false

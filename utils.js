@@ -428,8 +428,14 @@ export class FileSessionStore {
       if (this.secret) raw = decrypt(raw, this.secret);
       this.#data = JSON.parse(raw);
     } catch (err) {
-      logger.warn(`Failed to load session store ${this.file}`, err);
       this.#data = {};
+      if (err && err.code === 'ENOENT') {
+        let out = JSON.stringify(this.#data);
+        if (this.secret) out = encrypt(out, this.secret);
+        fs.writeFileSync(this.file, out, { mode: 0o600 });
+      } else {
+        logger.warn(`Failed to load session store ${this.file}`, err);
+      }
     }
   }
   #data;

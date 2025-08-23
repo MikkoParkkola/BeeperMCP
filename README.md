@@ -133,7 +133,8 @@ MXC URLs resolve through the configured homeserver and include your access token
 When running the HTTP MCP server (via `src/mcp.ts`), a read-only metrics endpoint is exposed:
 
 ```
-GET /metrics  ->  { counters: { decrypt_ok: N, decrypt_missing_session: M, ... } }
+GET /metrics  ->  { counters: { ... }, rates: { ... } }
+GET /metrics?verbose=1  ->  adds durations { sum_ms, count, avg_ms } and simple histograms
 ```
 
 These counters provide basic observability for E2EE decryption and key request activity.
@@ -226,6 +227,16 @@ npm run build
 npm test
 npm run test:coverage
 npm run lint
+
+### RAG & Search
+
+- Embeddings: deterministic feature-hash embeddings filled into `messages.embedding` (pgvector) using `runReembedBatch(limit)`.
+- Vector search: set `SEARCH_MODE=vector` to use ANN `<->` over `embedding`; default is BM25 with phrase support when quoted.
+
+### GHCR Docker Image
+
+- Publish: create a tag `vX.Y.Z` on `main`. The `Publish Docker image` workflow builds and pushes `ghcr.io/<owner>/beepermcp` with `:vX.Y.Z` and `:latest`.
+- Manual: run the workflow via `workflow_dispatch` and pass `version`.
 ```
 
 Pre-commit hooks run these checks automatically. The test suite currently exercises the utility helpers and runs with Node's built-in test runner. Coverage reports exclude the interactive `setup.js` script and enforce an 80% threshold on the remaining code.

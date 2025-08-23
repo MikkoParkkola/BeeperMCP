@@ -1,3 +1,10 @@
+inherit: true
+override:
+
+- "Workflow"
+- "Definition of Done"
+- "Automation"
+
 # Project status and roadmap (for agents and contributors)
 
 Purpose
@@ -39,6 +46,7 @@ Definition of Done
 - Document code and remove dead code.
 - Ensure dashboards and statistics are up to date.
 - Complete security review and implement recommendations.
+  - CI runs CodeQL, Semgrep, gitleaks, dependency audit, and produces a CycloneDX SBOM. Releases include SLSA provenance where applicable.
 - Complete architecture review and implement recommendations.
 - Complete performance review and implement recommendations.
 - Complete UX review and implement recommendations.
@@ -70,6 +78,7 @@ Current state (as of this repo snapshot)
   - tsconfig.json is a single NodeNext project emitting to `dist/`.
   - CI uses `npm ci`, builds, then runs tests and lint.
   - `.github/workflows/docker-publish.yml` builds and pushes Docker images to GHCR on every push to `main`, tagging each image with the package version, commit SHA, and `latest`.
+  - Security and supply-chain workflows aligned with org policy (CodeQL, Semgrep, gitleaks, SBOM). Merge queue uses GitHub native automerge.
 - Resources (src/mcp/resources.ts)
   - registerResources(logDb, logSecret) wires history/context/media to SQLite logs/media.
   - src/mcp.ts passes logDb/logSecret to registerResources.
@@ -225,3 +234,15 @@ Notes for contributors
   - matrix-js-sdk upgraded to ^37.13.0 to address GHSA advisories (freeze on bad predecessor, overly permissive key sharing, MXC path traversal). Breaking changes are managed via our stubs and wrappers.
   - Do not auto-verify devices. The previous `setDeviceVerified` sweep has been removed to avoid accidental key sharing to malicious devices. Leave verification to explicit user workflows and cross-signing.
   - Media MXC handling: we sanitize filenames and store media under per-room directories to avoid traversal; keep using `safeFilename` and never trust remote filenames.
+
+Versioning
+
+- This repository follows the org policy: Conventional Commits with either semantic-release or Changesets. Update `CHANGELOG.md` and version consistently with the chosen system.
+
+---
+
+## Model Rate Limits
+
+Please be aware that all cloud-based models (including Codex, Claude, Gemini, etc.) are subject to rate limits. If a model becomes unresponsive, it is likely that it has hit a rate limit. These limits will reset after a certain period of time.
+
+The only model not subject to rate limits is the locally-run Ollama.

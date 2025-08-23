@@ -37,11 +37,58 @@ export async function searchHybrid(
   limit = 50,
   owner = 'local',
 ): Promise<SearchHit[]> {
-  // Minimal stub: BM25 via ts_rank only
+  const mode = (process.env.SEARCH_MODE || '').toLowerCase();
   const p = getPool();
   const client = await (p as any).connect();
   await client.query('SET app.user = $1', [owner]);
-  const parts: string[] = ['tsv @@ plainto_tsquery($1)'];
+  if (mode === 'vector') {
+    // Vector search using pgvector
+    const { hashEmbed, embedLiteral } = await import('./embed.js');
+    const qvec = hashEmbed(query);
+    const lit = embedLiteral(qvec);
+    const whereParts: string[] = [];
+    const args: any[] = [];
+    let i = 1;
+    if (filters.from) {
+      whereParts.push(`ts_utc >= $${i++}`);
+      args.push(filters.from.toISOString());
+    }
+    if (filters.to) {
+      whereParts.push(`ts_utc <= $${i++}`);
+      args.push(filters.to.toISOString());
+    }
+    if (filters.rooms?.length) {
+      whereParts.push(`room_id = ANY($${i++})`);
+      args.push(filters.rooms);
+    }
+    if (filters.participants?.length) {
+      whereParts.push(`sender = ANY($${i++})`);
+      args.push(filters.participants);
+    }
+    if (filters.lang) {
+      whereParts.push(`lang = $${i++}`);
+      args.push(filters.lang);
+    }
+    const where = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
+    const sql = `
+      SELECT event_id, room_id, sender, substring(text for 200) AS text, ts_utc,
+             (embedding <-> $${i}::vector) AS score
+      FROM messages
+      ${where}
+      ORDER BY embedding <-> $${i}::vector ASC
+      LIMIT ${limit}
+    `;
+    const res = await client.query(sql, [...args, lit]);
+    client.release();
+    return res.rows.map((r: any) => ({
+      ...r,
+      uri: `im://matrix/room/${r.room_id}/message/${r.event_id}/context`,
+    }));
+  }
+  // Default: BM25 via ts_rank
+  const phrase = /".+"/.test(query);
+  const tsFunc = phrase ? 'phraseto_tsquery' : 'plainto_tsquery';
+  const parts: string[] = [`tsv @@ ${tsFunc}($1)`];
   const args: any[] = [query];
   let arg = 2;
   if (filters.from) {
@@ -93,7 +140,7 @@ export async function searchHybrid(
       sender,
       substring(text for 200) AS text,
       ts_utc,
-      ts_rank(tsv, plainto_tsquery($1)) AS score
+      ts_rank(tsv, ${tsFunc}($1)) AS score
     FROM messages
     ${where}
     ORDER BY score DESC, ts_utc DESC

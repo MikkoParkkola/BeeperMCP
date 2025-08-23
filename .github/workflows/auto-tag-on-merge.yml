@@ -1,0 +1,50 @@
+---
+name: Auto-tag on merge (package.json version)
+
+'on':
+  push:
+    branches: [main]
+    paths:
+      - package.json
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: get
+        name: Read version from package.json
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Create tag if missing
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = core.getInput('version', { required: false }) ||
+              '${{ steps.get.outputs.version }}';
+            const tag = `v${version}`;
+            const { data: tags } = await github.rest.repos.listTags({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+            const exists = tags.some(t => t.name === tag);
+            core.info(`Desired tag: ${tag}; exists=${exists}`);
+            if (!exists) {
+              const sha = context.sha;
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `refs/tags/${tag}`,
+                sha
+              });
+              core.info(`Created tag ${tag} at ${sha}`);
+            } else {
+              core.info(`Tag ${tag} already exists; skipping.`);
+            }

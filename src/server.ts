@@ -1,138 +1,65 @@
-/**
- * beeper-mcp-server.ts v2.2.0
- *
- * • Local cache for syncToken
- * • E2EE decryption via Olm (required) with optional rust-crypto
- * • Saves chat logs and media per-room
- * • MCP tools: list_rooms, create_room, list_messages, send_message
- * • Graceful shutdown
- */
-
-/// <reference path="../matrix-js-sdk-shim.d.ts" />
-
-import pino from 'pino';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.beeper-mcp-server.env' });
+import sdk from 'matrix-js-sdk';
 import fs from 'fs';
 import path from 'path';
-import {
-  ensureDir,
-  openLogDb,
-  createLogWriter,
-  createMediaWriter,
-  createMediaDownloader,
-  createFlushHelper,
-  cleanupLogsAndMedia,
-} from '../utils.js';
-import { setupEventLogging } from './event-logger.js';
-import { startSync } from './sync.js';
-import { initMcpServer } from './mcp.js';
-import { createMatrixClient } from './client.js';
-import { loadConfig } from './config/runtime.js';
-const config = loadConfig();
-const logger = pino({ level: config.logLevel }) as any;
-let TOKEN: string | undefined = config.token;
-if (!TOKEN) {
-  try {
-    const sessionPath = path.join(config.cacheDir, 'session.json');
-    if (fs.existsSync(sessionPath)) {
-      const data = JSON.parse(fs.readFileSync(sessionPath, 'utf8')) as Record<
-        string,
-        string
-      >;
-      TOKEN = data.token;
-    }
-  } catch (err: any) {
-    logger.warn('Failed to read session token from cache', err);
-  }
-}
-if (!config.userId || !TOKEN) {
-  console.error('Error: MATRIX_USERID and MATRIX_TOKEN must be set');
-  process.exit(1);
-}
 
-// --- Session Store for sync tokens ---
+const HS = process.env.MATRIX_HOMESERVER ?? 'https://matrix.beeper.com';
+const UID = process.env.MATRIX_USERID;
+const TOKEN = process.env.MATRIX_TOKEN;
+const CACHE_DIR = process.env.MATRIX_CACHE_DIR ?? './mx-cache';
+
 export async function startServer() {
-  ensureDir(config.cacheDir);
-  ensureDir(config.logDir);
-  const logDb = openLogDb(config.logDbPath);
-  await cleanupLogsAndMedia(config.logDir, logDb, config.logRetentionDays);
-  const flusher = createFlushHelper();
-  const { queue: queueLog, flush: flushLogs } = createLogWriter(
-    logDb,
-    config.logSecret,
-  );
-  flusher.register(flushLogs);
-  const { queue: queueMedia, flush: flushMedia } = createMediaWriter(logDb);
-  flusher.register(flushMedia);
-  const mediaDownloader = createMediaDownloader(
-    logDb,
-    queueMedia,
-    queueLog,
-    config.mediaSecret,
-  );
-  // test mode: limit to one room and number of events
-  const TEST_ROOM_ID = config.testRoomId;
-  const TEST_LIMIT = config.testLimit;
+  console.log('Starting Beeper MCP server...');
 
-  const { client, sessionStore } = await createMatrixClient(
-    {
-      baseUrl: config.homeserver,
-      userId: config.userId,
-      accessToken: TOKEN!,
-      cacheDir: config.cacheDir,
-      msc4190: config.msc4190,
-      msc3202: config.msc3202,
-      sessionSecret: config.sessionSecret,
-      keyBackupRecoveryKey: config.keyBackupRecoveryKey,
-    },
-    logger,
-  );
+  if (!UID) throw new Error('MATRIX_USERID is required');
+  if (!TOKEN) throw new Error('MATRIX_TOKEN is required');
 
-  const syncKey = `syncToken:${config.userId}`;
-  let mcpServerInstance: any;
-  let httpServer: any;
+  // Ensure cache directory exists
+  if (!fs.existsSync(CACHE_DIR)) {
+    fs.mkdirSync(CACHE_DIR, { recursive: true });
+  }
 
-  const shutdown = async () => {
-    logger.info('Shutting down');
-    try {
-      await flusher.flush();
-      await client.stopClient();
-      await mediaDownloader.flush();
-      await mcpServerInstance?.close();
-      await new Promise((resolve) => httpServer?.close(resolve));
-    } catch (err: any) {
-      logger.warn('Error during shutdown', err);
+  // Load device ID from session if available
+  let deviceId = null;
+  try {
+    const sessionFile = path.join(CACHE_DIR, 'session.json');
+    if (fs.existsSync(sessionFile)) {
+      const sessionData = JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
+      deviceId = sessionData.deviceId;
     }
-    process.exit(0);
-  };
+  } catch (e) {
+    console.warn('Failed to load session data:', e);
+  }
 
-  setupEventLogging(client, logger, {
-    logDir: config.logDir,
-    logMaxBytes: config.logMaxBytes,
-    logSecret: config.logSecret,
-    mediaSecret: config.mediaSecret,
-    mediaDownloader,
-    queueLog,
-    testRoomId: TEST_ROOM_ID,
-    testLimit: TEST_LIMIT,
-    uid: config.userId!,
-    shutdown,
+  // Generate a new device ID if we don't have one
+  if (!deviceId) {
+    deviceId = Math.random().toString(36).substring(2, 12);
+  }
+
+  console.log('Creating Matrix client...');
+  const client = sdk.createClient({
+    baseUrl: HS,
+    userId: UID,
+    accessToken: TOKEN,
+    deviceId: deviceId,
   });
 
-  await startSync(client, sessionStore, syncKey, logger, {
-    concurrency: config.backfillConcurrency,
-    testRoomId: TEST_ROOM_ID,
-    cacheDir: config.cacheDir,
-  });
+  try {
+    console.log('Verifying access token...');
+    const whoami = await client.whoami();
+    console.log('Authenticated as:', whoami.user_id);
 
-  ({ mcpServer: mcpServerInstance, httpServer } = await initMcpServer(
-    client,
-    logDb,
-    config.enableSendMessage,
-    config.mcpApiKey,
-    config.logSecret,
-    config.mcpPort,
-  ));
+    console.log('Server is ready!');
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+    // Keep the process running
+    setInterval(() => {
+      console.log('Server running...');
+    }, 60000);
+
+    return client;
+  } catch (e) {
+    console.error('Failed to start server:', e);
+    throw e;
+  }
 }

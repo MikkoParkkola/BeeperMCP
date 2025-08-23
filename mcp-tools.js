@@ -39,10 +39,30 @@ export function buildMcpServer(
     version,
     description: 'Matrix↔MCP logger',
   });
+  const scopesMap = new Map();
+  String(apiKey)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .forEach((tok) => {
+      const [k, sc = ''] = tok.split(':');
+      scopesMap.set(
+        k,
+        new Set(sc ? sc.split(/[+.,]/) : ['tools', 'resources']),
+      );
+    });
+  const isAllowed = (key, scope) => {
+    const k = Array.isArray(key) ? key[0] : key;
+    if (!k) return false;
+    const s = scopesMap.get(k);
+    if (!s) return false;
+    return s.has(scope) || s.has('all');
+  };
 
   const authWrapper = (cb) => {
     return (args, extra) => {
-      if (extra?._meta?.apiKey !== apiKey) throw new Error('Invalid API key');
+      if (!isAllowed(extra?._meta?.apiKey, 'tools'))
+        throw new Error('Invalid API key');
       return cb(args, extra);
     };
   };
@@ -118,7 +138,9 @@ export function buildMcpServer(
   const wrapHandler = (method) => {
     const orig = srv.server._requestHandlers.get(method);
     srv.server._requestHandlers.set(method, (req, extra) => {
-      if (extra?._meta?.apiKey !== apiKey) throw new Error('Invalid API key');
+      const scope = method.startsWith('resources') ? 'resources' : 'tools';
+      if (!isAllowed(extra?._meta?.apiKey, scope))
+        throw new Error('Invalid API key');
       return orig(req, extra);
     });
   };

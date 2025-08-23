@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { config } from '../config.js';
+import { hashEmbed, embedLiteral } from './embed.js';
 
 /*
   Suggested additional files to add to the chat/repo for full wiring and testing:
@@ -34,24 +35,29 @@ function getPool() {
 }
 
 export async function runReembedBatch(limit = 100): Promise<number> {
-  // Placeholder: mark rows as current without re-embedding
   const p = getPool();
-  const res = await p
-    .query(
-      `
-      WITH to_update AS (
-        SELECT event_id
-        FROM messages
-        WHERE embedding_model_ver IS NULL OR embedding_model_ver <> $1
-        LIMIT $2
-      )
-      UPDATE messages AS m
-      SET embedding_model_ver = $1
-      FROM to_update tu
-      WHERE m.event_id = tu.event_id
-      `,
+  const client = await (p as any).connect();
+  try {
+    const sel = await client.query(
+      `SELECT event_id, coalesce(text,'') AS text
+       FROM messages
+       WHERE embedding_model_ver IS DISTINCT FROM $1 OR embedding IS NULL
+       ORDER BY ts_utc ASC
+       LIMIT $2`,
       [config.embeddings.modelVer, limit],
-    )
-    .catch(() => ({ rowCount: 0 }) as any);
-  return (res as any).rowCount ?? 0;
+    );
+    let updated = 0;
+    for (const r of sel.rows as any[]) {
+      const vec = hashEmbed(r.text, config.embeddings.dim);
+      const lit = embedLiteral(vec);
+      await client.query(
+        `UPDATE messages SET embedding = $2::vector, embedding_model_ver = $1 WHERE event_id = $3`,
+        [config.embeddings.modelVer, lit, r.event_id],
+      );
+      updated += 1;
+    }
+    return updated;
+  } finally {
+    client.release();
+  }
 }

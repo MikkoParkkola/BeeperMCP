@@ -1,6 +1,7 @@
+---
 name: Lint (quick)
 
-on:
+'on':
   pull_request:
     paths:
       - '**/*.ts'
