@@ -1,20 +1,36 @@
 {
   "name": "beeper-mcp",
-  "version": "1.3.0",
-  "releaseDate": "2025-08-24",
+  "version": "1.3.1",
+  "releaseDate": "2025-08-23",
   "type": "module",
   "engines": {
     "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MikkoParkkola/BeeperMCP.git"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && cp mcp-tools.js utils.js dist/",
     "lint": "eslint .",
     "format": "prettier --check .",
     "start": "node dist/beeper-mcp-server.js",
+    "chat": "node dist/src/cli/chat.js",
+    "pack:pkg": "pkg -t node22-macos-x64 --compress Brotli --output build/beepermcp dist/src/bin.js",
+    "pack:all": "pkg -t node22-macos-x64,node22-linux-x64,node22-win-x64 --compress Brotli --output build/beepermcp dist/src/bin.js",
     "test": "npm run build && node --test test/*.test.js",
     "test:coverage": "npm run build && c8 --reporter=text --reporter=lcov --report-dir=coverage --check-coverage --lines 80 --branches 80 --functions 80 --exclude setup.js --exclude 'dist/**' node --test test/*.test.js",
     "build:docker": "bash scripts/build_docker.sh",
     "prepare": "husky"
+  },
+  "bin": {
+    "beepermcp": "dist/src/bin.js"
+  },
+  "pkg": {
+    "assets": [
+      "node_modules/@matrix-org/olm/**/*",
+      "node_modules/@matrix-org/matrix-sdk-crypto-nodejs/**/*"
+    ]
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
@@ -31,6 +47,7 @@
     "husky": "^9.0.0",
     "pg-mem": "^3.0.5",
     "prettier": "^3.2.5",
+    "pkg": "^5.8.1",
     "typescript": "^5.9.2"
   },
   "dependencies": {

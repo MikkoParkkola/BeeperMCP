@@ -33,25 +33,29 @@ export function buildMcpServer(
   logSecret,
   queryFn = queryLogs,
 ) {
-  if (!apiKey) throw new Error('MCP_API_KEY is required');
+  // If no apiKey is provided, disable API key enforcement (e.g., STDIO mode)
+  const authDisabled = !apiKey;
   const srv = new McpServer({
     name: 'Beeper',
     version,
     description: 'Matrix↔MCP logger',
   });
   const scopesMap = new Map();
-  String(apiKey)
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .forEach((tok) => {
-      const [k, sc = ''] = tok.split(':');
-      scopesMap.set(
-        k,
-        new Set(sc ? sc.split(/[+.,]/) : ['tools', 'resources']),
-      );
-    });
+  if (!authDisabled) {
+    String(apiKey)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .forEach((tok) => {
+        const [k, sc = ''] = tok.split(':');
+        scopesMap.set(
+          k,
+          new Set(sc ? sc.split(/[+.,]/) : ['tools', 'resources']),
+        );
+      });
+  }
   const isAllowed = (key, scope) => {
+    if (authDisabled) return true;
     const k = Array.isArray(key) ? key[0] : key;
     if (!k) return false;
     const s = scopesMap.get(k);

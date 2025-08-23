@@ -1,15 +1,29 @@
 import dotenv from 'dotenv';
+import os from 'os';
+import path from 'path';
+// Prefer config under ~/.BeeperMCP for standalone/packaged use
+const HOME_BASE =
+  process.env.BEEPERMCP_HOME || path.join(os.homedir(), '.BeeperMCP');
+const HOME_ENV = path.join(HOME_BASE, '.beeper-mcp-server.env');
+try {
+  // Load home-scoped env first if present
+  if (fs.existsSync(HOME_ENV)) dotenv.config({ path: HOME_ENV });
+} catch {}
+// Then load cwd env file (overrides home values when present)
 dotenv.config({ path: '.beeper-mcp-server.env' });
 import sdk from 'matrix-js-sdk';
 import fs from 'fs';
-import path from 'path';
 import { startStdioServer, startHttpServer } from './mcp-server.js';
 import { isStdioMode } from './mcp-compat.js';
 
 const HS = process.env.MATRIX_HOMESERVER ?? 'https://matrix.beeper.com';
 const UID = process.env.MATRIX_USERID;
 const TOKEN = process.env.MATRIX_TOKEN;
-const CACHE_DIR = process.env.MATRIX_CACHE_DIR ?? './mx-cache';
+// Default persistent locations under ~/.BeeperMCP when not provided
+const CACHE_DIR =
+  process.env.MATRIX_CACHE_DIR || path.join(HOME_BASE, 'mx-cache');
+const LOG_DIR =
+  process.env.MESSAGE_LOG_DIR || path.join(HOME_BASE, 'room-logs');
 const ENABLE_SEND = process.env.ENABLE_SEND_MESSAGE === '1';
 const API_KEY =
   process.env.MCP_API_KEY || (isStdioMode() ? 'local-stdio-mode' : undefined);
@@ -21,9 +35,9 @@ export async function startServer() {
   if (!UID) throw new Error('MATRIX_USERID is required');
   if (!TOKEN) throw new Error('MATRIX_TOKEN is required');
 
-  // Ensure cache directory exists
-  if (!fs.existsSync(CACHE_DIR)) {
-    fs.mkdirSync(CACHE_DIR, { recursive: true });
+  // Ensure persistent directories exist
+  for (const d of [HOME_BASE, CACHE_DIR, LOG_DIR]) {
+    if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
   }
 
   // Load device ID from session if available

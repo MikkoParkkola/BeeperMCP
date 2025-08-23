@@ -14,3 +14,19 @@ Upgrading
 - Ensure `pgvector` is installed and `messages.embedding` exists (baseline migration already adds it).
 - Apply new partial index migrations: run `ts-node scripts/migrate.ts`.
 - For Docker publish, set repo Actions permissions to “Read and write”.
+
+## 1.3.1 – Single Binaries, Auto‑Update, Chat CLI (x64)
+
+Highlights
+
+- Single binaries: macOS x64, Linux x64, Windows x64 built via CI and published to Releases.
+- Auto‑update: daily check against GitHub Releases with manifest + SHA‑256 verification; `beepermcp update` to force.
+- Chat CLI: interactive UI to configure providers (OpenAI, Anthropic, OpenRouter, Ollama), select active model, and chat.
+- Persistent home directory: `~/.BeeperMCP` for config, cache, and DB; fast subsequent starts.
+- STDIO auth: no API key required in STDIO mode; HTTP mode still enforces keys.
+- Release workflows: tagged releases and prereleases on `main` publish binaries and manifest/checksums.
+
+Upgrading
+
+- Download the latest binary from Releases and make it executable.
+- Optional: set `BEEPERMCP_UPDATE_REPO=MikkoParkkola/BeeperMCP` to enable auto‑update.

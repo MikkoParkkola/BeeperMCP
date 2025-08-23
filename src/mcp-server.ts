@@ -17,14 +17,13 @@ export async function createMcpServer(
   logSecret?: string,
 ) {
   // Use default API key for local mode if none provided
-  const effectiveApiKey =
-    apiKey || (isStdioMode() ? 'local-stdio-mode' : undefined);
+  const effectiveApiKey = isStdioMode() ? undefined : apiKey;
 
   if (!effectiveApiKey && !isStdioMode()) {
     throw new Error('MCP_API_KEY is required for HTTP mode');
   }
 
-  return buildMcpServer(client, logDb, enableSend, effectiveApiKey!, logSecret);
+  return buildMcpServer(client, logDb, enableSend, effectiveApiKey, logSecret);
 }
 
 export async function startStdioServer(

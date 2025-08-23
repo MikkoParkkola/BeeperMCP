@@ -1,0 +1,65 @@
+name: prerelease-binaries
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build dist
+        run: npm run build
+      - name: Package binaries (x64)
+        run: |
+          npx pkg -t node22-macos-x64,node22-linux-x64,node22-win-x64 --compress Brotli \
+            --output build/beepermcp dist/src/bin.js
+          ls -l build
+      - name: Prepare artifacts with checksums and manifest
+        id: prep
+        run: |
+          mkdir -p artifacts
+          mv build/beepermcp-macos-x64 artifacts/beepermcp-macos-x64
+          mv build/beepermcp-linux-x64 artifacts/beepermcp-linux-x64
+          mv build/beepermcp-win-x64.exe artifacts/beepermcp-win-x64.exe || true
+          cd artifacts
+          sha256sum beepermcp-* > checksums.txt || shasum -a 256 beepermcp-* > checksums.txt
+          node -e '
+            const fs=require("fs");
+            const cp=(n)=>fs.existsSync(n)?fs.statSync(n).size:0;
+            const assets=[
+              {name:"beepermcp-macos-x64", platform:"macos-x64"},
+              {name:"beepermcp-linux-x64", platform:"linux-x64"},
+              {name:"beepermcp-win-x64.exe", platform:"win-x64"}
+            ].filter(a=>fs.existsSync(a.name)).map(a=>{
+              const sha=(fs.readFileSync("checksums.txt","utf8").split(/\n/).find(l=>l.includes(a.name))||"").split(/[\s]+/)[0];
+              return {name:a.name, platform:a.platform, size:cp(a.name), sha256:sha};
+            });
+            const manifest={version: process.env.GITHUB_SHA?.slice(0,7) || "dev", assets};
+            fs.writeFileSync("manifest.json", JSON.stringify(manifest,null,2));
+          '
+          cd -
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: beepermcp-prerelease
+          path: artifacts/*
+      - name: Create prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: prerelease-${{ github.sha }}
+          prerelease: true
+          files: |
+            artifacts/beepermcp-macos-x64
+            artifacts/beepermcp-linux-x64
+            artifacts/beepermcp-win-x64.exe
+            artifacts/checksums.txt
+            artifacts/manifest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
