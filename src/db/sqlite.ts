@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+type Database = any;
 import {
   openLogDb,
   queryLogs,
@@ -101,4 +101,3 @@ export class DatabaseManager {
     await this.logWriter.flush();
   }
 }
-

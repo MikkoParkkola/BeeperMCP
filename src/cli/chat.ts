@@ -304,6 +304,9 @@ function printHelp() {
   /switch               Switch active provider and model
   /version              Show current version
   /update               Check for update and apply if available
+  /digest [hours]       Generate daily digest (default 24h) and save
+  /qa <question>        Ask a question over recent history
+  /reply                Draft 3 reply variants for pasted message
   /set key value        Set a config value (e.g., settings.*)
   /config               Show current config (redacts secrets)
   /quit                 Exit
@@ -415,6 +418,71 @@ async function run() {
           ),
         };
         console.log(JSON.stringify(clone, null, 2));
+      } else if (cmd === 'digest') {
+        try {
+          const h = Number(rest[0] || '24');
+          const activeProv =
+            cfg.active?.provider && cfg.providers[cfg.active.provider];
+          if (!activeProv) console.log('No active provider. Use /switch.');
+          else {
+            const { runDigest } = await import('./commands/digest.js');
+            const res = await runDigest({ hours: h }, (p: string) =>
+              sendChat(activeProv, cfg.active!.model!, [
+                { role: 'user', content: p },
+              ]),
+            );
+            console.log(`Saved digest to ${res.file}`);
+            console.log(res.preview);
+          }
+        } catch (e: any) {
+          console.error('Digest failed:', e?.message || e);
+        }
+      } else if (cmd === 'qa') {
+        try {
+          const question = rest.join(' ');
+          if (!question) {
+            console.log('Usage: /qa <question>');
+          } else {
+            const activeProv =
+              cfg.active?.provider && cfg.providers[cfg.active.provider];
+            if (!activeProv) console.log('No active provider. Use /switch.');
+            else {
+              const { askQA } = await import('./commands/qa.js');
+              const res = await askQA(question, {}, (p: string) =>
+                sendChat(activeProv, cfg.active!.model!, [
+                  { role: 'user', content: p },
+                ]),
+              );
+              console.log(res.answer);
+            }
+          }
+        } catch (e: any) {
+          console.error('QA failed:', e?.message || e);
+        }
+      } else if (cmd === 'reply') {
+        try {
+          console.log('Paste the message to reply to, then press Enter:');
+          const msg = await new Promise<string>((resolve) =>
+            rl.question('', resolve),
+          );
+          const activeProv =
+            cfg.active?.provider && cfg.providers[cfg.active.provider];
+          if (!activeProv) console.log('No active provider. Use /switch.');
+          else {
+            const { draftReplies } = await import('./commands/reply.js');
+            const out = await draftReplies(
+              '',
+              msg,
+              (p: string) =>
+                sendChat(activeProv, cfg.active!.model!, [
+                  { role: 'user', content: p },
+                ]),
+            );
+            console.log(out);
+          }
+        } catch (e: any) {
+          console.error('Reply failed:', e?.message || e);
+        }
       } else if (cmd === 'quit' || cmd === 'exit' || cmd === 'q') {
         rl.close();
         return;
