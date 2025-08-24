@@ -22,11 +22,11 @@ test('send_message handles message edits via stub client', async () => {
   const client = new StubClient();
   const srv = buildMcpServer(client, null, true, API_KEY, undefined);
   await srv._registeredTools.send_message.callback(
-    { room_id: 'r1', message: 'hello' },
+    { room_id: 'r1', draft_preview: 'hello', send: true },
     { _meta: { apiKey: API_KEY } },
   );
   await srv._registeredTools.send_message.callback(
-    { room_id: 'r1', message: '* hello' },
+    { room_id: 'r1', draft_preview: '* hello', send: true },
     { _meta: { apiKey: API_KEY } },
   );
   assert.deepEqual(client.sent, [
@@ -39,7 +39,7 @@ test('send_message can send media-style messages', async () => {
   const client = new StubClient();
   const srv = buildMcpServer(client, null, true, API_KEY, undefined);
   await srv._registeredTools.send_message.callback(
-    { room_id: 'r1', message: 'mxc://image' },
+    { room_id: 'r1', draft_preview: 'mxc://image', send: true },
     { _meta: { apiKey: API_KEY } },
   );
   assert.deepEqual(client.sent, [{ room: 'r1', msg: 'mxc://image' }]);
@@ -50,7 +50,7 @@ test('send_message surfaces client errors', async () => {
   const srv = buildMcpServer(client, null, true, API_KEY, undefined);
   await assert.rejects(
     srv._registeredTools.send_message.callback(
-      { room_id: 'r1', message: 'fail' },
+      { room_id: 'r1', draft_preview: 'fail', send: true },
       { _meta: { apiKey: API_KEY } },
     ),
     /send failed/,

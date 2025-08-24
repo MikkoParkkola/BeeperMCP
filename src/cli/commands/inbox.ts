@@ -6,7 +6,12 @@ import { sanitizeText } from '../../security/sanitize.js';
 import { checkGuardrails } from '../../security/guardrails.js';
 import { rateLimiter } from '../../security/rateLimit.js';
 import { sendMessage as matrixSend } from '../../matrix/client.js';
-import { findActionables, generateDrafts, ensureRoomBrief, TriagePrefs } from './triage.js';
+import {
+  findActionables,
+  generateDrafts,
+  ensureRoomBrief,
+  TriagePrefs,
+} from './triage.js';
 
 export interface InboxItem {
   id: string; // `${roomId}:${ts}`
@@ -39,7 +44,9 @@ export function loadInbox(): InboxItem[] {
 
 export function saveInbox(items: InboxItem[]) {
   fs.mkdirSync(homeBase(), { recursive: true });
-  fs.writeFileSync(inboxPath(), JSON.stringify(items, null, 2), { mode: 0o600 });
+  fs.writeFileSync(inboxPath(), JSON.stringify(items, null, 2), {
+    mode: 0o600,
+  });
 }
 
 export async function refreshInbox(prefs: TriagePrefs, hours = 24) {
@@ -87,11 +94,15 @@ export async function openItem(
   editor?: (initial: string) => Promise<string>,
   sender?: (roomId: string, text: string) => Promise<void>,
 ) {
-  const brief = await ensureRoomBrief(item.roomId, askLLM);
+  const _brief = await ensureRoomBrief(item.roomId, askLLM);
+  void _brief;
   const ctx = {
     prompt: (q: string) =>
       new Promise<string>((resolve) => {
-        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+        });
         rl.question(q, (ans) => {
           rl.close();
           resolve(ans.trim());
@@ -99,8 +110,9 @@ export async function openItem(
       }),
   };
   const intention =
-    (await ctx.prompt('Your intention? [inform/ask-time/approve/decline/provide-info/custom]: ')) ||
-    'inform';
+    (await ctx.prompt(
+      'Your intention? [inform/ask-time/approve/decline/provide-info/custom]: ',
+    )) || 'inform';
   const extra = await ctx.prompt('Any extra instructions? ');
   const drafts = await generateDrafts(
     {
@@ -153,14 +165,15 @@ export async function openItem(
     finalText = await edit(finalText);
   }
   // Choose a single reply line if the model returned two; pick the first non-empty paragraph
-  const choice = finalText
-    .split(/\n+/)
-    .map((s) => s.trim())
-    .filter((s) => s && !/^\d+\)/.test(s))[0] || finalText.trim();
+  const choice =
+    finalText
+      .split(/\n+/)
+      .map((s) => s.trim())
+      .filter((s) => s && !/^\d+\)/.test(s))[0] || finalText.trim();
   // Safety & approval
   try {
     rateLimiter('cli_send', 10);
-  } catch (e) {
+  } catch {
     console.error('Rate limited. Try again later.');
     return 'rate_limited';
   }
@@ -172,14 +185,16 @@ export async function openItem(
   }
   const confirm = (await ctx.prompt('Send? [y/N] 🚀: ')).toLowerCase();
   if (confirm !== 'y') return 'cancelled';
-  const send = sender || (async (roomId: string, text: string) => {
-    try {
-      await matrixSend(roomId, text);
-    } catch (e: any) {
-      console.error('Send failed:', e?.message || e);
-      throw e;
-    }
-  });
+  const send =
+    sender ||
+    (async (roomId: string, text: string) => {
+      try {
+        await matrixSend(roomId, text);
+      } catch (e: any) {
+        console.error('Send failed:', e?.message || e);
+        throw e;
+      }
+    });
   await send(item.roomId, safe);
   return 'sent';
 }

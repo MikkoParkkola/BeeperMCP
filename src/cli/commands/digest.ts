@@ -15,7 +15,8 @@ function homeBase(): string {
 }
 
 function sqlitePath(): string {
-  const logDir = process.env.MESSAGE_LOG_DIR || path.join(homeBase(), 'room-logs');
+  const logDir =
+    process.env.MESSAGE_LOG_DIR || path.join(homeBase(), 'room-logs');
   return path.join(logDir, 'messages.db');
 }
 
@@ -37,7 +38,18 @@ function makeSpark(values: number[], width = 24): string {
   const slice = values.slice(-n);
   const max = Math.max(1, ...slice);
   return slice
-    .map((v) => blocks[Math.max(0, Math.min(blocks.length - 1, Math.floor((v / max) * (blocks.length - 1))))])
+    .map(
+      (v) =>
+        blocks[
+          Math.max(
+            0,
+            Math.min(
+              blocks.length - 1,
+              Math.floor((v / max) * (blocks.length - 1)),
+            ),
+          )
+        ],
+    )
     .join('');
 }
 
@@ -47,24 +59,28 @@ function topN<K extends string>(arr: K[], n = 5) {
   return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
 }
 
-function guessQuestions(texts: string[]) {
-  return texts.filter((t) => /\?$/.test(t) || /\b(who|what|when|where|why|how)\b/i.test(t)).slice(0, 10);
-}
+// Removed unused guessQuestions helper to satisfy lint
 
-export async function runDigest(opts: DigestOpts = {}, askLLM: (prompt: string) => Promise<string>) {
+export async function runDigest(
+  opts: DigestOpts = {},
+  askLLM: (prompt: string) => Promise<string>,
+) {
   const stealth = new StealthMode();
   const lookbackH = Math.max(1, opts.hours ?? 24);
   const limitPerRoom = Math.max(50, opts.limitPerRoom ?? 300);
   const sinceIso = new Date(Date.now() - lookbackH * 3600_000).toISOString();
   const dbFile = sqlitePath();
   if (!fs.existsSync(dbFile)) {
-    throw new Error(`No SQLite log DB found at ${dbFile}. Run the server first.`);
+    throw new Error(
+      `No SQLite log DB found at ${dbFile}. Run the server first.`,
+    );
   }
   const db = openLogDb(dbFile);
   const rooms = opts.rooms && opts.rooms.length ? opts.rooms : detectRooms(db);
   const perRoom: Record<string, string[]> = {};
   for (const roomId of rooms) {
-    const lines = queryLogs(db, roomId, limitPerRoom, sinceIso, undefined, undefined) || [];
+    const lines =
+      queryLogs(db, roomId, limitPerRoom, sinceIso, undefined, undefined) || [];
     perRoom[roomId] = lines.reverse();
     await stealth.maintainUnreadStatus(roomId);
   }
@@ -82,11 +98,15 @@ export async function runDigest(opts: DigestOpts = {}, askLLM: (prompt: string) 
       byUser[p.sender] = (byUser[p.sender] || 0) + 1;
       const hour = new Date(p.ts).getHours();
       activity[hour]++;
-      if (p.text.length > 8 && p.text.length < 160) quotes.push(`[${roomId}] ${p.sender}: ${p.text}`);
-      if (/\?$/.test(p.text)) questions.push(`[${roomId}] ${p.sender}: ${p.text}`);
+      if (p.text.length > 8 && p.text.length < 160)
+        quotes.push(`[${roomId}] ${p.sender}: ${p.text}`);
+      if (/\?$/.test(p.text))
+        questions.push(`[${roomId}] ${p.sender}: ${p.text}`);
     }
   }
-  const topUsers = topN(Object.keys(byUser) as any, 5).map(([u, c]) => `${u} (${c})`).join(', ');
+  const topUsers = topN(Object.keys(byUser) as any, 5)
+    .map(([u, c]) => `${u} (${c})`)
+    .join(', ');
   const activitySpark = makeSpark(activity, 24);
   const qSample = questions.slice(0, 6).join('\n');
   const prompt = `You are writing a concise daily digest of chat activity.
@@ -114,7 +134,9 @@ CONTEXT (participants & signals):
 
 function detectRooms(db: any): string[] {
   try {
-    const rows = db.prepare('SELECT DISTINCT room_id FROM logs ORDER BY room_id').all();
+    const rows = db
+      .prepare('SELECT DISTINCT room_id FROM logs ORDER BY room_id')
+      .all();
     return rows.map((r: any) => r.room_id);
   } catch {
     return [];

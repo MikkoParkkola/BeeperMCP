@@ -17,6 +17,7 @@ BeeperMCP has been revolutionized into the most sophisticated relationship intel
 ## 🚀 Revolutionary Features (World-First Technology)
 
 ### 🧠 **Relationship Intelligence Engine**
+
 - **Deep Relationship Analysis** - Advanced algorithms that understand relationship dynamics beyond surface-level metrics
 - **Trust Score Calculation** - Real-time assessment of trust levels based on communication patterns
 - **Behavioral Pattern Recognition** - AI that learns individual communication styles and detects changes
@@ -24,6 +25,7 @@ BeeperMCP has been revolutionized into the most sophisticated relationship intel
 - **Relationship Health Monitoring** - Predictive analytics for relationship trajectory and improvement suggestions
 
 ### 🕵️ **Advanced Deception Detection**
+
 - **Truth Analysis Engine** - Revolutionary AI that analyzes statement truthfulness with 94%+ accuracy
 - **Lie Pattern Recognition** - Detects subtle linguistic markers that indicate deception
 - **Consistency Verification** - Cross-references statements across conversation history for contradictions
@@ -31,6 +33,7 @@ BeeperMCP has been revolutionized into the most sophisticated relationship intel
 - **Anomaly Detection** - Identifies unusual patterns that may indicate dishonesty or hidden agendas
 
 ### ⏳ **Temporal Context Analysis**
+
 - **Conversation Timeline Correlation** - Maps how conversations evolve and change over time
 - **Historical Pattern Matching** - Identifies recurring themes and behavioral patterns
 - **Change Point Detection** - Pinpoints exact moments when relationship dynamics shift
@@ -38,6 +41,7 @@ BeeperMCP has been revolutionized into the most sophisticated relationship intel
 - **Context Memory** - Long-term memory that remembers important relationship context across months/years
 
 ### 🎨 **Stunning Apple-Style Interface**
+
 - **Glassmorphism Design** - Cutting-edge visual effects with backdrop-filter blur and transparency
 - **Fluid Animations** - Hardware-accelerated transitions that feel magical
 - **Intuitive Interactions** - Revolutionary UI that makes complex analysis feel simple
@@ -47,6 +51,7 @@ BeeperMCP has been revolutionized into the most sophisticated relationship intel
 ## 🌟 Experience the Revolution
 
 **🚀 Launch the Revolutionary Interface:**
+
 ```bash
 # Download and launch instantly
 curl -L https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-macos-arm64 -o beepermcp
@@ -57,22 +62,40 @@ chmod +x beepermcp
 ```
 
 **Revolutionary Commands:**
+
 - **`./beepermcp ui`** - Launch the stunning relationship intelligence interface
 - **`./beepermcp analyze`** - Deep relationship analysis mode
 - **`./beepermcp truth-check`** - Advanced deception detection
 - **`./beepermcp insights`** - AI-generated relationship insights
 
+## 🛠 Build & Test (Quickstart)
+
+- Requirements: Node.js 22+, npm 10+ (or newer).
+- Install deps: `npm install`
+- Build: `npm run build` (emits to `dist/`)
+- Run tests: `npm test` or `npm run test:coverage`
+- Lint: `npm run lint`
+
+Notes
+
+- Set `BEEPERMCP_HOME=$PWD/.beeper-home` when running the CLI locally to keep writes in the workspace.
+- MCP HTTP mode requires `MCP_API_KEY`. See `src/mcp-server.ts` and `.beeper-mcp-server.env.example`.
+- The `send_message` tool is approval-gated: first call with `{ draft_preview, send:false }` to receive an approval payload, then with `{ draft_preview, send:true }` to deliver. Content is sanitized and guardrails enforced.
+
 ## 🎭 Revolutionary Capabilities
 
 ### 🔍 **Truth & Deception Analysis**
+
 Our breakthrough AI analyzes conversations for:
+
 - **Truthfulness Probability** - Statistical likelihood that statements are true
-- **Deception Indicators** - Linguistic markers that suggest dishonesty  
+- **Deception Indicators** - Linguistic markers that suggest dishonesty
 - **Confidence Levels** - How certain our AI is about truth assessments
 - **Supporting Evidence** - Facts that corroborate or contradict statements
 - **Historical Consistency** - Whether current statements match past behavior
 
 ### 📊 **Relationship Metrics Dashboard**
+
 - **Trust Evolution Charts** - Visualize how trust changes over time
 - **Communication Quality Scores** - Measure effectiveness of conversations
 - **Emotional Intelligence Metrics** - Track empathy and emotional awareness
@@ -80,6 +103,7 @@ Our breakthrough AI analyzes conversations for:
 - **Growth Potential Indicators** - Predict relationship improvement opportunities
 
 ### 🎯 **AI-Powered Insights**
+
 - **Personalized Recommendations** - Specific suggestions for improving relationships
 - **Communication Style Analysis** - Understanding individual communication preferences
 - **Optimal Timing Suggestions** - Best times to have important conversations
@@ -87,6 +111,7 @@ Our breakthrough AI analyzes conversations for:
 - **Relationship Coaching Tips** - AI-generated advice for better interactions
 
 ### 🔮 **Predictive Intelligence**
+
 - **Future Scenario Modeling** - Predict how relationships might evolve
 - **Risk Assessment** - Identify potential relationship challenges early
 - **Success Probability** - Calculate likelihood of positive outcomes
@@ -96,6 +121,7 @@ Our breakthrough AI analyzes conversations for:
 ## 🎨 Visual Intelligence Features
 
 ### 🌈 **Revolutionary Visualizations**
+
 - **3D Relationship Networks** - Interactive maps showing connection strength
 - **Emotional Heat Maps** - Color-coded emotional state tracking
 - **Truth Confidence Meters** - Real-time honesty assessment displays
@@ -103,8 +129,9 @@ Our breakthrough AI analyzes conversations for:
 - **Behavioral Pattern Graphs** - Identify recurring communication patterns
 
 ### ⚡ **Real-Time Features**
+
 - **Live Analysis** - Conversations analyzed as they happen
-- **Instant Alerts** - Immediate notifications for important insights  
+- **Instant Alerts** - Immediate notifications for important insights
 - **Dynamic Updates** - Interface updates smoothly with new data
 - **Contextual Tooltips** - Helpful information appears when needed
 - **Gesture Controls** - Intuitive touch and trackpad interactions
@@ -112,15 +139,19 @@ Our breakthrough AI analyzes conversations for:
 ## 📱 Revolutionary Interface Modes
 
 ### 🏠 **Matrix Intelligence Hub** (Default Mode)
+
 Complete relationship intelligence dashboard with:
+
 - Full relationship analysis and metrics
-- Truth/deception detection results  
+- Truth/deception detection results
 - Temporal conversation analysis
 - AI predictions and recommendations
 - Beautiful glassmorphism interface
 
 ### 🕵️ **Truth Detective Mode** (Specialized Analysis)
+
 Focus on deception detection with:
+
 - Advanced truth analysis algorithms
 - Lie detection visualizations
 - Consistency checking tools
@@ -128,20 +159,23 @@ Focus on deception detection with:
 - Detailed honesty reports
 
 ### 📈 **Relationship Coach Mode** (Improvement Focus)
+
 Designed for relationship enhancement:
+
 - Personalized improvement suggestions
 - Communication coaching tips
 - Conflict resolution guidance
-- Trust building recommendations  
+- Trust building recommendations
 - Progress tracking tools
 
 ## 🔧 Advanced Configuration
 
 ### 🎛️ **Intelligence Settings**
+
 ```bash
 # Configure analysis depth
 ./beepermcp config --analysis-level deep    # Maximum insight depth
-./beepermcp config --truth-sensitivity high # Enhanced deception detection  
+./beepermcp config --truth-sensitivity high # Enhanced deception detection
 ./beepermcp config --memory-retention long  # Extended context memory
 
 # Privacy and security
@@ -151,10 +185,11 @@ Designed for relationship enhancement:
 ```
 
 ### 🎨 **Interface Customization**
+
 ```bash
 # Visual themes
 ./beepermcp ui --theme intelligence    # Default intelligence theme
-./beepermcp ui --theme detective       # Truth detection theme  
+./beepermcp ui --theme detective       # Truth detection theme
 ./beepermcp ui --theme coach          # Relationship coaching theme
 ./beepermcp ui --theme minimal        # Clean, minimal interface
 
@@ -167,18 +202,21 @@ Designed for relationship enhancement:
 ## 🎯 Use Cases
 
 ### 💼 **Professional Relationships**
+
 - **Team Communication Analysis** - Understand team dynamics and improve collaboration
 - **Client Relationship Management** - Optimize client interactions and satisfaction
 - **Leadership Assessment** - Analyze communication effectiveness and trust building
 - **Conflict Resolution** - Early detection and resolution of workplace tensions
 
 ### 💝 **Personal Relationships**
+
 - **Relationship Health Monitoring** - Track and improve personal relationships
 - **Communication Skills Development** - Learn better ways to connect with others
 - **Trust Building** - Understand how to build and maintain trust
 - **Emotional Intelligence Growth** - Develop deeper emotional awareness
 
 ### 🔍 **Truth and Verification**
+
 - **Statement Verification** - Verify claims and detect inconsistencies
 - **Pattern Analysis** - Identify concerning behavioral changes
 - **Fact Checking** - Cross-reference information for accuracy
@@ -187,12 +225,14 @@ Designed for relationship enhancement:
 ## 📖 Documentation
 
 ### 🌟 **Revolutionary Features Documentation**
+
 - 📄 **[REVOLUTIONARY_FEATURES.md](REVOLUTIONARY_FEATURES.md)** - Complete feature overview
 - 🔧 **[TECHNICAL_IMPLEMENTATION.md](TECHNICAL_IMPLEMENTATION.md)** - Technical architecture guide
 - 🎨 **[relationship-intelligence.html](relationship-intelligence.html)** - Advanced relationship analysis UI
 - 🕵️ **[revolutionary-ui.html](revolutionary-ui.html)** - Main revolutionary interface
 
 ### 🧭 **Additional Documentation**
+
 - 📖 **[Web UI Documentation](docs/web-ui.md)** - Complete UI guide
 - 🧭 **Roadmap:** `docs/ROADMAP.md` — Future revolutionary enhancements
 - 📥 **Inbox & Watchtower:** `docs/INBOX.md` — Advanced monitoring features
@@ -202,24 +242,28 @@ Designed for relationship enhancement:
 ## 🏆 Why BeeperMCP is Revolutionary
 
 ### 🥇 **Unprecedented Intelligence**
+
 - **First-ever** relationship intelligence engine for messaging platforms
 - **Revolutionary** AI that understands human communication at unprecedented depth
 - **Breakthrough** deception detection with industry-leading accuracy
 - **Pioneer** in real-time relationship analysis and coaching
 
 ### 🎨 **Apple-Level Design Excellence**
+
 - **Cutting-edge** glassmorphism visual effects that feel magical
 - **Smooth** 120Hz animations and hardware-accelerated graphics
 - **Intuitive** interactions that make complex analysis feel simple
 - **Beautiful** interface that's as functional as it is stunning
 
 ### 🧠 **Advanced AI Technology**
+
 - **State-of-the-art** machine learning models for relationship analysis
 - **Revolutionary** temporal context understanding across long conversations
 - **Breakthrough** emotional intelligence algorithms
 - **Industry-leading** truth detection and verification systems
 
 ### 🔒 **Privacy-First Innovation**
+
 - **Complete** local processing - your data never leaves your device
 - **Advanced** encryption for all stored analysis results
 - **Transparent** privacy controls with full user control
@@ -228,18 +272,20 @@ Designed for relationship enhancement:
 ## 🚀 Getting Started
 
 ### ⚡ **Instant Setup**
+
 ```bash
 # 1. Download BeeperMCP
 curl -L https://github.com/MikkoParkkola/BeeperMCP/releases/latest/download/beepermcp-macos-arm64 -o beepermcp
 chmod +x beepermcp
 
-# 2. Launch revolutionary interface  
+# 2. Launch revolutionary interface
 ./beepermcp ui
 
 # 3. Experience the future of relationship intelligence!
 ```
 
 ### 🎯 **First Analysis**
+
 1. **Connect your Matrix account** - Secure authentication in under 30 seconds
 2. **Let AI analyze your conversations** - Automatic relationship mapping
 3. **Explore insights** - Discover patterns you never knew existed

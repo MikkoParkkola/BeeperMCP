@@ -119,7 +119,7 @@ This document summarizes the primary modules and functions, their parameters, re
   - `create_room`: `{ name: string, encrypted?: boolean }` → `{ room_id }`
   - `list_messages`: `{ room_id: string, limit?: number, since?: string, until?: string }` → `string[]` (logs)
   - `send_message` (when enabled): `{ room_id: string, message: string }` → `'sent'`
-  - Postgres analytics modules (if present in src/mcp/tools/**): follow their individual JSON schemas and push filters to SQL.
+  - Postgres analytics modules (if present in src/mcp/tools/\*\*): follow their individual JSON schemas and push filters to SQL.
 
 ## Matrix Client
 

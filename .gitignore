@@ -10,3 +10,8 @@ mx-cache
 .test-resources*.db
 docker-images/*
 !docker-images/.gitkeep
+
+# local cache
+.npm-cache
+.beeper-home
+audit.json

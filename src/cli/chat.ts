@@ -482,25 +482,27 @@ async function run() {
       } else if (cmd === 'reply') {
         try {
           console.log('Paste the message to reply to, then press Enter:');
-          const msg = await new Promise<string>((resolve) => rl.question('', resolve));
+          const msg = await new Promise<string>((resolve) =>
+            rl.question('', resolve),
+          );
           const activeProv =
             cfg.active?.provider && cfg.providers[cfg.active.provider];
           if (!activeProv) console.log('No active provider. Use /switch.');
           else {
             const { draftReplies } = await import('./commands/reply.js');
-            let out = await draftReplies(
-              '',
-              msg,
-              (p: string) =>
-                sendChat(activeProv, cfg.active!.model!, [
-                  { role: 'user', content: p },
-                ]),
+            let out = await draftReplies('', msg, (p: string) =>
+              sendChat(activeProv, cfg.active!.model!, [
+                { role: 'user', content: p },
+              ]),
             );
             console.log(out);
             if (activeProv.type === 'openrouter') {
-              const fb = await prompt('Refine drafts? Enter instructions (or press Enter to skip): ');
+              const fb = await prompt(
+                'Refine drafts? Enter instructions (or press Enter to skip): ',
+              );
               if (fb) {
-                const Provider = (await import('../providers/openrouter.js')).default;
+                const Provider = (await import('../providers/openrouter.js'))
+                  .default;
                 const prov = new Provider((activeProv as any).apiKey);
                 const refined = await prov.iterateResponse(out, fb);
                 const text = (refined as any).content || '';
@@ -519,45 +521,90 @@ async function run() {
             console.log('No active provider. Use /switch.');
           } else {
             // Ensure user aliases and preferences
-            const aliasesRaw = (cfg.settings?.userAliases as string) || (await prompt('Your Matrix handle(s) (comma-separated, e.g., @you:server): '));
+            const aliasesRaw =
+              (cfg.settings?.userAliases as string) ||
+              (await prompt(
+                'Your Matrix handle(s) (comma-separated, e.g., @you:server): ',
+              ));
             const aliases = aliasesRaw
               .split(',')
               .map((s) => s.trim())
               .filter(Boolean);
             cfg.settings = cfg.settings || {};
             (cfg.settings as any).userAliases = aliases.join(',');
-            const tone = ((cfg.settings as any).tone as string) || (await prompt('Preferred tone [concise/friendly/formal] (default: concise): ')) || 'concise';
-            const language = (cfg.settings as any).language || (await prompt('Preferred language (e.g., en, fi) [leave empty for auto]: '));
+            const tone =
+              ((cfg.settings as any).tone as string) ||
+              (await prompt(
+                'Preferred tone [concise/friendly/formal] (default: concise): ',
+              )) ||
+              'concise';
+            const language =
+              (cfg.settings as any).language ||
+              (await prompt(
+                'Preferred language (e.g., en, fi) [leave empty for auto]: ',
+              ));
             (cfg.settings as any).tone = tone;
             (cfg.settings as any).language = language;
             saveConfig(cfg);
 
-            const { findActionables, generateDrafts } = await import('./commands/triage.js');
-            const candidates = findActionables({ userAliases: aliases, tone: tone as any, language: language as any }, { hours: 24 });
+            const { findActionables, generateDrafts } = await import(
+              './commands/triage.js'
+            );
+            const candidates = findActionables(
+              {
+                userAliases: aliases,
+                tone: tone as any,
+                language: language as any,
+              },
+              { hours: 24 },
+            );
             if (!candidates.length) {
               console.log('No rooms need your reply right now.');
             } else {
               for (const c of candidates) {
-                console.log(`\nRoom: ${c.roomId}\nFrom: ${c.sender}\nAt: ${c.ts}\nMessage: ${c.text}\n---\nContext:\n${c.context.join('\n')}`);
+                console.log(
+                  `\nRoom: ${c.roomId}\nFrom: ${c.sender}\nAt: ${c.ts}\nMessage: ${c.text}\n---\nContext:\n${c.context.join('\n')}`,
+                );
                 // Clarify intention
-                const intention = (await prompt('Your intention? [inform/ask-time/approve/decline/provide-info/custom]: ')) || 'inform';
-                const extra = await prompt('Any extra instructions (constraints, details)? ');
+                const intention =
+                  (await prompt(
+                    'Your intention? [inform/ask-time/approve/decline/provide-info/custom]: ',
+                  )) || 'inform';
+                const extra = await prompt(
+                  'Any extra instructions (constraints, details)? ',
+                );
                 const drafts = await generateDrafts(
                   c,
-                  { userAliases: aliases, tone: tone as any, language: language as any },
+                  {
+                    userAliases: aliases,
+                    tone: tone as any,
+                    language: language as any,
+                  },
                   intention,
                   extra,
-                  (p: string) => sendChat(activeProv, cfg.active!.model!, [{ role: 'user', content: p }]),
+                  (p: string) =>
+                    sendChat(activeProv, cfg.active!.model!, [
+                      { role: 'user', content: p },
+                    ]),
                 );
                 console.log('\nDrafts:\n' + drafts);
-                const more = await prompt('Revise with extra instruction (leave empty to continue): ');
+                const more = await prompt(
+                  'Revise with extra instruction (leave empty to continue): ',
+                );
                 if (more) {
                   const revised = await generateDrafts(
                     c,
-                    { userAliases: aliases, tone: tone as any, language: language as any },
+                    {
+                      userAliases: aliases,
+                      tone: tone as any,
+                      language: language as any,
+                    },
                     intention,
                     more,
-                    (p: string) => sendChat(activeProv, cfg.active!.model!, [{ role: 'user', content: p }]),
+                    (p: string) =>
+                      sendChat(activeProv, cfg.active!.model!, [
+                        { role: 'user', content: p },
+                      ]),
                   );
                   console.log('\nRevised drafts:\n' + revised);
                 }
@@ -571,14 +618,10 @@ async function run() {
         try {
           const activeProv =
             cfg.active?.provider && cfg.providers[cfg.active.provider];
-          if (!activeProv) return console.log('No active provider. Use /switch.');
-          const {
-            refreshInbox,
-            renderInbox,
-            openItem,
-            saveInbox,
-            loadInbox,
-          } = await import('./commands/inbox.js');
+          if (!activeProv)
+            return console.log('No active provider. Use /switch.');
+          const { refreshInbox, renderInbox, openItem, saveInbox, loadInbox } =
+            await import('./commands/inbox.js');
           const aliasesRaw =
             (cfg.settings?.userAliases as string) ||
             (await prompt('Your Matrix handle(s) (comma-separated): '));
@@ -627,13 +670,10 @@ async function run() {
               if (!s) {
                 const item = items[cursor];
                 if (!item) return redraw();
-                const res = await openItem(
-                  item as any,
-                  prefs,
-                  (p: string) =>
-                    sendChat(activeProv, cfg.active!.model!, [
-                      { role: 'user', content: p },
-                    ]),
+                const res = await openItem(item as any, prefs, (p: string) =>
+                  sendChat(activeProv, cfg.active!.model!, [
+                    { role: 'user', content: p },
+                  ]),
                 );
                 if (res === 'sent' || res === 'dismissed') {
                   const all = loadInbox();
@@ -706,14 +746,12 @@ async function run() {
           };
           const activeProv =
             cfg.active?.provider && cfg.providers[cfg.active.provider];
-          if (!activeProv) return console.log('No active provider. Use /switch.');
-          const res = await openItem(
-            item as any,
-            prefs,
-            (p: string) =>
-              sendChat(activeProv, cfg.active!.model!, [
-                { role: 'user', content: p },
-              ]),
+          if (!activeProv)
+            return console.log('No active provider. Use /switch.');
+          const res = await openItem(item as any, prefs, (p: string) =>
+            sendChat(activeProv, cfg.active!.model!, [
+              { role: 'user', content: p },
+            ]),
           );
           if (res === 'sent' || res === 'dismissed') {
             const all = loadInbox();

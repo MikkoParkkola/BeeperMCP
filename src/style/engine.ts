@@ -43,8 +43,34 @@ export function saveStyle(map: Record<string, PersonalProfile>) {
   fs.writeFileSync(stylePath(), JSON.stringify(map, null, 2), { mode: 0o600 });
 }
 
-const EN_SW = new Set(['the', 'and', 'is', 'are', 'to', 'for', 'of', 'in', 'on', 'with', 'it', 'this']);
-const FI_SW = new Set(['ja', 'on', 'olen', 'olla', 'se', 'ne', 'että', 'kun', 'tai', 'mutta', 'kanssa', 'joka']);
+const EN_SW = new Set([
+  'the',
+  'and',
+  'is',
+  'are',
+  'to',
+  'for',
+  'of',
+  'in',
+  'on',
+  'with',
+  'it',
+  'this',
+]);
+const FI_SW = new Set([
+  'ja',
+  'on',
+  'olen',
+  'olla',
+  'se',
+  'ne',
+  'että',
+  'kun',
+  'tai',
+  'mutta',
+  'kanssa',
+  'joka',
+]);
 
 function detectLang(text: string): string | undefined {
   const t = text.toLowerCase();
@@ -109,14 +135,19 @@ export function learnPersonalTone(
       samples: 0,
       updatedAt: new Date().toISOString(),
     });
-  const counts: Record<string, { chars: number; emojis: number; exclaims: number }> = {};
+  const counts: Record<
+    string,
+    { chars: number; emojis: number; exclaims: number }
+  > = {};
   const greetSet: Record<string, Set<string>> = {};
   const signSet: Record<string, Set<string>> = {};
   const langScore: Record<string, { en: number; fi: number }> = {};
 
   for (const roomId of rooms) {
     const rows = db
-      .prepare('SELECT ts, line FROM logs WHERE room_id = ? AND ts >= ? ORDER BY ts ASC')
+      .prepare(
+        'SELECT ts, line FROM logs WHERE room_id = ? AND ts >= ? ORDER BY ts ASC',
+      )
       .all(roomId, since);
     const parsed = rows
       .map((r: any) => {
@@ -127,7 +158,9 @@ export function learnPersonalTone(
     if (!parsed.length) continue;
     // precompute other participants for 1:1 detection
     const participants = Array.from(new Set(parsed.map((p) => p.sender)));
-    const isOneToOne = participants.length === 2 && aliases.some((a) => participants.includes(a));
+    const isOneToOne =
+      participants.length === 2 &&
+      aliases.some((a) => participants.includes(a));
     for (let i = 0; i < parsed.length; i++) {
       const p = parsed[i];
       if (!aliases.some((a) => p.sender.includes(a))) continue; // only user's own lines
@@ -171,7 +204,8 @@ export function learnPersonalTone(
       prof.greetings = Array.from(greetSet[peer] || []);
       prof.signoffs = Array.from(signSet[peer] || []);
       // Formality: crude heuristic — higher exclaimRate/emojiRate => casual => lower formality
-      const casual = (prof.emojiRate || 0) * 0.6 + (prof.exclaimRate || 0) * 0.4;
+      const casual =
+        (prof.emojiRate || 0) * 0.6 + (prof.exclaimRate || 0) * 0.4;
       prof.formality = Math.max(0, Math.min(1, 1 - casual / 5));
       if (prof.samples >= perPersonMax) continue;
     }
@@ -180,8 +214,9 @@ export function learnPersonalTone(
   return map;
 }
 
-export function getPersonalHints(personId: string): PersonalProfile | undefined {
+export function getPersonalHints(
+  personId: string,
+): PersonalProfile | undefined {
   const map = loadStyle();
   return map[personId];
 }
-

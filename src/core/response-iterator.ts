@@ -1,4 +1,7 @@
-import { OpenRouterProvider, type ConversationContext } from '../providers/openrouter.js';
+import {
+  OpenRouterProvider,
+  type ConversationContext,
+} from '../providers/openrouter.js';
 
 export interface PerfectResponse {
   text: string;
@@ -14,7 +17,10 @@ export class ResponseIterator {
     maxIterations: number = 5,
   ): Promise<PerfectResponse> {
     // Initial generation using provider with explicit instructions
-    const first = await this.provider.generateResponse(context, userInstructions);
+    const first = await this.provider.generateResponse(
+      context,
+      userInstructions,
+    );
     let prev = (first.text || '').trim();
     let iters = 1;
 

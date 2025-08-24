@@ -248,7 +248,10 @@ const draft_replies: JSONSchema7 = {
     extra_instructions: { type: 'string' },
     tone: { type: 'string' },
     language: { type: 'string' },
-    to: { type: 'string', description: 'optional person/user id to tailor tone' },
+    to: {
+      type: 'string',
+      description: 'optional person/user id to tailor tone',
+    },
   },
   required: ['room_id', 'source', 'intention'],
 };

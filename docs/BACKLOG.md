@@ -116,6 +116,7 @@ This backlog groups work into ~500 LOC (or less) packages so multiple contributo
 ---
 
 Notes
+
 - Each package targets ≤500 LOC by keeping scope tight and avoiding broad refactors.
 - Parallelization: CLI, updater, CI, MCP, ingest, and docs packages have minimal coupling.
 - Prioritization suggestion: start with “Updater Robustness + Resume” and “Resources Pagination + Context Windows”.

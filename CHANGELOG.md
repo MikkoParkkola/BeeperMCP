@@ -30,6 +30,7 @@ Upgrading
 
 - Download the latest binary from Releases and make it executable.
 - Optional: set `BEEPERMCP_UPDATE_REPO=MikkoParkkola/BeeperMCP` to enable auto‑update.
+
 ## 1.3.2 – Native Apple Silicon (macOS arm64)
 
 Highlights
@@ -38,6 +39,7 @@ Highlights
 - Release workflows updated to build and publish `beepermcp-macos-arm64`.
 - Updater detects `macos-arm64` platform tag and fetches native binary.
 - Bootstrap uses an arch‑scoped native cache to avoid cross‑arch conflicts.
+
 ## 1.3.3 – Approval‑Gated Send, Translate, Personal Tone (Agentic)
 
 Highlights
@@ -46,6 +48,7 @@ Highlights
 - New MCP tools: inbox_list, brief_room, draft_replies (with `to` target), revise_reply, qa, digest_generate, translate_text, tone_learn, tone_get.
 - Personal Tone Engine: learns per‑person language + style from your messages; drafting adapts tone (friendly by default) and can include light emojis.
 - CLI: /learn_tone command; /inbox and /triage integrate briefs and personal hints.
+
 ## 1.3.4 – Packaging polish (agentsmcp archives), QA & test pass
 
 Highlights

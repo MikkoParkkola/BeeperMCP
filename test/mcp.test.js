@@ -94,7 +94,8 @@ test('send_message only registered when enabled', async () => {
   await srvEnabled._registeredTools.send_message.callback(
     {
       room_id: 'r1',
-      message: 'hi',
+      draft_preview: 'hi',
+      send: true,
     },
     { _meta: { apiKey: API_KEY } },
   );

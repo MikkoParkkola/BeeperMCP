@@ -127,28 +127,35 @@ export async function startHttpServer(
     let rel = req.url.replace(/^\/ui\/?/, '');
     if (!rel || rel === '') rel = 'index.html';
     const filePath = path.join(webRoot, rel);
-    if (!filePath.startsWith(webRoot)) { // path traversal guard
-      res.writeHead(403); res.end('Forbidden'); return true;
+    if (!filePath.startsWith(webRoot)) {
+      // path traversal guard
+      res.writeHead(403);
+      res.end('Forbidden');
+      return true;
     }
     try {
       const stat = fs.statSync(filePath);
       if (!stat.isFile()) throw new Error('Not file');
       const ext = path.extname(filePath).toLowerCase();
-      const types: Record<string,string> = {
+      const types: Record<string, string> = {
         '.html': 'text/html; charset=utf-8',
-        '.css':  'text/css; charset=utf-8',
-        '.js':   'text/javascript; charset=utf-8',
-        '.svg':  'image/svg+xml',
-        '.png':  'image/png',
-        '.jpg':  'image/jpeg',
+        '.css': 'text/css; charset=utf-8',
+        '.js': 'text/javascript; charset=utf-8',
+        '.svg': 'image/svg+xml',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
         '.jpeg': 'image/jpeg',
-        '.gif':  'image/gif'
+        '.gif': 'image/gif',
       };
-      res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream' });
+      res.writeHead(200, {
+        'Content-Type': types[ext] || 'application/octet-stream',
+      });
       fs.createReadStream(filePath).pipe(res);
       return true;
     } catch {
-      res.writeHead(404); res.end('Not Found'); return true;
+      res.writeHead(404);
+      res.end('Not Found');
+      return true;
     }
   }
 

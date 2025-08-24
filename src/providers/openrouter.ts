@@ -1,4 +1,3 @@
-
 export interface ConversationMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -12,7 +11,11 @@ export interface ConversationContext {
 export interface AIResponse {
   text: string;
   model?: string;
-  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
   raw?: any;
 }
 
@@ -62,7 +65,9 @@ export class OpenRouterProvider {
     return { text, model, usage: json.usage, raw: json };
   }
 
-  async analyzeRelationship(messages: Message[]): Promise<RelationshipAnalysis> {
+  async analyzeRelationship(
+    messages: Message[],
+  ): Promise<RelationshipAnalysis> {
     const sample = messages
       .slice(-30)
       .map((m) => `${m.sender ? `<${m.sender}> ` : ''}${m.text}`)
@@ -71,15 +76,25 @@ export class OpenRouterProvider {
       'You analyze human relationships. Be concise. Provide a trust score 0..1, list any risk flags, and a 4-6 sentence summary.';
     const ctx: ConversationContext = {
       messages: [
-        { role: 'user', content: `Conversation sample (latest first)\n${sample}` },
+        {
+          role: 'user',
+          content: `Conversation sample (latest first)\n${sample}`,
+        },
       ],
     };
     const out = await this.generateResponse(ctx, instructions);
     // Heuristic parsing for trust score and flags
-    const trustMatch = out.text.match(/trust\s*score\s*[:=]\s*(0(?:\.\d+)?|1(?:\.0+)?)/i);
+    const trustMatch = out.text.match(
+      /trust\s*score\s*[:=]\s*(0(?:\.\d+)?|1(?:\.0+)?)/i,
+    );
     const trustScore = trustMatch ? Number(trustMatch[1]) : undefined;
     const flagsMatch = out.text.match(/flags?\s*[:=]\s*(.*)$/im);
-    const flags = flagsMatch ? flagsMatch[1].split(/[,;]+/).map((s) => s.trim()).filter(Boolean) : undefined;
+    const flags = flagsMatch
+      ? flagsMatch[1]
+          .split(/[,;]+/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : undefined;
     return {
       summary: out.text.trim(),
       trustScore,
@@ -91,23 +106,36 @@ export class OpenRouterProvider {
     const instructions =
       'Detect deception or manipulation. Rate risk as low/medium/high and explain briefly. List key signals if any.';
     const ctx: ConversationContext = {
-      messages: [
-        { role: 'user', content: `Message:\n${message.text}` },
-      ],
+      messages: [{ role: 'user', content: `Message:\n${message.text}` }],
     };
     const out = await this.generateResponse(ctx, instructions);
     const riskMatch = out.text.match(/\b(low|medium|high)\b/i);
-    const risk = (riskMatch?.[1]?.toLowerCase() as 'low' | 'medium' | 'high') || 'low';
+    const risk =
+      (riskMatch?.[1]?.toLowerCase() as 'low' | 'medium' | 'high') || 'low';
     const sigMatch = out.text.match(/signals?\s*[:=]\s*(.*)$/im);
-    const signals = sigMatch ? sigMatch[1].split(/[,;]+/).map((s) => s.trim()).filter(Boolean) : undefined;
+    const signals = sigMatch
+      ? sigMatch[1]
+          .split(/[,;]+/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : undefined;
     return { risk, rationale: out.text.trim(), signals };
   }
 
-  async iterateResponse(previous: string, feedback: string): Promise<AIResponse> {
+  async iterateResponse(
+    previous: string,
+    feedback: string,
+  ): Promise<AIResponse> {
     const ctx: ConversationContext = {
       messages: [
-        { role: 'system', content: 'You refine text to better meet instructions.' },
-        { role: 'user', content: `Original:\n${previous}\n\nImprove per feedback.` },
+        {
+          role: 'system',
+          content: 'You refine text to better meet instructions.',
+        },
+        {
+          role: 'user',
+          content: `Original:\n${previous}\n\nImprove per feedback.`,
+        },
         { role: 'user', content: `Feedback:\n${feedback}` },
       ],
     };

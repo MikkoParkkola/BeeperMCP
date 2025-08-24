@@ -14,7 +14,8 @@ function homeBase(): string {
 }
 
 function sqlitePath(): string {
-  const logDir = process.env.MESSAGE_LOG_DIR || path.join(homeBase(), 'room-logs');
+  const logDir =
+    process.env.MESSAGE_LOG_DIR || path.join(homeBase(), 'room-logs');
   return path.join(logDir, 'messages.db');
 }
 
@@ -25,7 +26,10 @@ export class StealthMode {
     try {
       const file = sqlitePath();
       if (!fs.existsSync(file)) return null;
-      if (!this.db) this.db = new DatabaseManager(file, { logSecret: process.env.LOG_SECRET });
+      if (!this.db)
+        this.db = new DatabaseManager(file, {
+          logSecret: process.env.LOG_SECRET,
+        });
       return this.db;
     } catch {
       return null;
@@ -48,9 +52,9 @@ export class StealthMode {
   async maintainUnreadStatus(_roomId: string): Promise<void> {
     // Intentionally do nothing: we avoid sending Matrix read markers entirely.
     // This method exists to make the policy explicit at call sites.
+    void _roomId;
     return;
   }
 }
 
 export default StealthMode;
-

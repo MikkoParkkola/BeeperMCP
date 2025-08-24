@@ -65,6 +65,7 @@ Workflows (disabled examples): `codeql.yml.disabled`, `semgrep.yml.disabled`, `a
   - Release assets: binaries, `checksums.txt`, `manifest.json`
 
 Internal notes:
+
 - Uses `GITHUB_REF_NAME` to set manifest `version` from the tag.
 - Requires `softprops/action-gh-release` (uses `GITHUB_TOKEN`).
 

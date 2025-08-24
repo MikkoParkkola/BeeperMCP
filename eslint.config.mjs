@@ -7,6 +7,16 @@ export default [
   {
     ignores: ['node_modules', 'dist', '**/*.d.ts'],
   },
+  // Browser code under web/ should use browser globals
+  {
+    files: ['web/**/*.js'],
+    languageOptions: {
+      globals: globals.browser,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+    },
+  },
   {
     files: ['**/*.js'],
     languageOptions: {

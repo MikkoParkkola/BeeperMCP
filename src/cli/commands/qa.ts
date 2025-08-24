@@ -14,7 +14,8 @@ function homeBase(): string {
 }
 
 function sqlitePath(): string {
-  const logDir = process.env.MESSAGE_LOG_DIR || path.join(homeBase(), 'room-logs');
+  const logDir =
+    process.env.MESSAGE_LOG_DIR || path.join(homeBase(), 'room-logs');
   return path.join(logDir, 'messages.db');
 }
 
@@ -29,13 +30,22 @@ export async function askQA(
   let contexts: { room: string; lines: string[] }[] = [];
   if (fs.existsSync(dbFile)) {
     const db = openLogDb(dbFile);
-    const rooms = opts.rooms && opts.rooms.length ? opts.rooms : detectRooms(db);
+    const rooms =
+      opts.rooms && opts.rooms.length ? opts.rooms : detectRooms(db);
     const limit = Math.max(50, opts.limitPerRoom ?? 200);
     for (const r of rooms) {
-      const lines = (queryLogs(db, r, limit, undefined, undefined, undefined) || []).reverse();
+      const lines = (
+        queryLogs(db, r, limit, undefined, undefined, undefined) || []
+      ).reverse();
       // Simple keyword prefilter
-      const kw = question.replace(/\W+/g, ' ').trim().split(/\s+/).filter(Boolean);
-      const hits = lines.filter((ln) => kw.some((w) => ln.toLowerCase().includes(w.toLowerCase())));
+      const kw = question
+        .replace(/\W+/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      const hits = lines.filter((ln) =>
+        kw.some((w) => ln.toLowerCase().includes(w.toLowerCase())),
+      );
       if (hits.length) contexts.push({ room: r, lines: hits.slice(0, 10) });
       await stealth.maintainUnreadStatus(r);
     }
@@ -54,7 +64,9 @@ Context:\n${ctx}
 
 function detectRooms(db: any): string[] {
   try {
-    const rows = db.prepare('SELECT DISTINCT room_id FROM logs ORDER BY room_id').all();
+    const rows = db
+      .prepare('SELECT DISTINCT room_id FROM logs ORDER BY room_id')
+      .all();
     return rows.map((r: any) => r.room_id);
   } catch {
     return [];

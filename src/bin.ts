@@ -24,23 +24,29 @@ async function main() {
     const path = await import('path');
     const fs = await import('fs');
     const { spawn } = await import('child_process');
-    
+
     const uiPath = path.resolve(process.cwd(), 'web-ui.html');
     if (!fs.existsSync(uiPath)) {
       console.error('🚨 Web UI not found at:', uiPath);
       console.error('Make sure you are in the BeeperMCP directory.');
       process.exit(1);
     }
-    
+
     console.log('🚀 Launching BeeperMCP Web Interface...');
     console.log('📍 Opening:', uiPath);
-    
+
     // Open in default browser
-    const opener = process.platform === 'darwin' ? 'open' : 
-                   process.platform === 'win32' ? 'start' : 'xdg-open';
+    const opener =
+      process.platform === 'darwin'
+        ? 'open'
+        : process.platform === 'win32'
+          ? 'start'
+          : 'xdg-open';
     spawn(opener, [uiPath], { detached: true, stdio: 'ignore' }).unref();
-    
-    console.log('✨ Web Interface launched! Enjoy the Matrix Intelligence Hub!');
+
+    console.log(
+      '✨ Web Interface launched! Enjoy the Matrix Intelligence Hub!',
+    );
     return;
   }
 

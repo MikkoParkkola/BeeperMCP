@@ -21,4 +21,3 @@ ${message}
   const out = await askLLM(prompt);
   return out;
 }
-

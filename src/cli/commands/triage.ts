@@ -2,7 +2,6 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { openLogDb, queryLogs } from '../../../utils.js';
-import { getPersonalHints } from '../../style/engine.js';
 
 export interface TriageCandidate {
   roomId: string;
@@ -29,7 +28,8 @@ function homeBase(): string {
 }
 
 function sqlitePath(): string {
-  const logDir = process.env.MESSAGE_LOG_DIR || path.join(homeBase(), 'room-logs');
+  const logDir =
+    process.env.MESSAGE_LOG_DIR || path.join(homeBase(), 'room-logs');
   return path.join(logDir, 'messages.db');
 }
 
@@ -100,7 +100,8 @@ export function findActionables(
   const rooms = detectRooms(db);
   const out: TriageCandidate[] = [];
   for (const roomId of rooms) {
-    const lines = queryLogs(db, roomId, perRoomLimit, since, undefined, undefined) || [];
+    const lines =
+      queryLogs(db, roomId, perRoomLimit, since, undefined, undefined) || [];
     const parsed = lines.map(parseLine).filter(Boolean) as any[];
     for (let i = parsed.length - 1; i >= 0; i--) {
       const p = parsed[i];
@@ -109,12 +110,22 @@ export function findActionables(
       if (prefs.userAliases.some((a) => a && p.sender.includes(a))) continue;
       if (!looksActionable(p.text, prefs.userAliases)) continue;
       // if user replied after this line in same room, skip
-      const replied = parsed.slice(i + 1).some((q) => prefs.userAliases.some((a) => a && q.sender.includes(a)));
+      const replied = parsed
+        .slice(i + 1)
+        .some((q) => prefs.userAliases.some((a) => a && q.sender.includes(a)));
       if (replied) continue;
       const ctxStart = Math.max(0, i - ctxWin);
       const ctxEnd = Math.min(parsed.length, i + 1 + ctxWin);
-      const ctx = parsed.slice(ctxStart, ctxEnd).map((x) => `[${x.ts}] <${x.sender}> ${x.text}`);
-      out.push({ roomId, ts: p.ts, sender: p.sender, text: p.text, context: ctx });
+      const ctx = parsed
+        .slice(ctxStart, ctxEnd)
+        .map((x) => `[${x.ts}] <${x.sender}> ${x.text}`);
+      out.push({
+        roomId,
+        ts: p.ts,
+        sender: p.sender,
+        text: p.text,
+        context: ctx,
+      });
       break; // one actionable per room is enough for triage
     }
   }
@@ -129,7 +140,8 @@ export async function generateDrafts(
   askLLM: (prompt: string) => Promise<string>,
 ) {
   const brief = await ensureRoomBrief(candidate.roomId, askLLM);
-  const lang = prefs.language || brief.language || 'the same language as the context';
+  const lang =
+    prefs.language || brief.language || 'the same language as the context';
   const sys = `Write two alternative replies in ${lang} with a ${prefs.tone || 'friendly'} tone.
 Keep each under 80 words. Use a relaxed, friendly voice. Light emojis are OK if it fits (optional). Be specific and helpful.
 Audience & style hints (from prior conversations):
@@ -191,22 +203,25 @@ MESSAGES SAMPLE (recent):
 ${lines.slice(-400).join('\n')}
 `;
   const raw = await askLLM(briefPrompt);
-  const brief: RoomBrief = { roomId, updatedAt: new Date().toISOString() } as any;
+  const brief: RoomBrief = {
+    roomId,
+    updatedAt: new Date().toISOString(),
+  } as any;
   try {
     const langMatch = raw.match(/LANG:\s*(.+)/i);
     brief.language = langMatch ? langMatch[1].trim() : undefined;
-    const style = Array.from(raw.matchAll(/^\-\s+(.+)$/gim)).map((m) => m[1].trim());
     // Split bullets by sections heuristically
     const sec = (name: string) =>
-      raw.split(new RegExp(`\n${name}:\n`, 'i'))[1]?.split(/\n[A-Z]+:/)[0] || '';
-    brief.styleHints = Array.from(sec('STYLE').matchAll(/^\-\s+(.+)$/gim)).map(
+      raw.split(new RegExp(`\n${name}:\n`, 'i'))[1]?.split(/\n[A-Z]+:/)[0] ||
+      '';
+    brief.styleHints = Array.from(sec('STYLE').matchAll(/^-\s+(.+)$/gim)).map(
       (m) => m[1].trim(),
     );
     brief.audienceNotes = Array.from(
-      sec('AUDIENCE').matchAll(/^\-\s+(.+)$/gim),
+      sec('AUDIENCE').matchAll(/^-\s+(.+)$/gim),
     ).map((m) => m[1].trim());
     brief.sensitivities = Array.from(
-      sec('SENSITIVITIES').matchAll(/^\-\s+(.+)$/gim),
+      sec('SENSITIVITIES').matchAll(/^-\s+(.+)$/gim),
     ).map((m) => m[1].trim());
   } catch {}
   cache[roomId] = brief;
@@ -216,7 +231,9 @@ ${lines.slice(-400).join('\n')}
 
 function detectRooms(db: any): string[] {
   try {
-    const rows = db.prepare('SELECT DISTINCT room_id FROM logs ORDER BY room_id').all();
+    const rows = db
+      .prepare('SELECT DISTINCT room_id FROM logs ORDER BY room_id')
+      .all();
     return rows.map((r: any) => r.room_id);
   } catch {
     return [];
