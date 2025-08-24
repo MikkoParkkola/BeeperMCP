@@ -1,0 +1,22 @@
+Please clarify what changes you want to make to these files:
+
+1) Goal
+- What functionality should these files enable? (e.g., model selection, runtime config, provider registry)
+
+2) Expected formats
+- What is the intended format for each file?
+  - model: plain text model id? e.g., "gpt-oss:120b"
+  - set: shell script/CLI command? or a config directive?
+  - config: JSON/YAML/TOML/plain text?
+  - gpt-oss:120b: per-model settings in JSON/YAML? or just a marker file?
+
+3) Desired behavior
+- Should writing a model id into "model" switch the active model?
+- Should "set" be an executable command to set the model?
+- What keys/fields are required in "config" and per-model files?
+
+4) Constraints
+- Any existing tools/scripts that read these files?
+- Any backward compatibility requirements?
+
+Reply with the specifics and I’ll implement the exact schema and wiring.
