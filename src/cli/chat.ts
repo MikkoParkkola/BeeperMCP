@@ -482,15 +482,13 @@ async function run() {
       } else if (cmd === 'reply') {
         try {
           console.log('Paste the message to reply to, then press Enter:');
-          const msg = await new Promise<string>((resolve) =>
-            rl.question('', resolve),
-          );
+          const msg = await new Promise<string>((resolve) => rl.question('', resolve));
           const activeProv =
             cfg.active?.provider && cfg.providers[cfg.active.provider];
           if (!activeProv) console.log('No active provider. Use /switch.');
           else {
             const { draftReplies } = await import('./commands/reply.js');
-            const out = await draftReplies(
+            let out = await draftReplies(
               '',
               msg,
               (p: string) =>
@@ -499,6 +497,16 @@ async function run() {
                 ]),
             );
             console.log(out);
+            if (activeProv.type === 'openrouter') {
+              const fb = await prompt('Refine drafts? Enter instructions (or press Enter to skip): ');
+              if (fb) {
+                const Provider = (await import('../providers/openrouter.js')).default;
+                const prov = new Provider((activeProv as any).apiKey);
+                const refined = await prov.iterateResponse(out, fb);
+                const text = (refined as any).content || '';
+                console.log('\nRefined drafts:\n' + text);
+              }
+            }
           }
         } catch (e: any) {
           console.error('Reply failed:', e?.message || e);

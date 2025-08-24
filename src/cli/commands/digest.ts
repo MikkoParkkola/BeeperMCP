@@ -2,6 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { openLogDb, queryLogs } from '../../../utils.js';
+import { StealthMode } from '../../core/stealth-mode.js';
 
 export interface DigestOpts {
   rooms?: string[];
@@ -51,6 +52,7 @@ function guessQuestions(texts: string[]) {
 }
 
 export async function runDigest(opts: DigestOpts = {}, askLLM: (prompt: string) => Promise<string>) {
+  const stealth = new StealthMode();
   const lookbackH = Math.max(1, opts.hours ?? 24);
   const limitPerRoom = Math.max(50, opts.limitPerRoom ?? 300);
   const sinceIso = new Date(Date.now() - lookbackH * 3600_000).toISOString();
@@ -64,6 +66,7 @@ export async function runDigest(opts: DigestOpts = {}, askLLM: (prompt: string) 
   for (const roomId of rooms) {
     const lines = queryLogs(db, roomId, limitPerRoom, sinceIso, undefined, undefined) || [];
     perRoom[roomId] = lines.reverse();
+    await stealth.maintainUnreadStatus(roomId);
   }
   // Aggregate statistics and key snippets
   let total = 0;
@@ -86,7 +89,6 @@ export async function runDigest(opts: DigestOpts = {}, askLLM: (prompt: string) 
   const topUsers = topN(Object.keys(byUser) as any, 5).map(([u, c]) => `${u} (${c})`).join(', ');
   const activitySpark = makeSpark(activity, 24);
   const qSample = questions.slice(0, 6).join('\n');
-  // Small prompt for Ollama friendliness
   const prompt = `You are writing a concise daily digest of chat activity.
 TIME WINDOW: last ${lookbackH}h.
 SHOW:
@@ -118,4 +120,3 @@ function detectRooms(db: any): string[] {
     return [];
   }
 }
-

@@ -2,6 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { openLogDb, queryLogs } from '../../../utils.js';
+import { StealthMode } from '../../core/stealth-mode.js';
 
 interface QAOpts {
   rooms?: string[];
@@ -22,6 +23,7 @@ export async function askQA(
   opts: QAOpts = {},
   askLLM: (prompt: string) => Promise<string>,
 ) {
+  const stealth = new StealthMode();
   // Try SQLite fallback over recent messages if Postgres not configured
   const dbFile = sqlitePath();
   let contexts: { room: string; lines: string[] }[] = [];
@@ -35,6 +37,7 @@ export async function askQA(
       const kw = question.replace(/\W+/g, ' ').trim().split(/\s+/).filter(Boolean);
       const hits = lines.filter((ln) => kw.some((w) => ln.toLowerCase().includes(w.toLowerCase())));
       if (hits.length) contexts.push({ room: r, lines: hits.slice(0, 10) });
+      await stealth.maintainUnreadStatus(r);
     }
   }
   const ctx = contexts
@@ -57,4 +60,3 @@ function detectRooms(db: any): string[] {
     return [];
   }
 }
-

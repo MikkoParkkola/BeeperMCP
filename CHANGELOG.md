@@ -46,3 +46,10 @@ Highlights
 - New MCP tools: inbox_list, brief_room, draft_replies (with `to` target), revise_reply, qa, digest_generate, translate_text, tone_learn, tone_get.
 - Personal Tone Engine: learns per‑person language + style from your messages; drafting adapts tone (friendly by default) and can include light emojis.
 - CLI: /learn_tone command; /inbox and /triage integrate briefs and personal hints.
+## 1.3.4 – Packaging polish (agentsmcp archives), QA & test pass
+
+Highlights
+
+- Release assets renamed and foldered for clarity: agentsmcp-<platform>.tar.gz (or .zip on Windows) with executable `agentsmcp` (+x on Unix).
+- Extensive build/test pass and secret-safety checks; added .gitignore for state/logs/dbs.
+- No functional changes beyond packaging/CI polish.

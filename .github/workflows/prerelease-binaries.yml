@@ -23,28 +23,34 @@ jobs:
           npx pkg -t node22-macos-x64,node22-macos-arm64,node22-linux-x64,node22-win-x64 --compress Brotli \
             --output build/beepermcp dist/src/bin.js
           ls -l build
-      - name: Prepare artifacts with checksums and manifest
+      - name: Prepare artifacts with checksums and manifest (foldered, renamed)
         id: prep
         run: |
-          mkdir -p artifacts
-          mv build/beepermcp-macos-x64 artifacts/beepermcp-macos-x64
-          mv build/beepermcp-macos-arm64 artifacts/beepermcp-macos-arm64
-          mv build/beepermcp-linux-x64 artifacts/beepermcp-linux-x64
-          mv build/beepermcp-win-x64.exe artifacts/beepermcp-win-x64.exe || true
+          mkdir -p artifacts/macos/x64 artifacts/macos/arm64 artifacts/linux/x64 artifacts/windows/x64
+          mv build/beepermcp-macos-x64 artifacts/macos/x64/agentsmcp
+          mv build/beepermcp-macos-arm64 artifacts/macos/arm64/agentsmcp
+          mv build/beepermcp-linux-x64 artifacts/linux/x64/agentsmcp
+          mv build/beepermcp-win-x64.exe artifacts/windows/x64/agentsmcp.exe || true
+          chmod +x artifacts/macos/x64/agentsmcp || true
+          chmod +x artifacts/macos/arm64/agentsmcp || true
+          chmod +x artifacts/linux/x64/agentsmcp || true
           cd artifacts
-          sha256sum beepermcp-* > checksums.txt || shasum -a 256 beepermcp-* > checksums.txt
+          tar -czf agentsmcp-macos-x64.tar.gz -C macos/x64 agentsmcp
+          tar -czf agentsmcp-macos-arm64.tar.gz -C macos/arm64 agentsmcp
+          tar -czf agentsmcp-linux-x64.tar.gz -C linux/x64 agentsmcp
+          (cd windows/x64 && zip -q ../../agentsmcp-windows-x64.zip agentsmcp.exe) || true
+          sha256sum agentsmcp-*.*z* > checksums.txt || shasum -a 256 agentsmcp-*.*z* > checksums.txt
           node -e '
             const fs=require("fs");
             const cp=(n)=>fs.existsSync(n)?fs.statSync(n).size:0;
+            const txt=fs.readFileSync("checksums.txt","utf8");
+            const getSha=(n)=> (txt.split(/\n/).find(l=>l.includes(n))||"").split(/[\s]+/)[0];
             const assets=[
-              {name:"beepermcp-macos-x64", platform:"macos-x64"},
-              {name:"beepermcp-macos-arm64", platform:"macos-arm64"},
-              {name:"beepermcp-linux-x64", platform:"linux-x64"},
-              {name:"beepermcp-win-x64.exe", platform:"win-x64"}
-            ].filter(a=>fs.existsSync(a.name)).map(a=>{
-              const sha=(fs.readFileSync("checksums.txt","utf8").split(/\n/).find(l=>l.includes(a.name))||"").split(/[\s]+/)[0];
-              return {name:a.name, platform:a.platform, size:cp(a.name), sha256:sha};
-            });
+              {name:"agentsmcp-macos-x64.tar.gz", platform:"macos-x64"},
+              {name:"agentsmcp-macos-arm64.tar.gz", platform:"macos-arm64"},
+              {name:"agentsmcp-linux-x64.tar.gz", platform:"linux-x64"},
+              {name:"agentsmcp-windows-x64.zip", platform:"win-x64"}
+            ].filter(a=>fs.existsSync(a.name)).map(a=>({name:a.name, platform:a.platform, size:cp(a.name), sha256:getSha(a.name)}));
             const manifest={version: process.env.GITHUB_SHA?.slice(0,7) || "dev", assets};
             fs.writeFileSync("manifest.json", JSON.stringify(manifest,null,2));
           '
@@ -53,17 +59,23 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: beepermcp-prerelease
-          path: artifacts/*
+          path: |
+            artifacts/agentsmcp-macos-x64.tar.gz
+            artifacts/agentsmcp-macos-arm64.tar.gz
+            artifacts/agentsmcp-linux-x64.tar.gz
+            artifacts/agentsmcp-windows-x64.zip
+            artifacts/checksums.txt
+            artifacts/manifest.json
       - name: Create prerelease
         uses: softprops/action-gh-release@v2
         with:
           tag_name: prerelease-${{ github.sha }}
           prerelease: true
           files: |
-            artifacts/beepermcp-macos-x64
-            artifacts/beepermcp-macos-arm64
-            artifacts/beepermcp-linux-x64
-            artifacts/beepermcp-win-x64.exe
+            artifacts/agentsmcp-macos-x64.tar.gz
+            artifacts/agentsmcp-macos-arm64.tar.gz
+            artifacts/agentsmcp-linux-x64.tar.gz
+            artifacts/agentsmcp-windows-x64.zip
             artifacts/checksums.txt
             artifacts/manifest.json
         env:
