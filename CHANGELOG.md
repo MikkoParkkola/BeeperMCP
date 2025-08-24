@@ -38,3 +38,11 @@ Highlights
 - Release workflows updated to build and publish `beepermcp-macos-arm64`.
 - Updater detects `macos-arm64` platform tag and fetches native binary.
 - Bootstrap uses an arch‑scoped native cache to avoid cross‑arch conflicts.
+## 1.3.3 – Approval‑Gated Send, Translate, Personal Tone (Agentic)
+
+Highlights
+
+- MCP send_message now approval‑gated with sanitize + guardrails and explicit approval form.
+- New MCP tools: inbox_list, brief_room, draft_replies (with `to` target), revise_reply, qa, digest_generate, translate_text, tone_learn, tone_get.
+- Personal Tone Engine: learns per‑person language + style from your messages; drafting adapts tone (friendly by default) and can include light emojis.
+- CLI: /learn_tone command; /inbox and /triage integrate briefs and personal hints.

@@ -2,6 +2,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'node:crypto';
 import http from 'http';
+import fs from 'fs';
+import path from 'path';
 import { buildMcpServer } from '../mcp-tools.js';
 import { registerResources } from './mcp/resources.js';
 import { negotiateVersion, isStdioMode } from './mcp-compat.js';
@@ -115,6 +117,41 @@ export async function startHttpServer(
 
   await server.connect(transport);
 
+  const webRoot = path.join(process.cwd(), 'web');
+
+  function serveStaticUI(req: http.IncomingMessage, res: http.ServerResponse) {
+    if (!req.url) return false;
+    if (!req.url.startsWith('/ui')) return false;
+
+    // Normalize path under /web
+    let rel = req.url.replace(/^\/ui\/?/, '');
+    if (!rel || rel === '') rel = 'index.html';
+    const filePath = path.join(webRoot, rel);
+    if (!filePath.startsWith(webRoot)) { // path traversal guard
+      res.writeHead(403); res.end('Forbidden'); return true;
+    }
+    try {
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) throw new Error('Not file');
+      const ext = path.extname(filePath).toLowerCase();
+      const types: Record<string,string> = {
+        '.html': 'text/html; charset=utf-8',
+        '.css':  'text/css; charset=utf-8',
+        '.js':   'text/javascript; charset=utf-8',
+        '.svg':  'image/svg+xml',
+        '.png':  'image/png',
+        '.jpg':  'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.gif':  'image/gif'
+      };
+      res.writeHead(200, { 'Content-Type': types[ext] || 'application/octet-stream' });
+      fs.createReadStream(filePath).pipe(res);
+      return true;
+    } catch {
+      res.writeHead(404); res.end('Not Found'); return true;
+    }
+  }
+
   const httpServer = http.createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/.well-known/mcp.json') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -127,6 +164,12 @@ export async function startHttpServer(
           defaultProtocolVersion: '2024-11-05', // Most compatible default
         }),
       );
+    } else if (req.method === 'GET' && (req.url === '/' || req.url === '/ui')) {
+      // Redirect root and bare /ui to UI index
+      res.writeHead(302, { Location: '/ui/index.html' });
+      res.end();
+    } else if (serveStaticUI(req, res)) {
+      // Handled
     } else {
       void transport.handleRequest(req, res);
     }

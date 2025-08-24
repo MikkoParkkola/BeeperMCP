@@ -79,6 +79,40 @@ This backlog groups work into ~500 LOC (or less) packages so multiple contributo
   - Files: `README.md`, `docs/*.md`, `AGENTS.md`
   - Acceptance: New users can install and chat in <5 minutes; fewer support questions.
 
+## Inbox & Watchtower (New)
+
+- Inbox Phase A — Core list + send path
+  - Scope: `/inbox` selector, `/open <n>`, Watchtower view, drafts + `a/e/r` flows, MCP send with safety.
+  - Files: `src/cli/commands/inbox.ts`, `src/cli/chat.ts`, `docs/INBOX.md`
+  - Acceptance: Users can review items, accept/edit/revise, and send safely.
+
+- Inbox Phase B — Productivity
+  - Scope: Snooze/reject, `/todo` commitments, `n` nudges, `/persona` editor, persistence.
+  - Files: CLI commands, brief/style caches; tests.
+  - Acceptance: Users can postpone, nudge respectfully, and tailor personas.
+
+- Inbox Phase C — Polish
+  - Scope: Paging, quick filters (room/language/mention), multi‑select, custom tones.
+  - Files: CLI selector + helpers; docs.
+  - Acceptance: Smooth UX with power‑user features.
+
+## Action Board & Tone Engine (New)
+
+- Action Board (Commitments + Nudges)
+  - Scope: Extract commitments/requests into `tasks.json`; `/todo` list with `n`udge templates and `done`; optional due heuristics.
+  - Files: `src/cli/commands/todo.ts`, `docs/ROADMAP.md`
+  - Acceptance: Users can list, nudge, and complete tasks across rooms.
+
+- Personal Tone Engine
+  - Scope: Mine user’s messages for style hints; cache to `style.json`; inject into drafting prompts.
+  - Files: `src/cli/commands/style.ts` (or helper), CLI integration, docs.
+  - Acceptance: Drafts reflect user’s style per room; language auto‑adapts.
+
+- Hold‑Reply Queue
+  - Scope: Queue ack drafts when away; approval/send on next session; `hold-replies.json` persistence.
+  - Files: CLI helper + send path; docs.
+  - Acceptance: On return, user can quickly send tailored acknowledgements.
+
 ---
 
 Notes

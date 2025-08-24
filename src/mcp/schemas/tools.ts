@@ -216,6 +216,142 @@ const fetch: JSONSchema7 = {
   required: ['url'],
 };
 
+// New MCP tool schemas (agentic)
+const inbox_list: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    hours: { type: 'integer', minimum: 1 },
+    limit: { type: 'integer', minimum: 1 },
+    aliases: { type: 'array', items: { type: 'string' } },
+  },
+};
+
+const brief_room: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: false,
+  properties: { room_id: { type: 'string' } },
+  required: ['room_id'],
+};
+
+const draft_replies: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    room_id: { type: 'string' },
+    source: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { text: { type: 'string' }, event_id: { type: 'string' } },
+    },
+    intention: { type: 'string' },
+    extra_instructions: { type: 'string' },
+    tone: { type: 'string' },
+    language: { type: 'string' },
+    to: { type: 'string', description: 'optional person/user id to tailor tone' },
+  },
+  required: ['room_id', 'source', 'intention'],
+};
+
+const revise_reply: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    room_id: { type: 'string' },
+    base_draft: { type: 'string' },
+    extra_instructions: { type: 'string' },
+  },
+  required: ['room_id', 'base_draft', 'extra_instructions'],
+};
+
+const digest_generate: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    rooms: { type: 'array', items: { type: 'string' } },
+    hours: { type: 'integer', minimum: 1 },
+  },
+};
+
+const qa: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    question: { type: 'string' },
+    rooms: { type: 'array', items: { type: 'string' } },
+    limit: { type: 'integer', minimum: 1 },
+  },
+  required: ['question'],
+};
+
+const todo_list: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    since_hours: { type: 'integer', minimum: 1 },
+  },
+};
+
+const nudge_create: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    task_id: { type: 'string' },
+    room_id: { type: 'string' },
+    to: { type: 'string' },
+    reason: { type: 'string' },
+    extra: { type: 'string' },
+  },
+};
+
+const persona_set: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    room_id: { type: 'string' },
+    tone: { type: 'string' },
+    language: { type: 'string' },
+    audience_notes: { type: 'array', items: { type: 'string' } },
+    sensitivities: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['room_id'],
+};
+
+// Tone learning/get tools (agentic)
+const tone_learn: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    aliases: { type: 'array', items: { type: 'string' } },
+    since_days: { type: 'integer', minimum: 1 },
+    per_person_max: { type: 'integer', minimum: 50 },
+  },
+  required: ['aliases'],
+};
+
+// Translate text
+const translate_text: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    text: { type: 'string' },
+    target_language: {
+      type: 'string',
+      description: 'Target language code or name (e.g., en, fi)',
+    },
+  },
+  required: ['text'],
+};
+
+const tone_get: JSONSchema7 = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    person_id: { type: 'string' },
+  },
+  required: ['person_id'],
+};
+
 export const toolsSchemas = {
   search,
   who_said,
@@ -228,4 +364,16 @@ export const toolsSchemas = {
   draft_reply,
   send_message,
   fetch,
+  inbox_list,
+  brief_room,
+  draft_replies,
+  revise_reply,
+  digest_generate,
+  qa,
+  todo_list,
+  nudge_create,
+  persona_set,
+  tone_learn,
+  tone_get,
+  translate_text,
 };

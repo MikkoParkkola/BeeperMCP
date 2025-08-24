@@ -297,19 +297,22 @@ async function sendChat(
 
 function printHelp() {
   console.log(`Commands:
-  /help                 Show this help
-  /providers            List configured providers
-  /add                  Add a new provider
-  /models               List models for active provider
-  /switch               Switch active provider and model
-  /version              Show current version
-  /update               Check for update and apply if available
-  /digest [hours]       Generate daily digest (default 24h) and save
-  /qa <question>        Ask a question over recent history
-  /reply                Draft 3 reply variants for pasted message
-  /set key value        Set a config value (e.g., settings.*)
-  /config               Show current config (redacts secrets)
-  /quit                 Exit
+  /help                 Show this help ℹ️
+  /providers            List configured providers 🧩
+  /add                  Add a new provider ➕
+  /models               List models for active provider 🧠
+  /switch               Switch active provider/model 🔀
+  /version              Show current version 🏷️
+  /update               Check for update and apply ⬆️
+  /digest [hours]       Generate daily digest 🗞️ (default 24h)
+  /qa <question>        Ask a question over history 🔎
+  /reply                Draft 3 reply variants ✍️
+  /triage               Find rooms needing reply 🧭
+  /inbox                Open inbox of pending replies 📥
+  /open <n>             Open inbox item by number 🔢
+  /set key value        Set a config value (e.g., settings.*) 🛠️
+  /config               Show current config (redacts secrets) ⚙️
+  /quit                 Exit 🚪
 `);
 }
 
@@ -386,6 +389,23 @@ async function run() {
       } else if (cmd === 'providers') {
         for (const [name, prov] of Object.entries(cfg.providers)) {
           console.log(`- ${name}:`, redact(prov));
+        }
+      } else if (cmd === 'learn_tone') {
+        try {
+          const aliasesRaw =
+            (cfg.settings?.userAliases as string) ||
+            (await prompt('Your Matrix handle(s) (comma-separated): '));
+          const aliases = aliasesRaw
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+          const days = Number((await prompt('Lookback days [60]: ')) || '60');
+          const { learnPersonalTone } = await import('../style/engine.js');
+          const map = learnPersonalTone(aliases, { sinceDays: days });
+          const count = Object.keys(map).length;
+          console.log(`Learned personal tone for ${count} contacts.`);
+        } catch (e: any) {
+          console.error('Learn tone failed:', e?.message || e);
         }
       } else if (cmd === 'add') {
         await configureProvider(cfg);
@@ -482,6 +502,219 @@ async function run() {
           }
         } catch (e: any) {
           console.error('Reply failed:', e?.message || e);
+        }
+      } else if (cmd === 'triage') {
+        try {
+          const activeProv =
+            cfg.active?.provider && cfg.providers[cfg.active.provider];
+          if (!activeProv) {
+            console.log('No active provider. Use /switch.');
+          } else {
+            // Ensure user aliases and preferences
+            const aliasesRaw = (cfg.settings?.userAliases as string) || (await prompt('Your Matrix handle(s) (comma-separated, e.g., @you:server): '));
+            const aliases = aliasesRaw
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean);
+            cfg.settings = cfg.settings || {};
+            (cfg.settings as any).userAliases = aliases.join(',');
+            const tone = ((cfg.settings as any).tone as string) || (await prompt('Preferred tone [concise/friendly/formal] (default: concise): ')) || 'concise';
+            const language = (cfg.settings as any).language || (await prompt('Preferred language (e.g., en, fi) [leave empty for auto]: '));
+            (cfg.settings as any).tone = tone;
+            (cfg.settings as any).language = language;
+            saveConfig(cfg);
+
+            const { findActionables, generateDrafts } = await import('./commands/triage.js');
+            const candidates = findActionables({ userAliases: aliases, tone: tone as any, language: language as any }, { hours: 24 });
+            if (!candidates.length) {
+              console.log('No rooms need your reply right now.');
+            } else {
+              for (const c of candidates) {
+                console.log(`\nRoom: ${c.roomId}\nFrom: ${c.sender}\nAt: ${c.ts}\nMessage: ${c.text}\n---\nContext:\n${c.context.join('\n')}`);
+                // Clarify intention
+                const intention = (await prompt('Your intention? [inform/ask-time/approve/decline/provide-info/custom]: ')) || 'inform';
+                const extra = await prompt('Any extra instructions (constraints, details)? ');
+                const drafts = await generateDrafts(
+                  c,
+                  { userAliases: aliases, tone: tone as any, language: language as any },
+                  intention,
+                  extra,
+                  (p: string) => sendChat(activeProv, cfg.active!.model!, [{ role: 'user', content: p }]),
+                );
+                console.log('\nDrafts:\n' + drafts);
+                const more = await prompt('Revise with extra instruction (leave empty to continue): ');
+                if (more) {
+                  const revised = await generateDrafts(
+                    c,
+                    { userAliases: aliases, tone: tone as any, language: language as any },
+                    intention,
+                    more,
+                    (p: string) => sendChat(activeProv, cfg.active!.model!, [{ role: 'user', content: p }]),
+                  );
+                  console.log('\nRevised drafts:\n' + revised);
+                }
+              }
+            }
+          }
+        } catch (e: any) {
+          console.error('Triage failed:', e?.message || e);
+        }
+      } else if (cmd === 'inbox') {
+        try {
+          const activeProv =
+            cfg.active?.provider && cfg.providers[cfg.active.provider];
+          if (!activeProv) return console.log('No active provider. Use /switch.');
+          const {
+            refreshInbox,
+            renderInbox,
+            openItem,
+            saveInbox,
+            loadInbox,
+          } = await import('./commands/inbox.js');
+          const aliasesRaw =
+            (cfg.settings?.userAliases as string) ||
+            (await prompt('Your Matrix handle(s) (comma-separated): '));
+          const aliases = aliasesRaw
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+          cfg.settings = cfg.settings || {};
+          (cfg.settings as any).userAliases = aliases.join(',');
+          const tone =
+            ((cfg.settings as any).tone as string) ||
+            (await prompt(
+              'Preferred tone [concise/friendly/formal] (default: friendly): ',
+            )) ||
+            'friendly';
+          const language =
+            (cfg.settings as any).language ||
+            (await prompt('Preferred language (e.g., en, fi) [empty=auto]: '));
+          (cfg.settings as any).tone = tone;
+          (cfg.settings as any).language = language;
+          saveConfig(cfg);
+          const prefs = {
+            userAliases: aliases,
+            tone: tone as any,
+            language: language as any,
+          };
+          await refreshInbox(prefs, 24);
+          let items = loadInbox().filter((i: any) => i.status === 'open');
+          if (!items.length) {
+            console.log('Inbox is empty.');
+          } else {
+            let cursor = 0;
+            const rl2 = readline.createInterface({
+              input: process.stdin,
+              output: process.stdout,
+            });
+            const redraw = () => {
+              console.clear?.();
+              console.log(renderInbox(items, cursor));
+              rl2.setPrompt('Select [Enter], j/k=move, q=quit: ');
+              rl2.prompt();
+            };
+            redraw();
+            rl2.on('line', async (ans) => {
+              const s = ans.trim();
+              if (!s) {
+                const item = items[cursor];
+                if (!item) return redraw();
+                const res = await openItem(
+                  item as any,
+                  prefs,
+                  (p: string) =>
+                    sendChat(activeProv, cfg.active!.model!, [
+                      { role: 'user', content: p },
+                    ]),
+                );
+                if (res === 'sent' || res === 'dismissed') {
+                  const all = loadInbox();
+                  const m = all.find((x: any) => x.id === item.id);
+                  if (m) m.status = res === 'sent' ? 'sent' : 'dismissed';
+                  saveInbox(all);
+                }
+                items = loadInbox().filter((i: any) => i.status === 'open');
+                if (!items.length) {
+                  console.log('Inbox is empty.');
+                  rl2.close();
+                } else {
+                  if (cursor >= items.length) cursor = items.length - 1;
+                  redraw();
+                }
+                return;
+              }
+              if (s === 'q') {
+                rl2.close();
+                return;
+              }
+              if (s === 'j') {
+                cursor = Math.min(cursor + 1, items.length - 1);
+                redraw();
+                return;
+              }
+              if (s === 'k') {
+                cursor = Math.max(cursor - 1, 0);
+                redraw();
+                return;
+              }
+              const num = Number(s);
+              if (!Number.isNaN(num) && num >= 1 && num <= items.length) {
+                cursor = num - 1;
+                redraw();
+                return;
+              }
+              redraw();
+            });
+            await new Promise<void>((resolve) =>
+              rl2.on('close', () => resolve()),
+            );
+          }
+        } catch (e: any) {
+          console.error('Inbox failed:', e?.message || e);
+        }
+      } else if (cmd === 'open') {
+        try {
+          const n = Number(rest[0] || '');
+          if (!n) return console.log('Usage: /open <n>');
+          const { loadInbox, openItem, saveInbox } = await import(
+            './commands/inbox.js'
+          );
+          const items = loadInbox().filter((i: any) => i.status === 'open');
+          if (n < 1 || n > items.length) return console.log('Invalid index');
+          const item = items[n - 1];
+          const aliasesRaw =
+            (cfg.settings?.userAliases as string) ||
+            (await prompt('Your Matrix handle(s) (comma-separated): '));
+          const aliases = aliasesRaw
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+          const tone = ((cfg.settings as any).tone as string) || 'friendly';
+          const language = (cfg.settings as any).language || '';
+          const prefs = {
+            userAliases: aliases,
+            tone: tone as any,
+            language: language as any,
+          };
+          const activeProv =
+            cfg.active?.provider && cfg.providers[cfg.active.provider];
+          if (!activeProv) return console.log('No active provider. Use /switch.');
+          const res = await openItem(
+            item as any,
+            prefs,
+            (p: string) =>
+              sendChat(activeProv, cfg.active!.model!, [
+                { role: 'user', content: p },
+              ]),
+          );
+          if (res === 'sent' || res === 'dismissed') {
+            const all = loadInbox();
+            const m = all.find((x: any) => x.id === item.id);
+            if (m) m.status = res === 'sent' ? 'sent' : 'dismissed';
+            saveInbox(all);
+          }
+        } catch (e: any) {
+          console.error('Open failed:', e?.message || e);
         }
       } else if (cmd === 'quit' || cmd === 'exit' || cmd === 'q') {
         rl.close();

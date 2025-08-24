@@ -110,6 +110,7 @@ This document summarizes the primary modules and functions, their parameters, re
   - Internal helpers (can be imported if needed):
     - `configureProvider(cfg)`, `listModelsForProvider(p)`, `sendChat(p, model, messages)`.
   - Commands: `/help`, `/providers`, `/add`, `/models`, `/switch`, `/version`, `/update`, `/set key value`, `/config`, `/quit`.
+  - New Commands: `/digest [hours]`, `/qa <question>`, `/reply`, `/triage`, `/inbox`, `/open <n>`, `/todo`, `/brief <room>`, `/persona <room>`.
 
 ## Analytics Tools (MCP)
 
@@ -133,4 +134,3 @@ This document summarizes the primary modules and functions, their parameters, re
 - CI builds x64 binaries with names:
   - `beepermcp-macos-x64`, `beepermcp-linux-x64`, `beepermcp-win-x64.exe`
   - `checksums.txt` (SHA‑256), `manifest.json` (version + assets)
-
