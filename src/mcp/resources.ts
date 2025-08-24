@@ -57,17 +57,15 @@ export function registerResources(logDb?: any, logSecret?: string) {
         items: [],
       };
     if (!cursor && !from && !to) {
-      // Initial page: latest `limit` rows by ts DESC, then present ascending
+      // Initial page: earliest `limit` rows by ts ASC (forward pagination)
       const rows = logDbRef
         .prepare(
-          'SELECT ts, line FROM logs WHERE room_id = ? ORDER BY ts DESC LIMIT ?',
+          'SELECT ts, line FROM logs WHERE room_id = ? ORDER BY ts ASC LIMIT ?',
         )
         .all(roomId, limit) as any[];
-      const lines = rows
-        .map((r) => r.line)
-        .reverse();
-      const firstTs = rows.length ? rows[rows.length - 1].ts : undefined; // oldest among selection
-      const lastTs = rows.length ? rows[0].ts : undefined; // newest among selection
+      const lines = rows.map((r) => r.line);
+      const firstTs = rows.length ? rows[0].ts : undefined; // oldest among selection
+      const lastTs = rows.length ? rows[rows.length - 1].ts : undefined; // newest among selection
       let prevCursor: string | undefined;
       let nextCursor: string | undefined;
       if (firstTs) {
