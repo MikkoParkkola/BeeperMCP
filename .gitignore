@@ -16,3 +16,4 @@ docker-images/*
 .beeper-home
 audit.json
 beepermcp-macos-arm64
+beepermcp-macos-arm64

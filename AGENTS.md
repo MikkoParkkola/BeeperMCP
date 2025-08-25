@@ -245,7 +245,8 @@ The Inbox feature streamlines replying across many rooms by gathering open conve
 
 ### Config
 
-- `src/config.ts` and `src/config/runtime.ts`
+- `src/config.ts`
+- `src/config/runtime.ts`
 
 ### Chat CLI
 

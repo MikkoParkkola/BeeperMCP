@@ -30,6 +30,7 @@ Upgrading
 
 - Download the latest binary from Releases and make it executable.
 - Optional: set `BEEPERMCP_UPDATE_REPO=MikkoParkkola/BeeperMCP` to enable auto‑update.
+
 ## 1.3.1 – Single Binaries, Auto‑Update, Chat CLI (x64)
 
 Highlights
