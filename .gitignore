@@ -15,3 +15,4 @@ docker-images/*
 .npm-cache
 .beeper-home
 audit.json
+beepermcp-macos-arm64

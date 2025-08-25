@@ -21,19 +21,23 @@ jobs:
       - name: Build dist
         run: |
           npm run build
-      - name: Package binaries (x64 + macOS arm64)
+      - name: Package binaries (matrix opt-in for macOS arm64)
         run: |
-          npx pkg -t node22-macos-x64,node22-macos-arm64,node22-linux-x64,node22-win-x64 --compress Brotli \
-            --output build/beepermcp dist/src/bin.js
-          # pkg writes single output when one target; for multiple, it appends platform suffixes
-          ls -l build
+          set -euo pipefail
+          TARGETS="node22-macos-x64,node22-linux-x64,node22-win-x64"
+          if [ "${{ vars.ENABLE_MACOS_ARM64 || '' }}" = "true" ]; then
+            TARGETS="$TARGETS,node22-macos-arm64"
+          fi
+          echo "Using pkg targets: $TARGETS"
+          npx pkg -t "$TARGETS" --compress Brotli --output build/beepermcp dist/src/bin.js
+          ls -l build || true
       - name: Arrange artifacts in descriptive subfolders and compute checksums/manifest
         run: |
           mkdir -p artifacts
           # Create descriptive folders and rename executables to `agentsmcp`
           mkdir -p artifacts/macos/x64 artifacts/macos/arm64 artifacts/linux/x64 artifacts/windows/x64
           mv build/beepermcp-macos-x64 artifacts/macos/x64/agentsmcp
-          mv build/beepermcp-macos-arm64 artifacts/macos/arm64/agentsmcp
+          if [ -f build/beepermcp-macos-arm64 ]; then mv build/beepermcp-macos-arm64 artifacts/macos/arm64/agentsmcp; fi
           mv build/beepermcp-linux-x64 artifacts/linux/x64/agentsmcp
           mv build/beepermcp-win-x64.exe artifacts/windows/x64/agentsmcp.exe || true
           # Ensure executables are +x on Unix platforms
@@ -43,7 +47,7 @@ jobs:
           # Package each folder as an archive for GitHub release assets
           cd artifacts
           tar -czf agentsmcp-macos-x64.tar.gz -C macos/x64 agentsmcp
-          tar -czf agentsmcp-macos-arm64.tar.gz -C macos/arm64 agentsmcp
+          if [ -f macos/arm64/agentsmcp ]; then tar -czf agentsmcp-macos-arm64.tar.gz -C macos/arm64 agentsmcp; fi
           tar -czf agentsmcp-linux-x64.tar.gz -C linux/x64 agentsmcp
           (cd windows/x64 && zip -q ../../agentsmcp-windows-x64.zip agentsmcp.exe) || true
           # Compute checksums for archives
@@ -63,6 +67,22 @@ jobs:
               {name:"agentsmcp-windows-x64.zip", platform:"win-x64"}
             ].filter(a=>fs.existsSync(a.name)).map(a=>({name:a.name, platform:a.platform, size:cp(a.name), sha256:getSha(a.name)}));
             fs.writeFileSync("manifest.json", JSON.stringify({version, assets}, null, 2));
+          '
+          cd -
+      - name: Sign manifest (optional ed25519 JSON signature)
+        if: ${{ secrets.MANIFEST_PRIVKEY_B64 != '' }}
+        run: |
+          cd artifacts
+          node -e '
+            const fs=require("fs");
+            const crypto=require("crypto");
+            const b64=process.env.MANIFEST_PRIVKEY_B64||"";
+            if(!b64) process.exit(0);
+            const key=crypto.createPrivateKey({key:Buffer.from(b64,"base64"), format:"der", type:"pkcs8"});
+            const data=fs.readFileSync("manifest.json");
+            const sig=crypto.sign(null, data, key).toString("base64");
+            const out={alg:"ed25519", sig};
+            fs.writeFileSync("manifest.sig", JSON.stringify(out));
           '
           cd -
       - name: Upload artifacts
@@ -93,5 +113,6 @@ jobs:
             artifacts/agentsmcp-windows-x64.zip
             artifacts/checksums.txt
             artifacts/manifest.json
+            artifacts/manifest.sig
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

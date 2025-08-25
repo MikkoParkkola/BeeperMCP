@@ -3,6 +3,9 @@ import { config } from '../config.js';
 import { computeBasicStats } from '../event-doc.js';
 import { getEffectiveTz, toLocalKeys } from '../time/tz.js';
 import { NormalizedEventSchema } from './schemas.js';
+import path from 'path';
+import os from 'os';
+import { createLogWriter, createMediaWriter, openLogDb } from '../../utils.js';
 
 let pool: Pool | null = null;
 function getPool() {
@@ -13,6 +16,28 @@ function getPool() {
       max: config.db.pool.max,
     });
   return pool;
+}
+
+// Optional SQLite logging (resources) — initialized on first use
+let logDb: any | null = null;
+let logWriter: ReturnType<typeof createLogWriter> | null = null;
+let mediaWriter: ReturnType<typeof createMediaWriter> | null = null;
+function ensureSqlite() {
+  if (logDb) return;
+  try {
+    const HOME_BASE =
+      process.env.BEEPERMCP_HOME || path.join(os.homedir(), '.BeeperMCP');
+    const logDir =
+      process.env.MESSAGE_LOG_DIR || path.join(HOME_BASE, 'room-logs');
+    const dbPath = process.env.LOG_DB_PATH || path.join(logDir, 'messages.db');
+    logDb = openLogDb(dbPath);
+    logWriter = createLogWriter(logDb, process.env.LOG_SECRET);
+    mediaWriter = createMediaWriter(logDb);
+  } catch {
+    logDb = null;
+    logWriter = null;
+    mediaWriter = null;
+  }
 }
 
 function parseAttachments(ev: any): {
@@ -113,6 +138,29 @@ async function persistEvent(ev: any, roomId: string) {
       normalized.attachments ?? null,
     ],
   );
+
+  // Also persist minimal line + media metadata into SQLite logs/media for resources
+  try {
+    ensureSqlite();
+    if (logWriter) {
+      const ts = normalized.ts_utc.toISOString();
+      const line = normalized.text ?? (normalized.has_media ? '[media]' : '');
+      logWriter.queue(normalized.room_id, ts, line, normalized.event_id);
+    }
+    if (mediaWriter && normalized.has_media) {
+      const ts = normalized.ts_utc.toISOString();
+      // Store minimal media metadata (no file path yet)
+      mediaWriter.queue({
+        eventId: normalized.event_id,
+        roomId: normalized.room_id,
+        ts,
+        file: '',
+        type: (ev.content?.info?.mimetype as string) || undefined,
+        size: (ev.content?.info?.size as number) || undefined,
+        hash: undefined,
+      });
+    }
+  } catch {}
 }
 
 export async function startMatrixIngestLoop(): Promise<void> {
