@@ -61,7 +61,7 @@ async function phaseLogin(
       initial_device_display_name: 'BeeperMCP',
     } as any);
     TOKEN = res.access_token;
-    session.setItem('token', TOKEN);
+    session.setItem('token', TOKEN!);
     session.setItem('deviceId', res.device_id);
     logger.info(`Logged in as ${UID}, device ${res.device_id}`);
     client.setAccessToken(TOKEN!);

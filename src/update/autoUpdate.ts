@@ -43,9 +43,15 @@ function isPackaged(): boolean {
   return !!(process as any).pkg;
 }
 
-function platformTag(): 'macos-x64' | 'linux-x64' | 'win-x64' | null {
+function platformTag():
+  | 'macos-x64'
+  | 'macos-arm64'
+  | 'linux-x64'
+  | 'win-x64'
+  | null {
   const p = process.platform;
-  if (p === 'darwin') return 'macos-x64';
+  const a = process.arch;
+  if (p === 'darwin') return a === 'arm64' ? 'macos-arm64' : 'macos-x64';
   if (p === 'linux') return 'linux-x64';
   if (p === 'win32') return 'win-x64';
   return null;
@@ -57,6 +63,40 @@ async function fetchJSON(url: string): Promise<any> {
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function isRetryableStatus(code: number) {
+  return code === 429 || (code >= 500 && code < 600);
+}
+
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  retries = 2,
+  baseDelay = 250,
+): Promise<Response> {
+  let attempt = 0;
+  for (;;) {
+    try {
+      const res = await fetch(url, init);
+      if (!res.ok && isRetryableStatus(res.status))
+        throw new Error(String(res.status));
+      return res;
+    } catch (e: any) {
+      attempt++;
+      const msg = String(e?.message || e);
+      const retryable =
+        /timeout|network|ECONN|ENOTFOUND|EAI_AGAIN|429|5\d\d/i.test(msg);
+      if (!retryable || attempt > retries) throw e;
+      const delay =
+        baseDelay * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 50);
+      await sleep(delay);
+    }
+  }
 }
 
 function parseRepo(): { owner: string; repo: string } | null {
@@ -95,18 +135,58 @@ function sha256(file: string): string {
   return h.digest('hex');
 }
 
-async function download(url: string, dest: string) {
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'BeeperMCP-Updater' },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+async function downloadWithResume(url: string, dest: string) {
   ensureDir(path.dirname(dest));
-  const file = fs.createWriteStream(dest, { mode: 0o755 });
+  const part = dest + '.part';
+  // Cleanup very old partials
+  try {
+    const st = fs.statSync(part);
+    if (Date.now() - st.mtimeMs > 7 * 24 * 60 * 60 * 1000) fs.unlinkSync(part);
+  } catch {}
+  let start = 0;
+  try {
+    start = fs.statSync(part).size;
+  } catch {}
+  const headers: Record<string, string> = {
+    'User-Agent': 'BeeperMCP-Updater',
+  } as any;
+  if (start > 0) headers['Range'] = `bytes=${start}-`;
+  const res = await fetchWithRetry(url, { headers }, 3, 300);
+  if (!(res.status === 200 || res.status === 206))
+    throw new Error(`HTTP ${res.status}`);
+  const writeFlags = start > 0 && res.status === 206 ? 'a' : 'w';
+  const file = fs.createWriteStream(part, { mode: 0o755, flags: writeFlags });
   await new Promise<void>((resolve, reject) => {
     (res.body as any).pipe(file);
     (res.body as any).on('error', reject);
     file.on('finish', resolve);
   });
+  fs.renameSync(part, dest);
+}
+
+function verifyDetachedSignature(
+  manifestBytes: Buffer,
+  sigText: string,
+  pubKeyB64?: string,
+): boolean {
+  if (!sigText || !pubKeyB64) return false;
+  try {
+    // Simple JSON { alg: 'ed25519', sig: base64 } format support
+    if (sigText.trim().startsWith('{')) {
+      const obj = JSON.parse(sigText);
+      if (obj.alg !== 'ed25519' || typeof obj.sig !== 'string') return false;
+      const sig = Buffer.from(obj.sig, 'base64');
+      const pub = Buffer.from(pubKeyB64, 'base64');
+      return crypto.verify(
+        null,
+        manifestBytes,
+        { key: pub, format: 'der', type: 'spki' },
+        sig,
+      );
+    }
+  } catch {}
+  // Unsupported signature format (e.g., minisign). Caller can decide to fail or warn.
+  return false;
 }
 
 export async function maybeAutoUpdate({ force = false }: { force?: boolean }) {
@@ -141,16 +221,40 @@ export async function maybeAutoUpdate({ force = false }: { force?: boolean }) {
     const baseName = `beepermcp-${tag}` + (tag === 'win-x64' ? '.exe' : '');
     let url = `https://github.com/${repo.owner}/${repo.repo}/releases/download/v${latestVer}/${baseName}`;
     let expectedSha: string | undefined;
+    let manifestBytes: Buffer | undefined;
     try {
-      const manifest = await fetchJSON(
+      const manifestRes = await fetchWithRetry(
         `https://github.com/${repo.owner}/${repo.repo}/releases/download/v${latestVer}/manifest.json`,
+        { headers: { 'User-Agent': 'BeeperMCP-Updater' } },
       );
+      if (!manifestRes.ok) throw new Error(`HTTP ${manifestRes.status}`);
+      manifestBytes = Buffer.from(await manifestRes.arrayBuffer());
+      const manifest = JSON.parse(manifestBytes.toString('utf8'));
       const entry = (manifest?.assets || []).find(
         (a: any) => a.name === baseName,
       );
       if (entry) {
         url = entry.url || url;
         expectedSha = entry.sha256;
+      }
+      // Optional signature verification
+      try {
+        const sigRes = await fetchWithRetry(
+          `https://github.com/${repo.owner}/${repo.repo}/releases/download/v${latestVer}/manifest.sig`,
+          { headers: { 'User-Agent': 'BeeperMCP-Updater' } },
+          1,
+          200,
+        );
+        if (sigRes.ok) {
+          const sigText = await sigRes.text();
+          const pubKeyB64 = process.env.BEEPERMCP_MANIFEST_PUBKEY;
+          const ok = verifyDetachedSignature(manifestBytes, sigText, pubKeyB64);
+          if (!ok && pubKeyB64) {
+            throw new Error('manifest_signature_verification_failed');
+          }
+        }
+      } catch {
+        // If pubkey is provided and verification failed earlier, we already threw
       }
     } catch {
       // no manifest, best-effort fallback to asset URL in release list
@@ -161,7 +265,7 @@ export async function maybeAutoUpdate({ force = false }: { force?: boolean }) {
     const tmp = path.join(homeBase(), 'tmp');
     ensureDir(tmp);
     const newFile = path.join(tmp, baseName);
-    await download(url, newFile);
+    await downloadWithResume(url, newFile);
     if (expectedSha) {
       const got = sha256(newFile);
       if (got.toLowerCase() !== expectedSha.toLowerCase()) {

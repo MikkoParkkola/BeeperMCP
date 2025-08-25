@@ -15,6 +15,14 @@ import sdk from 'matrix-js-sdk';
 import fs from 'fs';
 import { startStdioServer, startHttpServer } from './mcp-server.js';
 import { isStdioMode } from './mcp-compat.js';
+import {
+  openLogDb,
+  createLogWriter,
+  createMediaWriter,
+  createMediaDownloader,
+} from '../utils.js';
+import { setupEventLogging } from './event-logger.js';
+import { loadConfig as loadRuntimeConfig } from './config/runtime.js';
 
 const HS = process.env.MATRIX_HOMESERVER ?? 'https://matrix.beeper.com';
 const UID = process.env.MATRIX_USERID;
@@ -70,13 +78,43 @@ export async function startServer() {
     const whoami = await client.whoami();
     console.error('Authenticated as:', whoami.user_id);
 
-    // Mock database for now (replace with actual implementation)
-    const logDb = null;
+    // Initialize SQLite log DB and media/log writers
+    const cfg = loadRuntimeConfig();
+    const logDb = openLogDb(cfg.logDbPath);
+    const { queue: queueMedia, flush: flushMedia } = createMediaWriter(logDb);
+    const { queue: queueLog, flush: flushLogs } = createLogWriter(
+      logDb,
+      cfg.logSecret,
+    );
+    const mediaDownloader = createMediaDownloader(
+      logDb,
+      queueMedia,
+      queueLog,
+      cfg.mediaSecret,
+    );
+    const logging = setupEventLogging(client, console as any, {
+      logDir: cfg.logDir,
+      logMaxBytes: cfg.logMaxBytes,
+      logSecret: cfg.logSecret,
+      mediaSecret: cfg.mediaSecret,
+      mediaDownloader,
+      queueLog,
+      testRoomId: cfg.testRoomId,
+      testLimit: cfg.testLimit,
+      uid: UID!,
+      shutdown: async () => {
+        await mediaDownloader.flush();
+        await logging.flush();
+        await flushMedia();
+        await flushLogs();
+        process.exit(0);
+      },
+    });
 
     // Determine mode and start appropriate server
     if (isStdioMode() || process.env.MCP_STDIO_MODE === '1') {
       console.error('Starting in STDIO mode for MCP clients...');
-      return await startStdioServer(client, logDb, ENABLE_SEND);
+      return await startStdioServer(client, logDb, ENABLE_SEND, cfg.logSecret);
     } else {
       console.error(`Starting in HTTP mode on port ${PORT}...`);
       if (!API_KEY) {
@@ -87,7 +125,7 @@ export async function startServer() {
         logDb,
         ENABLE_SEND,
         API_KEY,
-        undefined,
+        cfg.logSecret,
         PORT,
       );
     }

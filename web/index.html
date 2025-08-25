@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BeeperMCP — Experimental UI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600&family=SF+Pro+Text:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/ui/styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app">
+      <div class="bg-aurora" aria-hidden="true"></div>
+      <header class="chrome glass">
+        <div class="brand">
+          <div class="pill live-energy" title="Conversation Energy"></div>
+          <span class="title">BeeperMCP — Matrix Studio</span>
+        </div>
+        <div class="actions">
+          <button id="connectBtn" class="btn primary">Connect</button>
+          <button id="demoBtn" class="btn">Demo</button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section
+          class="timeline glass"
+          id="timeline"
+          aria-live="polite"
+        ></section>
+
+        <aside class="side glass">
+          <div class="panel" id="visionPanel">
+            <div class="panel-head">
+              <h2>Matrix Vision</h2>
+              <span class="sub">Visual message understanding</span>
+            </div>
+            <div class="dropzone" id="dropzone">
+              <input
+                type="file"
+                accept="image/*,video/*"
+                id="fileInput"
+                hidden
+              />
+              <p>
+                Drop media here or
+                <button class="link" id="browseBtn">browse</button>
+              </p>
+            </div>
+            <div id="visionResults" class="vision-results"></div>
+          </div>
+
+          <div class="panel" id="predictionPanel">
+            <div class="panel-head">
+              <h2>Predictive Style</h2>
+              <span class="sub">Learns your phrasing patterns</span>
+            </div>
+            <ul id="predictiveTags" class="chips"></ul>
+          </div>
+        </aside>
+      </main>
+
+      <footer class="composer chrome glass">
+        <div class="composer-inner">
+          <div class="ghost-wrap">
+            <textarea
+              id="composer"
+              rows="1"
+              placeholder="Message… (Tab to accept prediction)"
+            ></textarea>
+            <div id="ghost" class="ghost"></div>
+          </div>
+          <div class="composer-actions">
+            <button id="sendBtn" class="btn primary">Send</button>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script type="module" src="/ui/app.js"></script>
+  </body>
+</html>

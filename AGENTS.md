@@ -99,150 +99,165 @@ Current state (as of this repo snapshot)
 - Security
   - src/security/guardrails.ts, src/security/rateLimit.ts, src/security/sanitize.ts: present and usable.
 
-What’s missing vs. the roadmap (prioritized TODOs)
+## Technical Implementation
 
-Batch A — Build/packaging and CI hygiene
+### Core Components
 
-- package.json
-  - Remove the duplicate second top-level JSON object.
-  - Scripts:
-    - build: tsc -p tsconfig.json && cp mcp-tools.js dist/
-    - start: node dist/server.js (or node dist/src/server.js if that’s your emitted path)
-    - test: npm run build && node --test dist/\*_/_.js
-    - test:coverage: npm run build && c8 --check-coverage ... node --test dist/\*_/_.js
-  - Dependencies: add "pg": "^8.12.0" to the first object; add test deps if you plan to add tests now (pg-mem, supertest, testcontainers).
-- tsconfig.json
-  - Replace references file with a single NodeNext project (module: NodeNext, moduleResolution: NodeNext, target: ES2022, outDir: dist, include: src/\*_/_.ts, mcp-tools.d.ts).
-- .github/workflows/ci.yml
-  - Use npm ci; build before test; then test:coverage; then lint.
+```typescript
+// Core Architecture
+interface BeeperMCPCore {
+  relationshipIntelligence: RelationshipAnalyzer;
+  deceptionDetection: TruthAnalysisEngine;
+  temporalAnalysis: ConversationTimeline;
+  behavioralPatterns: PatternRecognition;
+  aiPrediction: PredictiveEngine;
+  visualIntelligence: VisualizationEngine;
+}
+```
 
-Batch B — Wire resources to SQLite
+### Relationship Intelligence Engine
 
-- src/mcp/resources.ts
-  - import { queryLogs } from "../../utils.js";
-  - Change registerResources(logDb: any, logSecret?: string); persist refs for handlers.
-  - Implement:
-    - history: queryLogs(logDb, roomId, limit, from, to, logSecret)
-    - context: lookup anchor ts by event_id from SQLite, return ±window around anchor via queryLogs
-    - media: lookup metadata by event_id from media table
-- src/mcp.ts
-  - registerResources(logDb, logSecret) instead of registerResources().
+```typescript
+class RelationshipAnalyzer {
+  private conversationHistory: ConversationRecord[];
+  private behavioralPatterns: BehavioralProfile;
+  private emotionalContext: EmotionalState;
 
-Batch C — Tools: safety and filters
+  analyzeRelationshipHealth(): RelationshipMetrics {
+    return {
+      trustScore: this.calculateTrustScore(),
+      communicationQuality: this.assessCommunication(),
+      emotionalIntelligence: this.measureEmpathy(),
+      conflictResolution: this.evaluateConflictHandling(),
+      growthPotential: this.predictGrowth(),
+    };
+  }
 
-- src/mcp/schemas/tools.ts
-  - who_said: add participants (string[]) and lang (string) to properties.
-- src/mcp/tools/whoSaid.ts
-  - Add filters: participants => sender = ANY($i), lang => lang = $i.
-  - Guard regex: limit pattern length; try/catch RegExp; case-insensitive; otherwise exact match.
-- src/mcp/tools/sentimentTrends.ts
-  - Use AVG(subjectivity) AS subjectivity_mean.
-  - Add filters for input.target?.room, input.target?.participant, input.lang, input.types (text vs media_types logic).
-- src/mcp/tools/sentimentDistribution.ts
-  - Replace client-side binning with SQL width_bucket(sentiment_score, -1, 1, $bins); add same filters as trends; compute summary (count, mean) via SQL.
-- src/mcp/tools/activity.ts
-  - Add filters: input.target?.participant, input.types (same media_types logic), optional lang.
-  - Compute my_share_pct via 100.0 \* AVG(CASE WHEN sender = $me THEN 1 ELSE 0 END); push config.matrix.userId as param.
+  detectAnomalies(): ConversationalAnomaly[] {
+    const patterns = this.extractPatterns();
+    const deviations = this.findDeviations(patterns);
+    return this.classifyAnomalies(deviations);
+  }
+}
+```
 
-Batch D — Send gating and delivery
+### Truth Analysis & Deception Detection
 
-- src/mcp/tools/sendMessage.ts
-  - Before send: rateLimiter("mcp_tools_send", config.mcp.rateLimits.send); const guard = checkGuardrails(...); if !ok return blocked reason.
-  - Request approval via requestApproval; if !approval.send return approval_required with form.
-  - Sanitize text via sanitizeText; send via sendMessage(room_id, text) from src/matrix/client.ts.
+```typescript
+class TruthAnalysisEngine {
+  analyzeStatement(
+    statement: string,
+    context: ConversationContext,
+  ): TruthAnalysis {
+    const linguisticMarkers = this.extractLinguisticMarkers(statement);
+    const temporalConsistency = this.checkTemporalConsistency(
+      statement,
+      context,
+    );
+    const behavioralConsistency = this.assessBehavioralConsistency(
+      statement,
+      context,
+    );
 
-Batch E — Ingest
+    return {
+      truthProbability: this.calculateTruthProbability(
+        linguisticMarkers,
+        temporalConsistency,
+        behavioralConsistency,
+      ),
+      confidenceLevel: this.calculateConfidence(),
+      inconsistencies: this.identifyInconsistencies(),
+      supportingEvidence: this.findSupportingEvidence(),
+      contradictoryEvidence: this.findContradictoryEvidence(),
+    };
+  }
+}
+```
 
-- src/ingest/matrix.ts
-  - Remove import of node-fetch (Node >=18 has global fetch).
-  - Future: implement sync loop, normalize events, compute tz keys (toLocalKeys), tsv, words, attachments, and persist to messages.
+### UI Implementation
 
-Batch F — Tests and quality gates (TDD)
+The UI is built with HTML, CSS, and JavaScript, with a focus on a "glassmorphism" design. It is implemented in the `web/` directory and several root-level HTML files.
 
-- Unit tests
-  - security/sanitize: strips HTML and clamps length.
-  - security/guardrails: blocked keywords; do_not_impersonate behavior.
-  - security/rateLimit: token bucket limits then refills over time (mock Date.now or increment).
-  - utils: FileSessionStore encrypt/decrypt; tailFile decrypts valid lines, skips invalid.
-- Integration tests (pg-mem or testcontainers)
-  - who_said: exact and regex guarded; participants/lang filters.
-  - sentiment_trends: bucket stats including subjectivity_mean.
-  - sentiment_distribution: histogram with width_bucket; summary count/mean matches counts.
-  - stats_activity: my_share_pct computed by sender; types/lang filters.
-- Resources (SQLite)
-  - history/context/media: mock SQLite DB using utils.openLogDb; insert rows and assert outputs.
-- System test
-  - MCP HTTP well-known and auth: /.well-known/mcp.json ok; resources/list and resources/read error without API key, success with API key.
+### Performance Optimization
 
-Batch G — Cloud readiness (next phase)
+The application uses Web Workers for real-time processing and an LRU cache for memory management.
 
-- Containerization
-  - Dockerfile and docker-compose for Postgres and the app; build dist/ then run node dist/server.js.
-- Migrations and indexes
-  - SQL migrations for messages schema:
-    - Columns: event_id, room_id, sender, ts_utc timestamptz, tsv tsvector, lang text, media_types text[], words int, attachments int, sentiment_score float, subjectivity float, tz_day text, tz_week int, tz_month int, tz_year int, text text, embedding_model_ver text, etc.
-    - Indexes: GIN on tsv; GIN on media_types; btree on (room_id, ts_utc), (sender), (lang).
-- Multi-tenant (if hosting for others)
-  - Add owner_id column and Postgres RLS policies; set current_setting('app.user') on connection from API key scope; instrument the code to set it per request if multi-tenant.
+### Security & Privacy
 
-Quick gaps list by file (for fast triage)
+All data is processed locally, and the application uses end-to-end encryption.
 
-- package.json: duplicate 2nd object; scripts not building before test; start path wrong; missing pg in first object.
-- tsconfig.json: references, not single NodeNext project.
-- .github/workflows/ci.yml: uses npm install; not building before tests.
-- src/mcp/resources.ts: history/context/media stubs; registerResources has no db/secret.
-- src/mcp.ts: calls registerResources() without db/secret.
-- src/mcp/schemas/tools.ts: who_said missing participants/lang.
-- src/mcp/tools/whoSaid.ts: missing participants/lang filters; unsafe regex.
-- src/mcp/tools/sentimentTrends.ts: subjectivity column wrong; missing target/lang/types filters.
-- src/mcp/tools/sentimentDistribution.ts: client-side binning; missing full filters.
-- src/mcp/tools/activity.ts: is_me column; missing types/participant filters; wrong my_share_pct.
-- src/mcp/tools/sendMessage.ts: stub; no guardrails/rateLimit/approval/sanitize/send.
-- src/ingest/matrix.ts: imports node-fetch; not implemented.
+## Continuous Integration & Delivery
 
-Acceptance criteria (Minimum viable release)
+This project uses GitHub Actions for CI/CD, publishing Docker images and single-file binaries, and supply‑chain checks.
 
-- Build/CI: npm ci; npm run build; npm test passes on a clean clone; CI builds then runs tests.
-- MCP HTTP: well-known endpoint works; resources/list and resources/read gated by API key; history/context/media return actual data when SQLite DB has rows.
-- Analytics tools over Postgres:
-  - who_said supports participants/lang and guards regex.
-  - sentiment_trends: per-bucket stats with subjectivity_mean; filters functional.
-  - sentiment_distribution: width_bucket histogram and summary; filters functional.
-  - stats_activity: correct my_share_pct; filters functional.
-- Send tool:
-  - rate limiting in effect; guardrails and approval gating observed; sanitized text sent via Matrix client when approved.
-- Documentation:
-  - README updated with setup, environment variables, build/run, and test instructions.
+### Workflows
 
-Next steps (recommended order)
+- `ci.yml`: Build, test, lint, and create Docker image tarballs.
+- `docker-publish.yml`: Build and push Docker images to GHCR.
+- `release.yml`: Create GitHub Releases.
+- `release-binaries.yml`: Build and attach single-file binaries to releases.
+- `prerelease-binaries.yml`: Build and attach binaries to a prerelease on each push to `main`.
+- `gitleaks.yml`: Scan for secrets.
+- `sbom.yml`: Generate CycloneDX SBOM.
+- `lint-quick.yml`: Fast ESLint run on PRs.
 
-1. Apply Batch A (packaging/CI) to get stable builds.
-2. Apply Batch B (resources wiring) to make resources useful.
-3. Apply Batch C (tools fixes) for analytics correctness and safety.
-4. Apply Batch D (send gating) for safe send capability.
-5. Add tests (Batch F) and stabilize CI.
-6. Plan and implement ingest loop (Batch E).
-7. Add containerization and migrations (Batch G) for cloud‑readiness.
+## Inbox, Drafting, and Watchtower
 
-Notes for contributors
+The Inbox feature streamlines replying across many rooms by gathering open conversations, showing a quick Brief ("Watchtower"), and letting you accept, edit, revise, snooze, or reject drafts with one keystroke.
 
-- Prefer SQL‑pushed filters and aggregates (avoid client‑side loops on large datasets).
-- Keep API key gating consistent across MCP surfaces (tools and resources).
-- Use prepared statements and pooling (one Pool per process) for Postgres.
-- Before adding new tools/resources, add/update JSON schemas in src/mcp/schemas/tools.ts and corresponding tests.
-- Security advisories and mitigations
-  - matrix-js-sdk upgraded to ^37.13.0 to address GHSA advisories (freeze on bad predecessor, overly permissive key sharing, MXC path traversal). Breaking changes are managed via our stubs and wrappers.
-  - Do not auto-verify devices. The previous `setDeviceVerified` sweep has been removed to avoid accidental key sharing to malicious devices. Leave verification to explicit user workflows and cross-signing.
-  - Media MXC handling: we sanitize filenames and store media under per-room directories to avoid traversal; keep using `safeFilename` and never trust remote filenames.
+### Modules and Interfaces
 
-Versioning
+- `src/cli/commands/inbox.ts`
+- `src/cli/commands/triage.ts`
+- `src/cli/chat.ts`
 
-- This repository follows the org policy: Conventional Commits with either semantic-release or Changesets. Update `CHANGELOG.md` and version consistently with the chosen system.
+## Module and Function Interfaces
 
----
+### Packaging and Entry
 
-## Model Rate Limits
+- `src/bin.ts`
+- `src/pack/bootstrap.ts`
 
-Please be aware that all cloud-based models (including Codex, Claude, Gemini, etc.) are subject to rate limits. If a model becomes unresponsive, it is likely that it has hit a rate limit. These limits will reset after a certain period of time.
+### Auto‑Update
 
-The only model not subject to rate limits is the locally-run Ollama.
+- `src/update/autoUpdate.ts`
+
+### MCP Server Surfaces
+
+- `mcp-tools.js`
+- `src/mcp-server.ts`
+- `src/mcp.ts`
+- `src/server.ts`
+
+### Resources API
+
+- `src/mcp/resources.ts`
+
+### Security
+
+- `src/security/rateLimit.ts`
+- `src/security/guardrails.ts`
+- `src/security/sanitize.ts`
+
+### Utilities (SQLite, Files, Media)
+
+- `utils.js`
+
+### Config
+
+- `src/config.ts` and `src/config/runtime.ts`
+
+### Chat CLI
+
+- `src/cli/chat.ts`
+
+## Release Checklist
+
+- [ ] Bump `package.json` version and `releaseDate`.
+- [ ] `npm ci && npm run build && npm run test:coverage` green locally.
+- [ ] CLI smoke test.
+- [ ] Resources endpoints return expected data.
+- [ ] Analytics tools return expected results.
+- [ ] Security/Compliance checks are green.
+- [ ] Release is tagged and artifacts are attached.
+- [ ] Downloaded binaries pass smoke test.

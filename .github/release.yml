@@ -1,0 +1,34 @@
+changelog:
+  categories:
+    - title: Breaking Changes
+      labels:
+        - breaking-change
+    - title: Features
+      labels:
+        - feat
+        - feature
+    - title: Fixes
+      labels:
+        - fix
+        - bugfix
+        - bug
+    - title: Improvements
+      labels:
+        - perf
+        - refactor
+        - chore
+        - docs
+        - ci
+        - test
+  exclude:
+    labels:
+      - skip-changelog
+  template: |
+    ## Release Notes
+
+    Version: ${{RELEASE_TAG}}
+
+    $CHANGES
+
+    ---
+    Artifacts include multi-arch binaries and a signed manifest (when configured). See README for quickstart.

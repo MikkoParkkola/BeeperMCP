@@ -40,11 +40,168 @@ export function registerResources(logDb?: any, logSecret?: string) {
     const roomId = params.roomId;
     const from = query.get('from') ?? undefined;
     const to = query.get('to') ?? undefined;
-    const limit = Number(query.get('limit') ?? 100);
+    const limit = Math.max(1, Math.min(500, Number(query.get('limit') ?? 100)));
+    const cursor = query.get('cursor') ?? undefined; // ISO ts cursor
+    const dir = (query.get('dir') || 'next').toLowerCase(); // next|prev
     const lang = query.get('lang') ?? undefined;
-    if (!logDbRef) return { roomId, from, to, limit, lang, items: [] };
-    const items = queryLogs(logDbRef, roomId, limit, from, to, logSecretRef);
-    return { roomId, from, to, limit, lang, items };
+    if (!logDbRef)
+      return {
+        roomId,
+        from,
+        to,
+        limit,
+        lang,
+        cursorIn: cursor,
+        nextCursor: undefined,
+        prevCursor: undefined,
+        items: [],
+      };
+    if (!cursor && !from && !to) {
+      // Initial page: earliest `limit` rows by ts ASC (forward pagination)
+      const rows = logDbRef
+        .prepare(
+          'SELECT ts, line FROM logs WHERE room_id = ? ORDER BY ts ASC LIMIT ?',
+        )
+        .all(roomId, limit) as any[];
+      const lines = rows.map((r) => r.line);
+      const firstTs = rows.length ? rows[0].ts : undefined; // oldest among selection
+      const lastTs = rows.length ? rows[rows.length - 1].ts : undefined; // newest among selection
+      let prevCursor: string | undefined;
+      let nextCursor: string | undefined;
+      if (firstTs) {
+        const c = logDbRef
+          .prepare('SELECT 1 FROM logs WHERE room_id = ? AND ts < ? LIMIT 1')
+          .get(roomId, firstTs);
+        if (c) prevCursor = firstTs;
+      }
+      if (lastTs) {
+        const c = logDbRef
+          .prepare('SELECT 1 FROM logs WHERE room_id = ? AND ts > ? LIMIT 1')
+          .get(roomId, lastTs);
+        if (c) nextCursor = lastTs;
+      }
+      return {
+        roomId,
+        from,
+        to,
+        limit,
+        lang,
+        cursorIn: undefined,
+        nextCursor,
+        prevCursor,
+        items: lines,
+      };
+    }
+    if (cursor) {
+      if (dir === 'prev') {
+        const desc = logDbRef
+          .prepare(
+            'SELECT ts, line FROM logs WHERE room_id = ? AND ts < ? ORDER BY ts DESC LIMIT ?',
+          )
+          .all(roomId, cursor, limit) as any[];
+        const reversed = desc.reverse();
+        const lines = reversed.map((r) => r.line);
+        const firstTs = reversed.length ? reversed[0].ts : undefined;
+        const lastTs = reversed.length
+          ? reversed[reversed.length - 1].ts
+          : undefined;
+        let prevCursor: string | undefined;
+        let nextCursor: string | undefined;
+        if (firstTs) {
+          const c = logDbRef
+            .prepare('SELECT 1 FROM logs WHERE room_id = ? AND ts < ? LIMIT 1')
+            .get(roomId, firstTs);
+          if (c) prevCursor = firstTs;
+        }
+        if (lastTs) {
+          const c = logDbRef
+            .prepare('SELECT 1 FROM logs WHERE room_id = ? AND ts > ? LIMIT 1')
+            .get(roomId, lastTs);
+          if (c) nextCursor = lastTs;
+        }
+        return {
+          roomId,
+          from,
+          to,
+          limit,
+          lang,
+          cursorIn: cursor,
+          nextCursor,
+          prevCursor,
+          items: lines,
+        };
+      } else {
+        const rows = logDbRef
+          .prepare(
+            'SELECT ts, line FROM logs WHERE room_id = ? AND ts > ? ORDER BY ts ASC LIMIT ?',
+          )
+          .all(roomId, cursor, limit) as any[];
+        const lines = rows.map((r) => r.line);
+        const firstTs = rows.length ? rows[0].ts : undefined;
+        const lastTs = rows.length ? rows[rows.length - 1].ts : undefined;
+        let prevCursor: string | undefined;
+        let nextCursor: string | undefined;
+        if (firstTs) {
+          const c = logDbRef
+            .prepare('SELECT 1 FROM logs WHERE room_id = ? AND ts < ? LIMIT 1')
+            .get(roomId, firstTs);
+          if (c) prevCursor = firstTs;
+        }
+        if (lastTs) {
+          const c = logDbRef
+            .prepare('SELECT 1 FROM logs WHERE room_id = ? AND ts > ? LIMIT 1')
+            .get(roomId, lastTs);
+          if (c) nextCursor = lastTs;
+        }
+        return {
+          roomId,
+          from,
+          to,
+          limit,
+          lang,
+          cursorIn: cursor,
+          nextCursor,
+          prevCursor,
+          items: lines,
+        };
+      }
+    }
+    const out = queryLogs(logDbRef, roomId, limit, from, to, logSecretRef);
+    const firstTs = logDbRef
+      .prepare(
+        'SELECT ts FROM logs WHERE room_id = ? AND (? IS NULL OR ts >= ?) AND (? IS NULL OR ts <= ?) ORDER BY ts ASC LIMIT 1',
+      )
+      .get(roomId, from, from, to, to)?.ts;
+    const lastTs = logDbRef
+      .prepare(
+        'SELECT ts FROM logs WHERE room_id = ? AND (? IS NULL OR ts >= ?) AND (? IS NULL OR ts <= ?) ORDER BY ts DESC LIMIT 1',
+      )
+      .get(roomId, from, from, to, to)?.ts;
+    let prevCursor: string | undefined;
+    let nextCursor: string | undefined;
+    if (firstTs) {
+      const c = logDbRef
+        .prepare('SELECT 1 FROM logs WHERE room_id = ? AND ts < ? LIMIT 1')
+        .get(roomId, firstTs);
+      if (c) prevCursor = firstTs;
+    }
+    if (lastTs) {
+      const c = logDbRef
+        .prepare('SELECT 1 FROM logs WHERE room_id = ? AND ts > ? LIMIT 1')
+        .get(roomId, lastTs);
+      if (c) nextCursor = lastTs;
+    }
+    return {
+      roomId,
+      from,
+      to,
+      limit,
+      lang,
+      cursorIn: cursor,
+      nextCursor,
+      prevCursor,
+      items: out,
+    };
   });
 
   addResource(
