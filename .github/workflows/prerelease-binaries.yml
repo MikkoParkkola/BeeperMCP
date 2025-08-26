@@ -49,8 +49,7 @@ jobs:
             const fs=require("fs");
             const cp=(n)=>fs.existsSync(n)?fs.statSync(n).size:0;
             const txt=fs.readFileSync("checksums.txt","utf8");
-            const getSha=(n)=> (txt.split(/\n/).find(l=>l.includes(n))||"").split(/[
-]+/)[0];
+            const getSha=(n)=> (txt.split(/\n/).find(l=>l.includes(n))||"").split(/[\n]+/)[0];
             const assets=[
               {name:"agentsmcp-macos-x64.tar.gz", platform:"macos-x64"},
               {name:"agentsmcp-macos-arm64.tar.gz", platform:"macos-arm64"},
@@ -104,4 +103,3 @@ jobs:
             artifacts/manifest.sig
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
