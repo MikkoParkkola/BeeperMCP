@@ -3,6 +3,10 @@ node_modules
 
 # Build output
 dist
+build/
+.pkg-cache/
+.cache/
+.npm-cache/
 
 # Logs and local data
 npm-debug.log

@@ -18,15 +18,23 @@ jobs:
         run: npm ci
       - name: Build dist
         run: npm run build
-      - name: Package binaries (matrix opt-in for macOS arm64)
+      - name: Package binaries (bundle with esbuild; pkg node18 targets)
         run: |
           set -euo pipefail
-          TARGETS="node22-macos-x64,node22-linux-x64,node22-win-x64"
+          # Bundle ESM entry to CommonJS for pkg
+          npx esbuild@0.20.2 dist/src/bin.js \
+            --bundle --platform=node --format=cjs \
+            --external:@matrix-org/olm \
+            --external:@matrix-org/matrix-sdk-crypto-nodejs \
+            --external:better-sqlite3 \
+            --outfile=build/pkg-entry.cjs
+          # Package with pkg using node18 runtimes (pkg does not support node22 tags)
+          TARGETS="node18-macos-x64,node18-linux-x64,node18-win-x64"
           if [ "${{ vars.ENABLE_MACOS_ARM64 || '' }}" = "true" ]; then
-            TARGETS="$TARGETS,node22-macos-arm64"
+            TARGETS="$TARGETS,node18-macos-arm64"
           fi
           echo "Using pkg targets: $TARGETS"
-          npx pkg -t "$TARGETS" --compress Brotli --output build/beepermcp dist/src/bin.js
+          PKG_CACHE_PATH="$PWD/.pkg-cache" npx pkg -t "$TARGETS" --compress Brotli --output build/beepermcp build/pkg-entry.cjs
           ls -l build || true
       - name: Prepare artifacts with checksums and manifest (foldered, renamed)
         id: prep
