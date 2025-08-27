@@ -99,6 +99,15 @@ Current state (as of this repo snapshot)
 - Security
   - src/security/guardrails.ts, src/security/rateLimit.ts, src/security/sanitize.ts: present and usable.
 
+### TUI (new)
+
+- Minimal Blessed-based TUI scaffold added under `src/tui/`.
+- Entry: `beepermcp tui` launches a two-pane Inbox view.
+  - Left: open conversations sourced from SQLite logs via triage/inbox modules.
+  - Right: preview and generated drafts for the selected item.
+  - Keys: Up/Down/j/k navigate, Enter generate drafts, a accept/send, s snooze, x dismiss, r refresh, q quit.
+- Uses existing guardrails, rate limiter, and Matrix send pipeline. LLM prompts are sent via the active provider configured in Chat CLI (`/switch`).
+
 ## Technical Implementation
 
 ### Core Components
@@ -217,6 +226,27 @@ The Inbox feature streamlines replying across many rooms by gathering open conve
 
 - `src/bin.ts`
 - `src/pack/bootstrap.ts`
+
+### Packaging & SEA
+
+- Requirements: Node 22+ and dev dep `postject` (already included). SEA is used to produce single-file binaries per-OS.
+- Local build (macOS):
+  - `rm -rf build sea-prep.blob sea-config.json`
+  - `npm ci && npm run make:macos:sea`
+  - Run: `./build/beepermcp.sea.run chat|tui|server|ui`
+- Local build (Linux/Windows):
+  - Linux: `npm run make:linux:sea` → `build/beepermcp.sea.run`
+  - Windows: `npm run make:windows:sea` → `build\beepermcp.sea.run.exe`
+- How it works:
+  - We generate a tiny CommonJS shim as SEA entry that dynamic-imports the ESM CLI (`dist/src/bin.js`) to avoid `import.meta` bundling quirks.
+  - SEA blob is created via `node --experimental-sea-config` and injected into the platform Node runtime with `postject` using the correct SEA fuse.
+  - macOS adds `xattr -c` and ad‑hoc `codesign` to avoid quarantine/AMFI issues.
+- CI:
+  - `release-binaries.yml`: On tag `v*.*.*`, builds SEA binaries for macOS/Linux/Windows, packages archives named `agentsmcp-<os>-<arch>.(tar.gz|zip)`, computes `checksums.txt`, and writes a `manifest.json` (+ optional `manifest.sig`). All are attached to the GitHub Release.
+  - `prerelease-binaries.yml`: On push to `main`, builds the same SEA artifacts and publishes a prerelease tagged `prerelease-<sha>` with artifacts, checksums, and manifest.
+- Notes:
+  - Existing `pkg` flow remains for reference but SEA is the default in CI.
+  - Native modules are loaded from the filesystem at runtime by the system Node executable; the SEA entry approach avoids bundling `blessed` optional deps.
 
 ### Auto‑Update
 
