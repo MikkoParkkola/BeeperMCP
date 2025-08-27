@@ -49,6 +49,7 @@ Build single-file binaries using Node's official Single Executable Applications 
 - Notes: Uses a tiny CJS shim to import the ESM CLI; macOS build clears xattrs and applies ad‑hoc codesign.
 
 CI releases
+
 - Tags (`v*.*.*`): GitHub Actions builds SEA binaries for macOS/Linux/Windows and publishes archives named `agentsmcp-<os>-<arch>` with checksums and a manifest (optional signature).
 - Pushes to `main`: A prerelease is published with the same artifacts.
 
@@ -60,6 +61,7 @@ CI releases
 - Web UI launcher: `beepermcp ui`
 
 TUI shortcuts:
+
 - Up/Down or j/k: navigate inbox
 - Enter: generate drafts for selected item
 - a: accept and send

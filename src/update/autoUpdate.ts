@@ -12,7 +12,7 @@ function getReq(): any {
   } catch {}
   try {
     // In ESM, construct a require relative to this module
-    const meta: any = (import.meta as any);
+    const meta: any = import.meta as any;
     if (meta?.url) return createRequire(meta.url);
   } catch {}
   return undefined;

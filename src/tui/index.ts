@@ -3,17 +3,42 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { openLogDb, queryLogs } from '../../utils.js';
-import { refreshInbox, loadInbox, saveInbox, InboxItem } from '../cli/commands/inbox.js';
-import { ensureRoomBrief, generateDrafts, TriagePrefs } from '../cli/commands/triage.js';
+import {
+  refreshInbox,
+  loadInbox,
+  saveInbox,
+  InboxItem,
+} from '../cli/commands/inbox.js';
+import {
+  ensureRoomBrief,
+  generateDrafts,
+  TriagePrefs,
+} from '../cli/commands/triage.js';
 import { askQA } from '../cli/commands/qa.js';
 import { sanitizeText } from '../security/sanitize.js';
 import { checkGuardrails } from '../security/guardrails.js';
 import { rateLimiter } from '../security/rateLimit.js';
-import { sendMessage as matrixSend, createDm, createRoom, joinRoom } from '../matrix/client.js';
+import {
+  sendMessage as matrixSend,
+  createDm,
+  createRoom,
+  joinRoom,
+} from '../matrix/client.js';
 import { sendChat as providerSendChat } from '../cli/providers/index.js';
 import type { ProviderConfig } from '../cli/helpers.js';
-import { getTheme, setTheme, setPaletteColor, applyThemeToWidgets } from './theme.js';
-import { getEffectiveTone, getEffectiveLanguage, setRoomOverrides, clearRoomOverrides, type Tone } from './overrides.js';
+import {
+  getTheme,
+  setTheme,
+  setPaletteColor,
+  applyThemeToWidgets,
+} from './theme.js';
+import {
+  getEffectiveTone,
+  getEffectiveLanguage,
+  setRoomOverrides,
+  clearRoomOverrides,
+  type Tone,
+} from './overrides.js';
 import { inferNetworkForRoom } from './network.js';
 import { initNotifyState, computeInboxDelta, shouldBell } from './notify.js';
 
@@ -30,7 +55,8 @@ function configPath(): string {
   return path.join(homeBase(), 'config.json');
 }
 function sqlitePath(): string {
-  const logDir = process.env.MESSAGE_LOG_DIR || path.join(homeBase(), 'room-logs');
+  const logDir =
+    process.env.MESSAGE_LOG_DIR || path.join(homeBase(), 'room-logs');
   return path.join(logDir, 'messages.db');
 }
 
@@ -64,15 +90,20 @@ function defaultPrefs(cfg: PersistedConfig): TriagePrefs {
   };
 }
 
-async function getAskFn(): Promise<null | ((prompt: string) => Promise<string>)> {
+async function getAskFn(): Promise<
+  null | ((prompt: string) => Promise<string>)
+> {
   const cfg = loadConfig();
   const active = cfg.active?.provider && cfg.providers[cfg.active.provider];
   const model = cfg.active?.model;
   if (!active || !model) return null;
-  return async (p: string) => providerSendChat(active, model, [{ role: 'user', content: p }]);
+  return async (p: string) =>
+    providerSendChat(active, model, [{ role: 'user', content: p }]);
 }
 
-function parseLine(line: string): { ts: string; sender: string; text: string } | null {
+function parseLine(
+  line: string,
+): { ts: string; sender: string; text: string } | null {
   const m = line.match(/^\[(.+?)\]\s+<([^>]+)>\s+(.*)$/);
   return m ? { ts: m[1], sender: m[2], text: m[3] } : null;
 }
@@ -93,12 +124,73 @@ export async function runTui() {
   const prefs = defaultPrefs(cfg);
 
   // UI widgets
-  const status = blessed.box({ top: 0, left: 0, height: 1, width: '100%', tags: true, style: { fg: 'white', bg: 'blue' }, content: ' BeeperMCP – Threads (/:commands | q:quit)' });
-  const list = blessed.list({ top: 1, left: 0, width: '30%', height: '100%-4', keys: true, vi: true, mouse: true, border: 'line', label: ' Rooms ', style: { selected: { bg: 'cyan', fg: 'black' } }, tags: true });
-  const messages = blessed.box({ top: 1, left: '30%', width: '40%', height: '100%-4', border: 'line', label: ' Messages ', scrollable: true, alwaysScroll: true, keys: true, mouse: true, scrollbar: { ch: ' ', inverse: true } });
-  const side = blessed.box({ top: 1, left: '70%', width: '30%', height: '100%-4', border: 'line', label: ' Panel ', scrollable: true, alwaysScroll: true, keys: true, mouse: true, scrollbar: { ch: ' ', inverse: true } });
-  const footer = blessed.box({ bottom: 3, left: 0, height: 1, width: '100%', tags: true, style: { fg: 'white' }, content: '' });
-  const input = blessed.textbox({ bottom: 0, left: 0, width: '100%', height: 3, inputOnFocus: true, border: 'line', label: ' Input ', keys: true });
+  const status = blessed.box({
+    top: 0,
+    left: 0,
+    height: 1,
+    width: '100%',
+    tags: true,
+    style: { fg: 'white', bg: 'blue' },
+    content: ' BeeperMCP – Threads (/:commands | q:quit)',
+  });
+  const list = blessed.list({
+    top: 1,
+    left: 0,
+    width: '30%',
+    height: '100%-4',
+    keys: true,
+    vi: true,
+    mouse: true,
+    border: 'line',
+    label: ' Rooms ',
+    style: { selected: { bg: 'cyan', fg: 'black' } },
+    tags: true,
+  });
+  const messages = blessed.box({
+    top: 1,
+    left: '30%',
+    width: '40%',
+    height: '100%-4',
+    border: 'line',
+    label: ' Messages ',
+    scrollable: true,
+    alwaysScroll: true,
+    keys: true,
+    mouse: true,
+    scrollbar: { ch: ' ', inverse: true },
+  });
+  const side = blessed.box({
+    top: 1,
+    left: '70%',
+    width: '30%',
+    height: '100%-4',
+    border: 'line',
+    label: ' Panel ',
+    scrollable: true,
+    alwaysScroll: true,
+    keys: true,
+    mouse: true,
+    scrollbar: { ch: ' ', inverse: true },
+  });
+  const footer = blessed.box({
+    bottom: 3,
+    left: 0,
+    height: 1,
+    width: '100%',
+    tags: true,
+    style: { fg: 'white' },
+    content: '',
+  });
+  const input = blessed.textbox({
+    bottom: 0,
+    left: 0,
+    width: '100%',
+    height: 3,
+    inputOnFocus: true,
+    border: 'line',
+    label: ' Input ',
+    keys: true,
+  });
 
   screen.append(status);
   screen.append(list);
@@ -126,7 +218,8 @@ export async function runTui() {
   let lastNewIds: Set<string> = new Set<string>();
   let legendVisible = Boolean((cfg.settings as any)?.legendVisible ?? true);
   type Density = 'compact' | 'cozy' | 'ultra';
-  let viewDensity: Density = ((cfg.settings as any)?.viewDensity as any) || 'cozy';
+  let viewDensity: Density =
+    ((cfg.settings as any)?.viewDensity as any) || 'cozy';
   let viewDensityMap: Partial<Record<ViewMode, Density>> =
     ((cfg.settings as any)?.viewDensityMap as any) || {};
 
@@ -144,12 +237,14 @@ export async function runTui() {
 
   // Helpers
   function setStatus(msg: string, color: 'green' | 'red' | 'blue' = 'blue') {
-    status.style.bg = color === 'blue' ? 'blue' : color === 'green' ? 'green' : 'red';
+    status.style.bg =
+      color === 'blue' ? 'blue' : color === 'green' ? 'green' : 'red';
     status.setContent(` ${msg}`);
     screen.render();
   }
   function updateStatus() {
-    const viewName = view === 'threads' ? 'Threads' : view === 'inbox' ? 'Inbox' : 'Contacts';
+    const viewName =
+      view === 'threads' ? 'Threads' : view === 'inbox' ? 'Inbox' : 'Contacts';
     let toneLang = '';
     const cfgNow = loadConfig();
     if (!legendVisible) {
@@ -160,9 +255,15 @@ export async function runTui() {
       } else if (view === 'contacts' && currentContact) {
         const group = contacts.find((c) => c.name === currentContact);
         if (group) {
-          const tones = new Set(group.rooms.map((r) => getEffectiveTone(cfgNow, r)));
-          const langs = new Set(group.rooms.map((r) => getEffectiveLanguage(cfgNow, r)));
-          const nets = new Set(group.rooms.map((r) => netTagForRoom(r)).filter(Boolean));
+          const tones = new Set(
+            group.rooms.map((r) => getEffectiveTone(cfgNow, r)),
+          );
+          const langs = new Set(
+            group.rooms.map((r) => getEffectiveLanguage(cfgNow, r)),
+          );
+          const nets = new Set(
+            group.rooms.map((r) => netTagForRoom(r)).filter(Boolean),
+          );
           const t = tones.size === 1 ? [...tones][0] : 'mixed';
           const l = langs.size === 1 ? [...langs][0] : 'mixed';
           const n = nets.size === 1 ? ` net:${[...nets][0]}` : '';
@@ -170,24 +271,30 @@ export async function runTui() {
         }
       }
     }
-    const roomsCount = view === 'contacts' && currentContact ? (() => {
-      const g = contacts.find((c) => c.name === currentContact);
-      return g ? ` | rooms:${g.rooms.length}` : '';
-    })() : '';
+    const roomsCount =
+      view === 'contacts' && currentContact
+        ? (() => {
+            const g = contacts.find((c) => c.name === currentContact);
+            return g ? ` | rooms:${g.rooms.length}` : '';
+          })()
+        : '';
     const newCount = lastNewIds?.size ? ` | inbox:${lastNewIds.size} new` : '';
     const dens = !legendVisible ? ` | dens:${densityFor(view)}` : '';
     status.style.bg = 'blue';
-    status.setContent(` BeeperMCP – ${viewName}${toneLang}${roomsCount}${newCount}${dens}`);
+    status.setContent(
+      ` BeeperMCP – ${viewName}${toneLang}${roomsCount}${newCount}${dens}`,
+    );
     screen.render();
   }
 
   function updateLegend() {
     const pal = getTheme(loadConfig());
-    const legend = view === 'inbox'
-      ? `{${pal.dim}-fg}Keys:{/${pal.dim}-fg} Enter:draft  p:pick  e:edit  /help`
-      : view === 'threads'
-        ? `{${pal.dim}-fg}Keys:{/${pal.dim}-fg} Enter:open  p:pick  e:edit  /help`
-        : `{${pal.dim}-fg}Keys:{/${pal.dim}-fg} Enter:view  p:pick  e:edit  /help`;
+    const legend =
+      view === 'inbox'
+        ? `{${pal.dim}-fg}Keys:{/${pal.dim}-fg} Enter:draft  p:pick  e:edit  /help`
+        : view === 'threads'
+          ? `{${pal.dim}-fg}Keys:{/${pal.dim}-fg} Enter:open  p:pick  e:edit  /help`
+          : `{${pal.dim}-fg}Keys:{/${pal.dim}-fg} Enter:view  p:pick  e:edit  /help`;
     footer.hidden = !legendVisible;
     if (!footer.hidden) footer.setContent(legend);
     screen.render();
@@ -196,7 +303,9 @@ export async function runTui() {
     if (view === 'threads') {
       list.setLabel(' Rooms ');
       const filtered = filterTerm
-        ? rooms.filter((r) => r.toLowerCase().includes(filterTerm.toLowerCase()))
+        ? rooms.filter((r) =>
+            r.toLowerCase().includes(filterTerm.toLowerCase()),
+          )
         : rooms;
       const items = filtered.length
         ? filtered.map((r, i) => {
@@ -207,7 +316,10 @@ export async function runTui() {
             const tag = net ? ` [${net}]` : '';
             const tone = getEffectiveTone(loadConfig(), r);
             const lang = getEffectiveLanguage(loadConfig(), r);
-            const badges = [tone ? `tone:${tone}` : '', lang ? `lang:${lang}` : '']
+            const badges = [
+              tone ? `tone:${tone}` : '',
+              lang ? `lang:${lang}` : '',
+            ]
               .filter(Boolean)
               .map((b) => `[${b}]`)
               .join(' ');
@@ -233,12 +345,15 @@ export async function runTui() {
         const items = open.map((i, idx) => {
           const isNew = lastNewIds.has(i.id);
           const caret = idx === inboxCursor ? '▶ ' : '  ';
-          const bullet = isNew ? `{${pal.highlight}-fg}•{/${pal.highlight}-fg} ` : '';
+          const bullet = isNew
+            ? `{${pal.highlight}-fg}•{/${pal.highlight}-fg} `
+            : '';
           if (d === 'ultra') {
             const preview = i.preview.slice(0, 50);
             return `${caret}${bullet}${preview}`;
           }
-          const preview = d === 'compact' ? i.preview.slice(0, 80) : i.preview.slice(0, 120);
+          const preview =
+            d === 'compact' ? i.preview.slice(0, 80) : i.preview.slice(0, 120);
           return `${caret}${bullet}${new Date(i.ts).toLocaleString()}  ${i.sender}  ${preview}`;
         });
         list.setItems(items.length ? items : ['No open conversations']);
@@ -246,19 +361,39 @@ export async function runTui() {
       } else {
         list.setLabel(' Contacts ');
         const filtered = filterTerm
-          ? contacts.filter((c) => c.name.toLowerCase().includes(filterTerm.toLowerCase()))
+          ? contacts.filter((c) =>
+              c.name.toLowerCase().includes(filterTerm.toLowerCase()),
+            )
           : contacts;
         const items = filtered.map((c, idx) => {
           const netSet = new Set(c.rooms.map((r) => netTagForRoom(r) || '?'));
           const nets = Array.from(netSet).join(',');
           const cfgNow = loadConfig();
-          const tones = new Set(c.rooms.map((r) => getEffectiveTone(cfgNow, r)));
-          const langs = new Set(c.rooms.map((r) => getEffectiveLanguage(cfgNow, r)));
+          const tones = new Set(
+            c.rooms.map((r) => getEffectiveTone(cfgNow, r)),
+          );
+          const langs = new Set(
+            c.rooms.map((r) => getEffectiveLanguage(cfgNow, r)),
+          );
           const d = densityFor('contacts');
-          if (d === 'ultra') return `${idx === contactCursor ? '▶ ' : '  '}${c.name}`;
-          const tb = d === 'compact' ? '' : (tones.size === 1 ? ` [tone:${[...tones][0]}]` : '');
-          const lb = d === 'compact' ? '' : (langs.size === 1 && [...langs][0] ? ` [lang:${[...langs][0]}]` : '');
-          const nb = netSet.size === 1 && !netSet.has('') && !netSet.has('?') ? ` [net:${[...netSet][0]}]` : ` [${nets}]`;
+          if (d === 'ultra')
+            return `${idx === contactCursor ? '▶ ' : '  '}${c.name}`;
+          const tb =
+            d === 'compact'
+              ? ''
+              : tones.size === 1
+                ? ` [tone:${[...tones][0]}]`
+                : '';
+          const lb =
+            d === 'compact'
+              ? ''
+              : langs.size === 1 && [...langs][0]
+                ? ` [lang:${[...langs][0]}]`
+                : '';
+          const nb =
+            netSet.size === 1 && !netSet.has('') && !netSet.has('?')
+              ? ` [net:${[...netSet][0]}]`
+              : ` [${nets}]`;
           return `${idx === contactCursor ? '▶ ' : '  '}${c.name} (${c.rooms.length})${d === 'compact' ? '' : nb}${tb}${lb}`;
         });
         list.setItems(items.length ? items : ['No contacts found']);
@@ -280,9 +415,11 @@ export async function runTui() {
         screen.render();
         return;
       }
-      let merged: { ts: string; sender: string; text: string; room: string }[] = [];
+      let merged: { ts: string; sender: string; text: string; room: string }[] =
+        [];
       for (const r of group.rooms) {
-        const lines = queryLogs(db, r, 100, undefined, undefined, undefined) || [];
+        const lines =
+          queryLogs(db, r, 100, undefined, undefined, undefined) || [];
         const parsed = lines
           .map(parseLine)
           .filter(Boolean)
@@ -303,13 +440,18 @@ export async function runTui() {
       return;
     }
     if (!currentRoom) {
-      messages.setContent('No room selected. Use /open or pick from Rooms/Contacts.');
+      messages.setContent(
+        'No room selected. Use /open or pick from Rooms/Contacts.',
+      );
       screen.render();
       return;
     }
-    const lines = queryLogs(db, currentRoom, 200, undefined, undefined, undefined) || [];
+    const lines =
+      queryLogs(db, currentRoom, 200, undefined, undefined, undefined) || [];
     const parsed = lines.map(parseLine).filter(Boolean) as any[];
-    const body = parsed.map((p) => `[${p.ts}] <${p.sender}> ${p.text}`).join('\n');
+    const body = parsed
+      .map((p) => `[${p.ts}] <${p.sender}> ${p.text}`)
+      .join('\n');
     messages.setContent(body || '(no recent messages)');
     messages.setScroll(messages.getScrollHeight());
     screen.render();
@@ -320,7 +462,9 @@ export async function runTui() {
         rooms = [];
         return;
       }
-      const rows = db.prepare('SELECT DISTINCT room_id FROM logs ORDER BY room_id').all();
+      const rows = db
+        .prepare('SELECT DISTINCT room_id FROM logs ORDER BY room_id')
+        .all();
       rooms = rows.map((r: any) => r.room_id);
       if (!currentRoom && rooms.length) currentRoom = rooms[0];
       renderList();
@@ -340,7 +484,9 @@ export async function runTui() {
       notify = delta.updatedState;
       lastNewIds = delta.newIds;
       if (delta.newCount > 0 && shouldBell(cfgNow)) {
-        try { process.stdout.write('\u0007'); } catch {}
+        try {
+          process.stdout.write('\u0007');
+        } catch {}
       }
       renderList();
       updateStatus();
@@ -385,7 +531,9 @@ export async function runTui() {
     const argline = rest.join(' ');
     if (cmd === 'help') {
       side.setLabel(' Help ');
-      side.setContent(`Commands:\n/threads – show rooms view\n/inbox – show inbox view\n/contacts – merged per-person view\n/rooms – refresh rooms\n/open <room|@user|#alias|name> – open/DM/join/create\n/join <#alias|!roomId> [server...] – join room\n/dm @user:hs – start a DM\n/draft [intention] [extra...] – generate drafts\n/revise <instructions> – refine current input\n/brief – show room brief\n/watchtower – brief + key recents\n/qa <question> – ask over this room\n/tone <concise|friendly|formal> – set tone\n/lang <code> – set default language\n/tone-room <concise|friendly|formal|unset> – set/clear tone for room\n/lang-room <code|unset> – set/clear language for room\n/clear-room-overrides – clear room overrides\n/theme <dark|light|high-contrast> – change theme\n/palette <key> <color> | reset – tweak theme colors\n/bell [on|off] – toggle notification bell\n/view <compact|cozy|ultra> OR /view <threads|inbox|contacts> <compact|cozy|ultra>\n/legend [on|off] – toggle footer legend\n/keys – show keybindings\n/aliases a,b – set your handles\n/search <term> – open search pane\n/clearsearch – clear filter\n/accept – send first draft line\n/dismiss – dismiss current inbox item\n/snooze <2h|tonight|tomorrow> – snooze inbox item\n/send – send input\n/help – this help`);
+      side.setContent(
+        `Commands:\n/threads – show rooms view\n/inbox – show inbox view\n/contacts – merged per-person view\n/rooms – refresh rooms\n/open <room|@user|#alias|name> – open/DM/join/create\n/join <#alias|!roomId> [server...] – join room\n/dm @user:hs – start a DM\n/draft [intention] [extra...] – generate drafts\n/revise <instructions> – refine current input\n/brief – show room brief\n/watchtower – brief + key recents\n/qa <question> – ask over this room\n/tone <concise|friendly|formal> – set tone\n/lang <code> – set default language\n/tone-room <concise|friendly|formal|unset> – set/clear tone for room\n/lang-room <code|unset> – set/clear language for room\n/clear-room-overrides – clear room overrides\n/theme <dark|light|high-contrast> – change theme\n/palette <key> <color> | reset – tweak theme colors\n/bell [on|off] – toggle notification bell\n/view <compact|cozy|ultra> OR /view <threads|inbox|contacts> <compact|cozy|ultra>\n/legend [on|off] – toggle footer legend\n/keys – show keybindings\n/aliases a,b – set your handles\n/search <term> – open search pane\n/clearsearch – clear filter\n/accept – send first draft line\n/dismiss – dismiss current inbox item\n/snooze <2h|tonight|tomorrow> – snooze inbox item\n/send – send input\n/help – this help`,
+      );
       screen.render();
       return;
     }
@@ -407,7 +555,8 @@ export async function runTui() {
       if (sub === 'reset') {
         const cfgx = loadConfig();
         cfgx.settings = cfgx.settings || {};
-        if ((cfgx.settings as any).customTheme) delete (cfgx.settings as any).customTheme;
+        if ((cfgx.settings as any).customTheme)
+          delete (cfgx.settings as any).customTheme;
         saveConfig(cfgx as any);
         const pal = getTheme(cfgx as any);
         applyThemeToWidgets(pal, { status, list, messages, side, input });
@@ -418,10 +567,21 @@ export async function runTui() {
       const key = sub as any;
       const value = rest[1];
       const allowed: (keyof ReturnType<typeof getTheme>)[] = [
-        'bg','fg','accent','warning','error','listSelectedBg','listSelectedFg','highlight','dim',
+        'bg',
+        'fg',
+        'accent',
+        'warning',
+        'error',
+        'listSelectedBg',
+        'listSelectedFg',
+        'highlight',
+        'dim',
       ] as any;
       if (!key || !value || !(allowed as any).includes(key)) {
-        setStatus('Usage: /palette <bg|fg|accent|warning|error|listSelectedBg|listSelectedFg|highlight|dim> <color> | /palette reset', 'red');
+        setStatus(
+          'Usage: /palette <bg|fg|accent|warning|error|listSelectedBg|listSelectedFg|highlight|dim> <color> | /palette reset',
+          'red',
+        );
         return;
       }
       const cfgx = setPaletteColor(loadConfig(), key, value);
@@ -433,13 +593,16 @@ export async function runTui() {
       return;
     }
     if (cmd === 'keys') {
-      const legend = view === 'inbox'
-        ? `Enter:draft  p:pick  e:edit  /help`
-        : view === 'threads'
-          ? `Enter:open  p:pick  e:edit  /help`
-          : `Enter:view  p:pick  e:edit  /help`;
+      const legend =
+        view === 'inbox'
+          ? `Enter:draft  p:pick  e:edit  /help`
+          : view === 'threads'
+            ? `Enter:open  p:pick  e:edit  /help`
+            : `Enter:view  p:pick  e:edit  /help`;
       side.setLabel(' Keys ');
-      side.setContent(`Current view: ${view}\n${legend}\n\nToggle footer legend with /legend on|off.`);
+      side.setContent(
+        `Current view: ${view}\n${legend}\n\nToggle footer legend with /legend on|off.`,
+      );
       screen.render();
       return;
     }
@@ -505,7 +668,10 @@ export async function runTui() {
       }
       if (isView) {
         if (!densities.includes(v2)) {
-          setStatus('Usage: /view <threads|inbox|contacts> <compact|cozy|ultra>', 'red');
+          setStatus(
+            'Usage: /view <threads|inbox|contacts> <compact|cozy|ultra>',
+            'red',
+          );
           return;
         }
         const cfgx = loadConfig();
@@ -521,7 +687,10 @@ export async function runTui() {
       }
       // global default
       if (!densities.includes(v1)) {
-        setStatus('Usage: /view <compact|cozy|ultra> OR /view <threads|inbox|contacts> <compact|cozy|ultra>', 'red');
+        setStatus(
+          'Usage: /view <compact|cozy|ultra> OR /view <threads|inbox|contacts> <compact|cozy|ultra>',
+          'red',
+        );
         return;
       }
       viewDensity = v1 as any;
@@ -535,7 +704,10 @@ export async function runTui() {
     }
     if (cmd === 'search') {
       const term = argline.trim();
-      if (!term) { setStatus('Usage: /search <term>', 'red'); return; }
+      if (!term) {
+        setStatus('Usage: /search <term>', 'red');
+        return;
+      }
       await openSearchModal(term);
       return;
     }
@@ -612,7 +784,9 @@ export async function runTui() {
       if (!ask) return setStatus('No active provider configured', 'red');
       const brief = await ensureRoomBrief(currentRoom, ask);
       side.setLabel(' Brief ');
-      side.setContent(`LANG: ${brief.language || ''}\nSTYLE:\n- ${(brief.styleHints || []).join('\n- ')}\nAUDIENCE:\n- ${(brief.audienceNotes || []).join('\n- ')}\nSENSITIVITIES:\n- ${(brief.sensitivities || []).join('\n- ')}`);
+      side.setContent(
+        `LANG: ${brief.language || ''}\nSTYLE:\n- ${(brief.styleHints || []).join('\n- ')}\nAUDIENCE:\n- ${(brief.audienceNotes || []).join('\n- ')}\nSENSITIVITIES:\n- ${(brief.sensitivities || []).join('\n- ')}`,
+      );
       screen.render();
       updateStatus();
       return;
@@ -626,7 +800,8 @@ export async function runTui() {
         const map = (cfgx.settings as any).roomOverrides || {};
         if (map[currentRoom]) {
           delete map[currentRoom].tone;
-          if (!map[currentRoom].tone && !map[currentRoom].language) delete map[currentRoom];
+          if (!map[currentRoom].tone && !map[currentRoom].language)
+            delete map[currentRoom];
           (cfgx.settings as any).roomOverrides = map;
           saveConfig(cfgx);
         }
@@ -635,7 +810,11 @@ export async function runTui() {
         return;
       }
       const t = arg as Tone;
-      if (!['concise', 'friendly', 'formal'].includes(t)) return setStatus('Usage: /tone-room <concise|friendly|formal|unset>', 'red');
+      if (!['concise', 'friendly', 'formal'].includes(t))
+        return setStatus(
+          'Usage: /tone-room <concise|friendly|formal|unset>',
+          'red',
+        );
       const cfgx = setRoomOverrides(loadConfig(), currentRoom, { tone: t });
       saveConfig(cfgx as any);
       renderList();
@@ -652,14 +831,17 @@ export async function runTui() {
         const map = (cfgx.settings as any).roomOverrides || {};
         if (map[currentRoom]) {
           delete map[currentRoom].language;
-          if (!map[currentRoom].tone && !map[currentRoom].language) delete map[currentRoom];
+          if (!map[currentRoom].tone && !map[currentRoom].language)
+            delete map[currentRoom];
           (cfgx.settings as any).roomOverrides = map;
           saveConfig(cfgx);
         }
         renderList();
         setStatus('Cleared room lang override', 'green');
       } else {
-        const cfgx = setRoomOverrides(loadConfig(), currentRoom, { language: code });
+        const cfgx = setRoomOverrides(loadConfig(), currentRoom, {
+          language: code,
+        });
         saveConfig(cfgx as any);
         renderList();
         setStatus(`Set room lang ${code}`, 'green');
@@ -679,10 +861,14 @@ export async function runTui() {
       const ask = await getAskFn();
       if (!ask) return setStatus('No active provider configured', 'red');
       const brief = await ensureRoomBrief(currentRoom, ask);
-      const lines = db ? queryLogs(db, currentRoom, 30, undefined, undefined, undefined) || [] : [];
+      const lines = db
+        ? queryLogs(db, currentRoom, 30, undefined, undefined, undefined) || []
+        : [];
       const recent = lines.slice(-10).join('\n');
       side.setLabel(' Watchtower ');
-      side.setContent(`LANG: ${brief.language || ''}\nSTYLE:\n- ${(brief.styleHints || []).join('\n- ')}\nAUDIENCE:\n- ${(brief.audienceNotes || []).join('\n- ')}\nSENSITIVITIES:\n- ${(brief.sensitivities || []).join('\n- ')}\n\nRecent:\n${recent}`);
+      side.setContent(
+        `LANG: ${brief.language || ''}\nSTYLE:\n- ${(brief.styleHints || []).join('\n- ')}\nAUDIENCE:\n- ${(brief.audienceNotes || []).join('\n- ')}\nSENSITIVITIES:\n- ${(brief.sensitivities || []).join('\n- ')}\n\nRecent:\n${recent}`,
+      );
       screen.render();
       updateStatus();
       return;
@@ -693,12 +879,20 @@ export async function runTui() {
       if (!ask) return setStatus('No active provider configured', 'red');
       const [intention, ...extraArr] = rest;
       const extra = extraArr.join(' ');
-      const lines = db ? queryLogs(db, currentRoom, 30, undefined, undefined, undefined) || [] : [];
+      const lines = db
+        ? queryLogs(db, currentRoom, 30, undefined, undefined, undefined) || []
+        : [];
       const last = lines.slice(-1)[0] || '';
       const parsed = parseLine(last);
       const sourceText = parsed ? parsed.text : '';
       const out = await generateDrafts(
-        { roomId: currentRoom, sender: parsed?.sender || '', ts: parsed?.ts || new Date().toISOString(), text: sourceText, context: lines.slice(-5) } as any,
+        {
+          roomId: currentRoom,
+          sender: parsed?.sender || '',
+          ts: parsed?.ts || new Date().toISOString(),
+          text: sourceText,
+          context: lines.slice(-5),
+        } as any,
         prefs,
         intention || 'inform',
         extra,
@@ -716,12 +910,19 @@ export async function runTui() {
       if (!currentRoom) return setStatus('No room selected', 'red');
       const ask = await getAskFn();
       if (!ask) return setStatus('No active provider configured', 'red');
-      const base = input.getValue() || firstNonEnumeratedLine(side.getContent() || '');
+      const base =
+        input.getValue() || firstNonEnumeratedLine(side.getContent() || '');
       if (!base) return setStatus('Nothing to revise', 'red');
       const instructions = argline || 'make it clearer and friendlier';
       // Use brief + prompt to revise: quick reuse of generateDrafts by providing base as context and extra instructions
       const out = await generateDrafts(
-        { roomId: currentRoom, sender: '', ts: new Date().toISOString(), text: base, context: [base] } as any,
+        {
+          roomId: currentRoom,
+          sender: '',
+          ts: new Date().toISOString(),
+          text: base,
+          context: [base],
+        } as any,
         prefs,
         'inform',
         instructions,
@@ -739,7 +940,11 @@ export async function runTui() {
       if (!ask) return setStatus('No active provider configured', 'red');
       const q = argline.trim();
       if (!q) return setStatus('Usage: /qa <question>', 'red');
-      const res = await askQA(q, { rooms: currentRoom ? [currentRoom] : undefined }, (p: string) => ask(p));
+      const res = await askQA(
+        q,
+        { rooms: currentRoom ? [currentRoom] : undefined },
+        (p: string) => ask(p),
+      );
       side.setLabel(' QA ');
       side.setContent(`${res.answer}\n\nContext:\n${res.contextPreview}`);
       screen.render();
@@ -747,7 +952,8 @@ export async function runTui() {
     }
     if (cmd === 'tone') {
       const tone = (rest[0] || '').toLowerCase();
-      if (!['concise', 'friendly', 'formal'].includes(tone)) return setStatus('Usage: /tone concise|friendly|formal', 'red');
+      if (!['concise', 'friendly', 'formal'].includes(tone))
+        return setStatus('Usage: /tone concise|friendly|formal', 'red');
       const cur = loadConfig();
       cur.settings = cur.settings || {};
       (cur.settings as any).tone = tone;
@@ -776,7 +982,9 @@ export async function runTui() {
       return;
     }
     if (cmd === 'accept') {
-      const text = firstNonEnumeratedLine(side.getContent() || input.getValue() || '');
+      const text = firstNonEnumeratedLine(
+        side.getContent() || input.getValue() || '',
+      );
       if (!currentRoom || !text) return setStatus('Nothing to send', 'red');
       await sendInput(text);
       return;
@@ -810,11 +1018,24 @@ export async function runTui() {
       if (!it) return setStatus('No inbox item selected', 'red');
       const now = new Date();
       let until = Date.now() + 2 * 3600_000;
-      if (opt === 'tonight') { const end = new Date(now); end.setHours(22, 0, 0, 0); until = end.getTime(); }
-      if (opt === 'tomorrow') { const t = new Date(now); t.setDate(t.getDate() + 1); t.setHours(9, 0, 0, 0); until = t.getTime(); }
+      if (opt === 'tonight') {
+        const end = new Date(now);
+        end.setHours(22, 0, 0, 0);
+        until = end.getTime();
+      }
+      if (opt === 'tomorrow') {
+        const t = new Date(now);
+        t.setDate(t.getDate() + 1);
+        t.setHours(9, 0, 0, 0);
+        until = t.getTime();
+      }
       const all = loadInbox();
       const idx = all.findIndex((x) => x.id === it.id);
-      if (idx >= 0) { all[idx].status = 'snoozed'; all[idx].snoozeUntil = until; saveInbox(all); }
+      if (idx >= 0) {
+        all[idx].status = 'snoozed';
+        all[idx].snoozeUntil = until;
+        saveInbox(all);
+      }
       await refreshInboxView();
       setStatus(`Snoozed ${opt}`, 'green');
       return;
@@ -868,7 +1089,10 @@ export async function runTui() {
       const open = inbox.filter((i) => i.status === 'open');
       inboxCursor = Math.min(Math.max(0, open.length - 1), inboxCursor + 1);
     } else {
-      contactCursor = Math.min(Math.max(0, contacts.length - 1), contactCursor + 1);
+      contactCursor = Math.min(
+        Math.max(0, contacts.length - 1),
+        contactCursor + 1,
+      );
       currentContact = contacts[contactCursor]?.name || currentContact;
     }
     renderList();
@@ -891,7 +1115,13 @@ export async function runTui() {
       const ask = await getAskFn();
       if (!ask) return setStatus('No active provider configured', 'red');
       const out = await generateDrafts(
-        { roomId: it.roomId, sender: it.sender, ts: it.ts, text: it.preview, context: [it.preview] } as any,
+        {
+          roomId: it.roomId,
+          sender: it.sender,
+          ts: it.ts,
+          text: it.preview,
+          context: [it.preview],
+        } as any,
         prefs,
         'inform',
         '',
@@ -988,27 +1218,60 @@ export async function runTui() {
   });
 
   async function openSearchModal(term: string) {
-    interface Result { type: 'room' | 'contact' | 'message'; label: string; roomId?: string; contact?: string; ts?: string }
+    interface Result {
+      type: 'room' | 'contact' | 'message';
+      label: string;
+      roomId?: string;
+      contact?: string;
+      ts?: string;
+    }
     const results: Result[] = [];
     const t = term.toLowerCase();
     const roomHits = rooms.filter((r) => r.toLowerCase().includes(t));
-    for (const r of roomHits) results.push({ type: 'room', label: `Room: ${r}`, roomId: r });
-    const contactHits = contacts.filter((c) => c.name.toLowerCase().includes(t));
-    for (const c of contactHits) results.push({ type: 'contact', label: `Contact: ${c.name}`, contact: c.name });
+    for (const r of roomHits)
+      results.push({ type: 'room', label: `Room: ${r}`, roomId: r });
+    const contactHits = contacts.filter((c) =>
+      c.name.toLowerCase().includes(t),
+    );
+    for (const c of contactHits)
+      results.push({
+        type: 'contact',
+        label: `Contact: ${c.name}`,
+        contact: c.name,
+      });
     if (db) {
       for (const r of rooms) {
-        const lines = queryLogs(db, r, 400, undefined, undefined, undefined) || [];
+        const lines =
+          queryLogs(db, r, 400, undefined, undefined, undefined) || [];
         for (let i = lines.length - 1; i >= 0 && results.length < 200; i--) {
           const line = lines[i];
           if (line.toLowerCase().includes(t)) {
             const m = parseLine(line);
             const when = m?.ts || '';
-            results.push({ type: 'message', label: `Msg@${when} ${r}: ${line.slice(0, 120)}`, roomId: r, ts: when });
+            results.push({
+              type: 'message',
+              label: `Msg@${when} ${r}: ${line.slice(0, 120)}`,
+              roomId: r,
+              ts: when,
+            });
           }
         }
       }
     }
-    const modal = blessed.list({ parent: screen, top: 'center', left: 'center', width: '70%', height: '60%', border: 'line', label: ` Search: ${term} `, keys: true, vi: true, mouse: true, items: results.map((r) => r.label), style: { selected: { bg: 'cyan', fg: 'black' } } });
+    const modal = blessed.list({
+      parent: screen,
+      top: 'center',
+      left: 'center',
+      width: '70%',
+      height: '60%',
+      border: 'line',
+      label: ` Search: ${term} `,
+      keys: true,
+      vi: true,
+      mouse: true,
+      items: results.map((r) => r.label),
+      style: { selected: { bg: 'cyan', fg: 'black' } },
+    });
     modal.focus();
     const jump = (idx: number) => {
       const r = results[idx];
@@ -1022,7 +1285,10 @@ export async function runTui() {
       } else if (r.type === 'contact' && r.contact) {
         view = 'contacts';
         currentContact = r.contact;
-        contactCursor = Math.max(0, contacts.findIndex((c) => c.name === r.contact));
+        contactCursor = Math.max(
+          0,
+          contacts.findIndex((c) => c.name === r.contact),
+        );
         renderList();
         renderMessages();
       } else if (r.type === 'message' && r.roomId) {
@@ -1039,7 +1305,11 @@ export async function runTui() {
     };
     modal.on('select', (_item: any, idx: number) => jump(idx));
     modal.key(['enter'], () => jump((modal as any).selected));
-    modal.key(['escape', 'q'], () => { screen.remove(modal); input.focus(); screen.render(); });
+    modal.key(['escape', 'q'], () => {
+      screen.remove(modal);
+      input.focus();
+      screen.render();
+    });
     screen.render();
   }
 
@@ -1047,7 +1317,8 @@ export async function runTui() {
   setInterval(() => {
     if (view === 'threads') refreshRooms().catch(() => {});
     if (view === 'inbox') refreshInboxView().catch(() => {});
-    if (currentRoom || (view === 'contacts' && currentContact)) renderMessages();
+    if (currentRoom || (view === 'contacts' && currentContact))
+      renderMessages();
   }, 5000);
 
   // Initial
