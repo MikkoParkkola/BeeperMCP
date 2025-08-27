@@ -1,19 +1,37 @@
 node_modules
+
+# Build output
 dist
+build/
+.pkg-cache/
+.cache/
+.npm-cache/
+
+# Logs and local data
 npm-debug.log
+*.log
+room-logs/
+mx-cache/
 .DS_Store
-coverage
+*.db
+*.db-shm
+*.db-wal
+
+# Local configuration
 .beeper-mcp-server.env
-room-logs
-mx-cache
+.beeper-home/
+.npm-cache/
+
+# Test and coverage
+coverage/
+audit.json
+
+# Aider-generated files
 .aider*
-.test-resources*.db
+
+# Docker images - keep the directory but ignore contents
 docker-images/*
 !docker-images/.gitkeep
 
-# local cache
-.npm-cache
-.beeper-home
-audit.json
-beepermcp-macos-arm64
-beepermcp-macos-arm64
+# Packaged binaries
+beepermcp-*
