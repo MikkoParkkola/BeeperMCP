@@ -34,11 +34,46 @@ chmod +x beepermcp
 - Run tests: `npm test` or `npm run test:coverage`
 - Lint: `npm run lint`
 
+## 📦 Single Executable (SEA)
+
+Build single-file binaries using Node's official Single Executable Applications (SEA).
+
+- Requirements: Node 22+; `postject` is already in devDependencies.
+- macOS local build:
+  - `rm -rf build sea-prep.blob sea-config.json`
+  - `npm ci && npm run make:macos:sea`
+  - Run: `./build/beepermcp.sea.run chat|tui|server|ui`
+- Linux/Windows local build:
+  - Linux: `npm run make:linux:sea` → `build/beepermcp.sea.run`
+  - Windows: `npm run make:windows:sea` → `build\\beepermcp.sea.run.exe`
+- Notes: Uses a tiny CJS shim to import the ESM CLI; macOS build clears xattrs and applies ad‑hoc codesign.
+
+CI releases
+- Tags (`v*.*.*`): GitHub Actions builds SEA binaries for macOS/Linux/Windows and publishes archives named `agentsmcp-<os>-<arch>` with checksums and a manifest (optional signature).
+- Pushes to `main`: A prerelease is published with the same artifacts.
+
+## 🧰 CLI & TUI
+
+- Chat CLI: `beepermcp chat`
+- TUI Inbox: `beepermcp tui`
+- Server (stdio): `beepermcp server`
+- Web UI launcher: `beepermcp ui`
+
+TUI shortcuts:
+- Up/Down or j/k: navigate inbox
+- Enter: generate drafts for selected item
+- a: accept and send
+- s: snooze 2h
+- x: dismiss
+- r: refresh inbox
+- q: quit
+
 ## 📖 Documentation
 
 - **[Features](docs/FEATURES.md)**: A comprehensive overview of all features.
 - **[Agent & Technical Documentation](AGENTS.md)**: In-depth technical documentation for agents and contributors.
 - **[Roadmap & Backlog](REFINED_BACKLOG_2025.md)**: The project's roadmap and detailed backlog.
+- **[Chat TUI — Vision & Plan](docs/TUI-CHAT.md)**: Vision, UX, and implementation plan for a user-friendly terminal UI.
 
 <div align="center">
   <strong>🚀 Experience the Revolution Today</strong>

@@ -4,7 +4,19 @@ import path from 'path';
 import crypto from 'crypto';
 import { createRequire } from 'node:module';
 
-const require = createRequire(import.meta.url);
+// Avoid using import.meta.url at module top-level to keep CJS bundling safe.
+function getReq(): any {
+  try {
+    const r = (globalThis as any).require;
+    if (typeof r === 'function') return r;
+  } catch {}
+  try {
+    // In ESM, construct a require relative to this module
+    const meta: any = (import.meta as any);
+    if (meta?.url) return createRequire(meta.url);
+  } catch {}
+  return undefined;
+}
 
 function homeBase(): string {
   return process.env.BEEPERMCP_HOME || path.join(os.homedir(), '.BeeperMCP');
@@ -32,11 +44,13 @@ function writeJSON(p: string, v: any) {
 
 function currentVersion(): string {
   try {
-    const pkg = require('../../package.json');
-    return pkg.version || '0.0.0';
-  } catch {
-    return process.env.BEEPER_MCP_VERSION || '0.0.0';
-  }
+    const r = getReq();
+    if (r) {
+      const pkg = r('../../package.json');
+      return pkg?.version || '0.0.0';
+    }
+  } catch {}
+  return process.env.BEEPER_MCP_VERSION || '0.0.0';
 }
 
 function isPackaged(): boolean {
@@ -108,7 +122,8 @@ function parseRepo(): { owner: string; repo: string } | null {
   }
   // Try reading package.json repository
   try {
-    const pkg = require('../../package.json');
+    const r = getReq();
+    const pkg = r ? r('../../package.json') : undefined;
     const repoUrl: string | undefined = pkg.repository?.url || pkg.repository;
     if (repoUrl && repoUrl.includes('github.com')) {
       const m = repoUrl.match(/github\.com[:/]+([^/]+)\/([^/.#]+)(?:\.git)?/i);
