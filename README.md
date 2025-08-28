@@ -32,45 +32,46 @@ chmod +x beepermcp
 - **Run tests**: `npm test`
 - **Lint**: `npm run lint`
 
----
+## 📦 Single Executable (SEA)
 
-## ✨ Features
+Build single-file binaries using Node's official Single Executable Applications (SEA).
 
-BeeperMCP is packed with features that feel like magic, all while being completely intuitive and privacy-preserving.
+- Requirements: Node 22+; `postject` is already in devDependencies.
+- macOS local build:
+  - `rm -rf build sea-prep.blob sea-config.json`
+  - `npm ci && npm run make:macos:sea`
+  - Run: `./build/beepermcp.sea.run chat|tui|server|ui`
+- Linux/Windows local build:
+  - Linux: `npm run make:linux:sea` → `build/beepermcp.sea.run`
+  - Windows: `npm run make:windows:sea` → `build\\beepermcp.sea.run.exe`
+- Notes: Uses a tiny CJS shim to import the ESM CLI; macOS build clears xattrs and applies ad‑hoc codesign.
 
-### 🧠 AI-Powered Intelligence
+CI releases
 
-- **Message Prediction & Auto-Completion**: Real-time, context-aware predictive text that learns your communication patterns.
-- **Visual Message Understanding**: Automatic insight extraction from images and documents with smart categorization.
-- **Temporal Message Context**: Time-aware intelligence that understands and links conversations across time.
+- Tags (`v*.*.*`): GitHub Actions builds SEA binaries for macOS/Linux/Windows and publishes archives named `agentsmcp-<os>-<arch>` with checksums and a manifest (optional signature).
+- Pushes to `main`: A prerelease is published with the same artifacts.
+- macOS: pkg is default; SEA is experimental (may be unstable on some systems).
 
-### 💬 Conversation & Relationship Insights
+## 🧰 CLI & TUI
 
-- **Conversation Flow Dynamics**: A dynamic UI that morphs based on conversation energy and context.
-- **Response Time Analysis**: Tracks changes in communication patterns.
-- **Emotional Tone Tracking**: Sophisticated sentiment analysis with trend detection.
-- **Anomaly Detection**: Advanced AI system for detecting unusual behavioral patterns.
-- **Improvement Suggestions**: AI-powered coaching and optimization recommendations.
+- Chat CLI: `beepermcp chat`
+- TUI Inbox: `beepermcp tui`
+- Server (stdio): `beepermcp server`
+- Web UI launcher: `beepermcp ui`
 
-### 🕵️‍♂️ Stealth Mode
+TUI shortcuts:
 
-- **Invisible Message Reading**: Analyze messages without marking them as read.
-- **Stealth Sync**: Background message retrieval that's completely invisible.
-- **Ghost Mode Navigation**: Browse conversations without leaving any trace.
+- Up/Down or j/k: navigate inbox
+- Enter: generate drafts for selected item
+- a: accept and send
+- s: snooze 2h
+- x: dismiss
+- r: refresh inbox
+- q: quit
 
-### ✍️ Iterative Response Crafting
+## 📖 Documentation
 
-- **AI Response Iteration**: Refine responses through multiple AI generations.
-- **Context-Aware Refinement**: Each iteration improves based on conversation context.
-- **User Instruction Integration**: Guide the AI with natural language to get the perfect response.
-
-### 🔐 Privacy-First Architecture
-
-- **Local-First**: All AI processing happens on your device.
-- **Zero Data Collection**: Your data never leaves your machine.
-- **Encrypted Local Storage**: All conversation insights are stored securely.
-
----
+- See repository for usage examples and CI workflows.
 
 <div align="center">
   <a href="https://matrix.org">

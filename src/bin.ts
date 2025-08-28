@@ -57,6 +57,11 @@ async function main() {
     // chat.ts runs immediately
     return;
   }
+  if (cmd === 'tui') {
+    const { runTui } = await import('./tui/index.js');
+    await runTui();
+    return;
+  }
   if (cmd === 'server' || cmd === 'stdio') {
     // Force STDIO mode when invoked via single binary server
     if (!process.env.MCP_STDIO_MODE) process.env.MCP_STDIO_MODE = '1';
@@ -64,7 +69,7 @@ async function main() {
     await startServer();
     return;
   }
-  console.error('Usage: beepermcp [chat|server|ui|update]');
+  console.error('Usage: beepermcp [chat|tui|server|ui|update]');
   process.exit(2);
 }
 
