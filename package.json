@@ -1,7 +1,7 @@
 {
   "name": "beeper-mcp",
-  "version": "1.6.0",
-  "releaseDate": "2025-08-27",
+  "version": "1.6.1",
+  "releaseDate": "2025-08-28",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -21,6 +21,7 @@
     "pack:pkg": "pkg -t node22-macos-arm64 --compress Brotli --output build/beepermcp dist/src/bin.js",
     "make:macos": "npm run build && npm run build:pkg-entry && PKG_CACHE_PATH=.pkg-cache npx -y pkg -t node18-macos-arm64 --compress Brotli --output build/beepermcp build/pkg-entry.cjs && (cp -X build/beepermcp build/beepermcp.run || cp build/beepermcp build/beepermcp.run) && xattr -c build/beepermcp.run || true && codesign --force --sign - --timestamp=none build/beepermcp.run && codesign --verify --verbose build/beepermcp.run && echo 'Built: build/beepermcp.run' && file build/beepermcp.run && ls -lh build/beepermcp.run",
     "make:macos:sea": "npm run build && npm run build:sea-entry && node -e \"require('fs').writeFileSync('sea-config.json', JSON.stringify({main:'./build/sea-entry.cjs', output:'sea-prep.blob', disableExperimentalSEAWarning:true}, null, 2))\" && node --experimental-sea-config sea-config.json && (cp $(command -v node) build/beepermcp.sea || cp $(which node) build/beepermcp.sea) && npx -y postject build/beepermcp.sea NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 && (cp -X build/beepermcp.sea build/beepermcp.sea.run || cp build/beepermcp.sea build/beepermcp.sea.run) && xattr -c build/beepermcp.sea.run || true && codesign --force --sign - --timestamp=none build/beepermcp.sea.run && codesign --verify --verbose build/beepermcp.sea.run && echo 'Built: build/beepermcp.sea.run' && file build/beepermcp.sea.run && ls -lh build/beepermcp.sea.run",
+    
     "make:linux:sea": "npm run build && npm run build:sea-entry && node -e \"require('fs').writeFileSync('sea-config.json', JSON.stringify({main:'./build/sea-entry.cjs', output:'sea-prep.blob', disableExperimentalSEAWarning:true}, null, 2))\" && node --experimental-sea-config sea-config.json && node -e \"const fs=require('fs');fs.copyFileSync(process.execPath,'build/beepermcp.sea');\" && npx -y postject build/beepermcp.sea NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 && cp build/beepermcp.sea build/beepermcp.sea.run && chmod +x build/beepermcp.sea.run && echo 'Built: build/beepermcp.sea.run' && file build/beepermcp.sea.run && ls -lh build/beepermcp.sea.run",
     "make:windows:sea": "npm run build && npm run build:sea-entry && node -e \"require('fs').writeFileSync('sea-config.json', JSON.stringify({main:'./build/sea-entry.cjs', output:'sea-prep.blob', disableExperimentalSEAWarning:true}, null, 2))\" && node --experimental-sea-config sea-config.json && node -e \"const fs=require('fs');fs.copyFileSync(process.execPath,'build/\\\\beepermcp.sea.exe');\" && npx -y postject build/\\\\beepermcp.sea.exe NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 && node -e \"const fs=require('fs');fs.copyFileSync('build/\\\\beepermcp.sea.exe','build/\\\\beepermcp.sea.run.exe');\" && echo Built: build\\beepermcp.sea.run.exe",
     "pack:all": "pkg -t node22-macos-x64,node22-macos-arm64,node22-linux-x64,node22-win-x64 --compress Brotli --output build/beepermcp dist/src/bin.js",
