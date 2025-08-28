@@ -12,6 +12,7 @@
   },
   "include": [
     "src/**/*.ts",
+    "src/**/*.d.ts",
     "beeper-mcp-server.ts",
     "phased-setup.ts",
     "mcp-tools.d.ts"
