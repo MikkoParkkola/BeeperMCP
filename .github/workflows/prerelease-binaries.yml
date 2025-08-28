@@ -19,6 +19,9 @@ jobs:
         run: npm ci
       - name: Build dist
         run: npm run build
+      - name: Build pkg (macOS default)
+        if: startsWith(matrix.os, 'macos')
+        run: npm run make:macos
       - name: Build SEA (macOS)
         if: startsWith(matrix.os, 'macos')
         run: npm run make:macos:sea
@@ -28,12 +31,28 @@ jobs:
       - name: Build SEA (Windows)
         if: startsWith(matrix.os, 'windows')
         run: npm run make:windows:sea
-      - name: Package artifact
+      - name: Smoke test binaries
         shell: bash
         run: |
           set -euo pipefail
           OS_NAME="${{ matrix.os }}"
-          if [[ "$OS_NAME" == macos* ]]; then OS=macos; EXT=tar.gz; BIN=build/beepermcp.sea.run; ARCH=$(uname -m); fi
+          if [[ "$OS_NAME" == macos* ]]; then
+            ./build/beepermcp.sea.run --help || true
+            ./build/beepermcp.sea.run server --help || true
+            ./build/beepermcp.run --help || true
+            ./build/beepermcp.run server --help || true
+          elif [[ "$OS_NAME" == ubuntu* ]]; then
+            ./build/beepermcp.sea.run --help
+            ./build/beepermcp.sea.run server --help
+          else
+            ./build/beepermcp.sea.run.exe --help || true
+          fi
+      - name: Package artifact(s)
+        shell: bash
+        run: |
+          set -euo pipefail
+          OS_NAME="${{ matrix.os }}"
+          if [[ "$OS_NAME" == macos* ]]; then OS=macos; EXT=tar.gz; ARCH=$(uname -m); fi
           if [[ "$OS_NAME" == ubuntu* ]]; then OS=linux; EXT=tar.gz; BIN=build/beepermcp.sea.run; ARCH=$(uname -m); fi
           if [[ "$OS_NAME" == windows* ]]; then OS=windows; EXT=zip; BIN=build/beepermcp.sea.run.exe; ARCH=${PROCESSOR_ARCHITECTURE:-AMD64}; fi
           case "$ARCH" in
@@ -41,14 +60,25 @@ jobs:
             arm64|aarch64|ARM64) ARCH_OUT=arm64 ;;
             *) ARCH_OUT=$ARCH ;;
           esac
-          NAME="agentsmcp-${OS}-${ARCH_OUT}"
           mkdir -p artifacts
           if [[ "$OS" == windows ]]; then
+            NAME="agentsmcp-${OS}-${ARCH_OUT}"
             mkdir -p pkg && cp "$BIN" pkg/agentsmcp.exe
             (cd pkg && zip -q "../artifacts/${NAME}.zip" agentsmcp.exe)
-          else
+          elif [[ "$OS" == linux ]]; then
+            NAME="agentsmcp-${OS}-${ARCH_OUT}"
             mkdir -p pkg && cp "$BIN" pkg/agentsmcp && chmod +x pkg/agentsmcp
             tar -czf "artifacts/${NAME}.tar.gz" -C pkg agentsmcp
+          else
+            NAME_PKG="agentsmcp-${OS}-${ARCH_OUT}"
+            NAME_SEA="agentsmcp-${OS}-${ARCH_OUT}-sea"
+            mkdir -p pkgdir seadir
+            cp build/beepermcp.run pkgdir/agentsmcp && chmod +x pkgdir/agentsmcp
+            tar -czf "artifacts/${NAME_PKG}.tar.gz" -C pkgdir agentsmcp
+            if [[ -f build/beepermcp.sea.run ]]; then
+              cp build/beepermcp.sea.run seadir/agentsmcp && chmod +x seadir/agentsmcp
+              tar -czf "artifacts/${NAME_SEA}.tar.gz" -C seadir agentsmcp
+            fi
           fi
           ls -l artifacts
       - name: Upload artifact
